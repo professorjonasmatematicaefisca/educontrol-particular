@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "dev": "npm run dev --prefix projetogestaoescolar",
+    "build": "npm run build --prefix projetogestaoescolar",
+    "preview": "npm run preview --prefix projetogestaoescolar"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.2"
+  }
+}
