@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WetWit Physics Quest - COC Paulínia (Combinações Hard)</title>
+    <!-- MathJax Configuration -->
+    <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #8bc34a;       /* Verde Claro COC */
+            --secondary: #2e7d32;     /* Verde Escuro COC */
+            --bg-dark: #1b3320;       
+            --glass-bg: rgba(10, 30, 15, 0.8); 
+            --glass-border: rgba(139, 195, 74, 0.4); 
+            --danger: #ff4b4b;
+            --success: #8bc34a;
+            --warning: #ffb300;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: #0d1a10;
+            background-image: linear-gradient(rgba(13, 26, 16, 0.85), rgba(20, 50, 25, 0.85)), url('https://user-gen-media-assets.s3.amazonaws.com/gemini_images/5cf9c982-1970-4fee-a9a6-405a736641db.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .hud {
+            width: 100%; max-width: 950px; display: flex; justify-content: space-between;
+            background: rgba(10,30,15,0.85); backdrop-filter: blur(12px); border: 1px solid var(--glass-border);
+            border-radius: 15px; padding: 15px 25px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+        .hud-item { display: flex; flex-direction: column; align-items: center; }
+        .hud-label { font-size: 0.85rem; text-transform: uppercase; color: #ccc; letter-spacing: 1px;}
+        .hud-value { font-size: 1.6rem; font-weight: bold; color: var(--primary); text-shadow: 0 0 10px rgba(139,195,74,0.4); }
+
+        .game-container {
+            width: 100%; max-width: 950px; background: var(--glass-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 20px; padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+        }
+
+        .q-banner {
+            width: 100%; height: 220px; border-radius: 12px; margin-bottom: 25px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 6rem; box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+            border: 2px solid var(--glass-border); text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        .charada-box { background: rgba(0, 0, 0, 0.6); border-left: 5px solid var(--primary); padding: 25px; border-radius: 8px; font-size: 1.3rem; font-style: italic; margin-bottom: 25px; line-height: 1.5; text-shadow: 1px 1px 2px #000; }
+
+        .interaction-area { background: rgba(255,255,255,0.03); padding: 30px; border-radius: 15px; margin-bottom: 25px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; border: 1px solid rgba(139,195,74,0.3); box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
+
+        .val-display { font-size: 2.2rem; font-weight: bold; color: var(--primary); margin-bottom: 20px; text-shadow: 0 0 15px var(--primary); background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 10px; border: 1px solid var(--primary); text-align: center; width: 100%;}
+
+        .btn-group { display: flex; gap: 15px; width: 100%; }
+        button { flex: 1; padding: 18px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; }
+        .btn-submit { background: linear-gradient(45deg, var(--secondary), var(--primary)); color: #fff; box-shadow: 0 4px 15px rgba(46, 125, 50, 0.5); text-shadow: 1px 1px 2px rgba(0,0,0,0.5);}
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 6px 25px rgba(139, 195, 74, 0.6); }
+        .btn-hint { background: rgba(255, 179, 0, 0.15); color: var(--warning); border: 2px solid var(--warning); flex: 0.5; }
+        .btn-hint:hover { background: rgba(255, 179, 0, 0.3); }
+
+        .hint-box { display: none; background: rgba(255, 179, 0, 0.2); border: 1px solid var(--warning); padding: 20px; border-radius: 10px; margin-top: 20px; text-align: center; font-size: 1.3rem; }
+        .constants { margin-top: 30px; text-align: center; font-size: 1rem; color: #ddd; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+
+        /* Estilos logo COC */
+        .coc-header { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        .coc-logo-text { font-size: 3.5rem; font-weight: 900; color: #fff; text-shadow: 0 0 15px var(--primary); }
+        .coc-logo-sub { font-size: 1.5rem; color: var(--primary); letter-spacing: 2px; }
+
+        /* Novos Estilos de Interação de Combinação */
+        .combo-grid { display: flex; gap: 15px; width: 100%; justify-content: space-between; margin-top: 10px;}
+        .combo-col { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .combo-btn { padding: 12px 5px; background: rgba(139,195,74,0.15); border: 1px solid var(--glass-border); border-radius: 8px; text-align: center; cursor: pointer; transition: 0.3s; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; min-height: 60px;}
+        .combo-btn:hover { background: rgba(139,195,74,0.4); }
+        .combo-col-title { text-align: center; color: var(--primary); font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid var(--primary); padding-bottom: 5px; font-size: 1.1rem;}
+
+        .dial-container { display: flex; gap: 15px; justify-content: center; }
+        .dial-col { display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; border: 1px solid var(--primary); }
+        .dial-btn { background: rgba(139,195,74,0.2); border: none; color: #fff; font-size: 1.5rem; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
+        .dial-btn:hover { background: rgba(139,195,74,0.5); }
+        .dial-val { font-size: 3rem; font-weight: bold; margin: 10px 0; color: var(--primary); }
+
+        .eq-builder-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--primary); color: #fff; padding: 10px 15px; font-size: 1.3rem; border-radius: 8px; cursor: pointer; transition: 0.2s;}
+        .eq-builder-btn:hover { background: rgba(139,195,74,0.4); transform: scale(1.05);}
+
+        .frac-input { width: 100px; padding: 15px; font-size: 2rem; text-align: center; background: rgba(0,0,0,0.8); color: var(--primary); border: none; outline: none; border-radius: 5px;}
+        .frac-divider { width: 120px; height: 4px; background: var(--primary); margin: 10px 0; border-radius: 2px;}
+
+        .results-list { text-align: left; margin-top: 20px;}
+        .res-item { background: rgba(0,0,0,0.7); padding: 20px; border-left: 6px solid; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        .res-correct { border-color: var(--success); }
+        .res-wrong { border-color: var(--danger); }
+        .res-math-box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px dashed rgba(139,195,74,0.3); font-size: 1.2rem; }
+
+        /* Estilos antigos para as questoes não alteradas */
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 250px; }
+        .key-btn { padding: 15px; background: rgba(139,195,74,0.15); border-radius: 8px; color: white; font-size: 1.4rem; cursor: pointer; border: 1px solid var(--glass-border); text-align: center;}
+        .stack-area { display: flex; flex-direction: column-reverse; gap: 5px; height: 150px; justify-content: flex-start; margin-top: 15px; align-items: center; }
+        .stack-block { width: 120px; height: 25px; background: linear-gradient(90deg, var(--secondary), var(--primary)); border-radius: 5px;}
+        input[type=range] { width: 80%; cursor: pointer; accent-color: var(--primary); height: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="hud" id="hud" style="display: none;">
+        <div class="hud-item"><span class="hud-label">Questão</span><span class="hud-value" id="h-q">1/15</span></div>
+        <div class="hud-item"><span class="hud-label">Tempo</span><span class="hud-value" id="h-t">03:00</span></div>
+        <div class="hud-item"><span class="hud-label">Pontos (Max)</span><span class="hud-value" id="h-p">1000</span></div>
+        <div class="hud-item"><span class="hud-label">Score Final</span><span class="hud-value" id="h-s">0</span></div>
+    </div>
+
+    <div class="game-container">
+        <!-- START -->
+        <div id="screen-start" style="text-align: center;">
+            <div class="coc-header">
+                <div>
+                    <div class="coc-logo-text">WetWit Quest</div>
+                    <div class="coc-logo-sub">COC Paulínia</div>
+                </div>
+            </div>
+
+            <!-- Imagem Gerada por IA do Parque em Destaque na Tela Inicial -->
+            <img src="https://user-gen-media-assets.s3.amazonaws.com/gemini_images/5cf9c982-1970-4fee-a9a6-405a736641db.png" alt="Parque Aquático COC" style="width: 100%; height: 300px; object-fit: cover; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.8); border: 3px solid var(--primary);">
+
+            <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 30px; text-shadow: 1px 1px 2px #000;">
+                Bem-vindo ao simulador gamificado de Física.<br>
+                <b>Atenção:</b> Várias questões possuem combinações difíceis. Você precisará escolher a fórmula exata dentre várias opções parecidas e calcular o resultado.<br>
+                As dicas revelam a fórmula, mas custam 30% dos pontos da questão.
+            </p>
+            <button class="btn-submit" onclick="startGame()" style="width: 300px; font-size: 1.4rem;">Iniciar Jornada</button>
+        </div>
+
+        <!-- PLAY -->
+        <div id="screen-play" style="display: none;">
+            <div id="q-banner" class="q-banner"></div>
+            <h2 id="q-title" style="margin-bottom: 15px; color: var(--primary); font-size: 1.8rem;"></h2>
+            <div id="q-text" class="charada-box"></div>
+
+            <div id="interaction-box" class="interaction-area"></div>
+
+            <div class="btn-group">
+                <button class="btn-hint" id="btn-hint" onclick="useHint()">💡 Revelar Fórmula (-30%)</button>
+                <button class="btn-submit" onclick="submitAns()">Confirmar Resposta</button>
+            </div>
+
+            <div id="hint-box" class="hint-box"></div>
+
+            <div class="constants">
+                <b>Painel do Parque:</b><br>
+                Gravidade (\(g\)) = \(10 \text{ m/s}^2\) &nbsp;|&nbsp; Densidade = \(1000 \text{ kg/m}^3\) &nbsp;|&nbsp; \(1 \text{ m/s} = 3,6 \text{ km/h}\)
+            </div>
+        </div>
+
+        <!-- END -->
+        <div id="screen-end" style="display: none; text-align: center;">
+            <h1 style="color: var(--primary); margin-bottom: 10px; font-size: 2.5rem;">Jornada COC Concluída!</h1>
+            <h2 style="font-size: 3.5rem; margin-bottom: 30px;">Score Final: <span id="final-score"></span> pts</h2>
+            <div id="results" class="results-list"></div>
+            <button class="btn-submit" onclick="location.reload()" style="margin-top: 40px; width: 300px; font-size: 1.3rem;">Refazer Simulador</button>
+        </div>
+    </div>
+
+    <script>
+        // Banco de Questões com Múltiplas Combinações (Dificuldade Aumentada)
+        const questions = [
+            {
+                id: 1, title: "1. O Vazio do Meteor (Queda Livre)", type: "combo-match", unit: "", init: "", 
+                banner: "linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%)", emoji: "🚀⬇️",
+                text: "A gravidade (10 m/s²) me puxa. Minha queda livre dura 3 segundos. Qual a combinação correta da equação e da altura final?",
+                optsA: [ 
+                    {id:'a1', val:'\\( h = g \\cdot t \\)'}, 
+                    {id:'a2', val:'\\( h = \\frac{g \\cdot t^2}{2} \\)'},
+                    {id:'a3', val:'\\( h = \\frac{g^2 \\cdot t}{2} \\)'},
+                    {id:'a4', val:'\\( h = 2g \\cdot t^2 \\)'}
+                ],
+                optsB: [ 
+                    {id:'b1', val:'15 m'}, 
+                    {id:'b2', val:'30 m'}, 
+                    {id:'b3', val:'45 m'},
+                    {id:'b4', val:'60 m'}
+                ],
+                correct: 'a2-b3',
+                hint: "\\( h = \\frac{g \\cdot t^2}{2} \\)", res: "\\( h = \\frac{10 \\cdot 3^2}{2} = 45 \\text{ m} \\)"
+            },
+            {
+                id: 2, title: "2. A Fúria do Kamikaze (Vel. Média)", type: "stepper", unit: "km/h", correct: 54, init: 0, 
+                banner: "linear-gradient(135deg, #1b5e20 0%, #4caf50 100%)", emoji: "🎢⚡",
+                text: "Pista de 60m. Escorreguei em 4 segundos. Qual minha velocidade em km/h?",
+                hint: "\\( V_m = \\frac{\\Delta S}{\\Delta t} \\times 3,6 \\)", res: "\\( V_m = \\frac{60}{4} = 15 \\text{ m/s} \\xrightarrow{\\times 3,6} 54 \\text{ km/h} \\)"
+            },
+            {
+                id: 3, title: "3. Salto do Water Bomb (Lanç. Horizontal)", type: "slider", unit: "m", correct: 5, init: 0, 
+                banner: "linear-gradient(135deg, #33691e 0%, #8bc34a 100%)", emoji: "💦🎯",
+                text: "Lançado a 5 m/s horizontalmente. Voei por 1 segundo. Qual a distância horizontal do impacto?",
+                hint: "\\( d = v_x \\cdot t \\)", res: "\\( d = 5 \\cdot 1 = 5 \\text{ m} \\)"
+            },
+            {
+                id: 4, title: "4. Arrancada do R4lly (Aceleração)", type: "keypad", unit: "m/s²", correct: 4, init: "", 
+                banner: "linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)", emoji: "🏁🏄‍♂️",
+                text: "Partindo do zero, atinjo 20 m/s em 5 segundos. Qual minha aceleração média?",
+                hint: "\\( a = \\frac{\\Delta v}{\\Delta t} \\)", res: "\\( a = \\frac{20 - 0}{5} = 4 \\text{ m/s}^2 \\)"
+            },
+            {
+                id: 5, title: "5. A Curva do Cyclone (Força Centrípeta)", type: "dial-lock", unit: "N", init: "0000", 
+                banner: "linear-gradient(135deg, #004d40 0%, #cddc39 100%)", emoji: "🌀🔄",
+                text: "Looping de 4m de raio, massa 50kg, velocidade 10 m/s. Qual a Força Centrípeta? (Ajuste o cadeado)",
+                digits: 4, correct: "1250",
+                hint: "\\( F_{cp} = \\frac{m \\cdot v^2}{R} \\)", res: "\\( F_{cp} = \\frac{50 \\cdot 10^2}{4} = \\frac{5000}{4} = 1250 \\text{ N} \\)"
+            },
+            {
+                id: 6, title: "6. Esmagamento do Vortex (Peso)", type: "stack", unit: "N", correct: 1200, init: 0, 
+                banner: "linear-gradient(135deg, #1b5e20 0%, #81c784 100%)", emoji: "🌪️⚖️",
+                text: "Sinto 2 'g' de aceleração total no funil. Se tenho 60kg, qual meu peso aparente?",
+                hint: "\\( P_{aparente} = m \\cdot (2 \\cdot g) \\)", res: "\\( P_{aparente} = 60 \\cdot 20 = 1200 \\text{ N} \\)"
+            },
+            {
+                id: 7, title: "7. Balanço do Crazy Drop (Energia)", type: "combo-match", unit: "", init: "", 
+                banner: "linear-gradient(135deg, #2e7d32 0%, #9ccc65 100%)", emoji: "🛹📉",
+                text: "Caí de 12,8m de altura no half-pipe. Sem atrito, combine a fórmula isolada correta com a velocidade alcançada no fundo.",
+                optsA: [ 
+                    {id:'a1', val:'\\( v = \\frac{gh}{2} \\)'},
+                    {id:'a2', val:'\\( v = g \\cdot h \\)'},
+                    {id:'a3', val:'\\( v = \\sqrt{2gh} \\)'},
+                    {id:'a4', val:'\\( v = \\sqrt{gh} \\)'}
+                ],
+                optsB: [ 
+                    {id:'b1', val:'12.8 m/s'}, 
+                    {id:'b2', val:'16 m/s'}, 
+                    {id:'b3', val:'25.6 m/s'},
+                    {id:'b4', val:'32 m/s'}
+                ],
+                correct: 'a3-b2',
+                hint: "\\( E_p = E_c \\Rightarrow mgh = \\frac{mv^2}{2} \\)", res: "\\( 10 \\cdot 12,8 = \\frac{v^2}{2} \\Rightarrow v = \\sqrt{256} = 16 \\text{ m/s} \\)"
+            },
+            {
+                id: 8, title: "8. Lazy River (Empuxo)", type: "hold", unit: "Litros", correct: 80, init: 0, 
+                banner: "linear-gradient(135deg, #388e3c 0%, #aed581 100%)", emoji: "🍩🛶",
+                text: "Massa total de 80kg flutuando no rio. Qual o volume de água deslocado (em litros)?",
+                hint: "\\( E = P \\Rightarrow d \\cdot V \\cdot g = m \\cdot g \\)", res: "\\( 1000 \\cdot V = 80 \\Rightarrow V = 0,08 \\text{ m}^3 = 80 \\text{ L} \\)"
+            },
+            {
+                id: 9, title: "9. Wave Lagoon (Ondulatória)", type: "slider", unit: "m/s", correct: 3, init: 0, 
+                banner: "linear-gradient(135deg, #43a047 0%, #d4e157 100%)", emoji: "🌊🏄‍♀️",
+                text: "Cristas a 6m de distância (comprimento). Pistão bate a 0,5 Hz. Qual a velocidade da onda?",
+                hint: "\\( v = \\lambda \\cdot f \\)", res: "\\( v = 6 \\cdot 0,5 = 3 \\text{ m/s} \\)"
+            },
+            {
+                id: 10, title: "10. Bubble Up (Atrito)", type: "combo-3", unit: "", init: "", 
+                banner: "linear-gradient(135deg, #2e7d32 0%, #cddc39 99%)", emoji: "🫧🧗‍♂️",
+                text: "Criança de 30kg no topo. Coeficiente de atrito 0,4. Combine a Força Normal, a Equação e a Força de Atrito final.",
+                optsA: [ 
+                    {id:'n1', val:'N = 30 N'}, 
+                    {id:'n2', val:'N = 150 N'},
+                    {id:'n3', val:'N = 300 N'},
+                    {id:'n4', val:'N = 600 N'}
+                ],
+                optsB: [ 
+                    {id:'eq1', val:'\\( F_{at} = \\mu + N \\)'}, 
+                    {id:'eq2', val:'\\( F_{at} = \\mu \\cdot N \\)'},
+                    {id:'eq3', val:'\\( F_{at} = \\frac{\\mu}{N} \\)'},
+                    {id:'eq4', val:'\\( F_{at} = \\frac{N}{\\mu} \\)'}
+                ],
+                optsC: [ 
+                    {id:'r1', val:'Fat = 12 N'}, 
+                    {id:'r2', val:'Fat = 120 N'},
+                    {id:'r3', val:'Fat = 300 N'},
+                    {id:'r4', val:'Fat = 1200 N'}
+                ],
+                correct: 'n3-eq2-r2',
+                hint: "\\( F_{atrito} = \\mu \\cdot Normal \\)", res: "\\( Normal = 30 \\cdot 10 = 300\\text{N} \\Rightarrow F_{at} = 0,4 \\cdot 300 = 120 \\text{ N} \\)"
+            },
+            {
+                id: 11, title: "11. Space Bowl (Aceleração Centrípeta)", type: "checkboxes", unit: "m/s²", correct: 12, init: 0, 
+                banner: "linear-gradient(135deg, #1b5e20 0%, #aed581 100%)", emoji: "🌀🕳️",
+                text: "Raio de 3m, velocidade constante de 6 m/s girando no ralo. Qual a aceleração centrípeta?",
+                hint: "\\( a_{cp} = \\frac{v^2}{R} \\)", res: "\\( a_{cp} = \\frac{6^2}{3} = \\frac{36}{3} = 12 \\text{ m/s}^2 \\)"
+            },
+            {
+                id: 12, title: "12. Kamikaze (Plano Inclinado)", type: "tilt", unit: "m/s²", correct: 8, init: 0, 
+                banner: "linear-gradient(135deg, #33691e 0%, #cddc39 100%)", emoji: "📐🛹",
+                text: "Seno do ângulo de descida é 0,8. Sem atrito, qual a aceleração?",
+                hint: "\\( a = g \\cdot \\sin(\\theta) \\)", res: "\\( a = 10 \\cdot 0,8 = 8 \\text{ m/s}^2 \\)"
+            },
+            {
+                id: 13, title: "13. Kid's Lagoon (Calorimetria)", type: "number", unit: "MJ", correct: 20, init: 0, 
+                banner: "linear-gradient(135deg, #2e7d32 0%, #dce775 100%)", emoji: "🌡️👶",
+                text: "1.000 kg de água aquecidos em 5°C. Calor específico 4000 J/kg°C. Quantos Megajoules (MJ)?",
+                hint: "\\( Q = m \\cdot c \\cdot \\Delta T \\)", res: "\\( Q = 1000 \\cdot 4000 \\cdot 5 = 20.000.000 \\text{ J} = 20 \\text{ MJ} \\)"
+            },
+            {
+                id: 14, title: "14. Resgate Vortex (Trabalho)", type: "equation-builder", unit: "", init: "", 
+                banner: "linear-gradient(135deg, #1b5e20 0%, #8bc34a 100%)", emoji: "🛟⚙️",
+                text: "Energia inicial de 10.000 J. Final de 8.000 J. Clique nos blocos para montar a equação exata do Trabalho do atrito.",
+                pieces: ['10000', '8000', '-', '+', '=', '/', '2000', '-2000', '18000'],
+                correct: "8000-10000=-2000",
+                hint: "\\( W = E_{final} - E_{inicial} \\)", res: "\\( W = 8000 - 10000 = -2000 \\text{ J} \\)"
+            },
+            {
+                id: 15, title: "15. Motor Wave Lagoon (Frequência)", type: "fraction-combo", unit: "", init: "?/?", 
+                banner: "linear-gradient(135deg, #004d40 0%, #9ccc65 100%)", emoji: "⚙️⏱️",
+                text: "O motor da onda bate 15 vezes por minuto. Monte a fração correta para achar a frequência em Hertz.",
+                correct: "15/60",
+                hint: "\\( f = \\frac{\\text{Ciclos}}{\\Delta t \\text{ (segundos)}} \\)", res: "\\( f = \\frac{15}{60} = 0,25 \\text{ Hz} \\)"
+            }
+        ];
+
+        let currIdx = 0;
+        let score = 0;
+        let timeLeft = 180;
+        let timer;
+        let usedHint = false;
+        let maxP = 1000;
+        let history = [];
+        let currentAnswer = "";
+
+        // States for combinations
+        let cState = {};
+        let dials = [0,0,0,0];
+
+        function startGame() {
+            document.getElementById('screen-start').style.display = 'none';
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('screen-play').style.display = 'block';
+            if(window.MathJax) MathJax.typesetPromise();
+            loadQ();
+        }
+
+        function loadQ() {
+            let q = questions[currIdx];
+            document.getElementById('h-q').innerText = `${currIdx+1}/15`;
+            document.getElementById('q-title').innerText = q.title;
+            document.getElementById('q-text').innerText = `"${q.text}"`;
+
+            const banner = document.getElementById('q-banner');
+            banner.style.background = q.banner;
+            banner.innerText = q.emoji;
+
+            usedHint = false; maxP = 1000; timeLeft = 180;
+            currentAnswer = q.init;
+            cState = {}; dials = [0,0,0,0];
+
+            document.getElementById('hint-box').style.display = 'none';
+            document.getElementById('btn-hint').disabled = false;
+            document.getElementById('btn-hint').style.opacity = '1';
+
+            renderInteraction(q);
+            updateHUD();
+
+            clearInterval(timer);
+            timer = setInterval(tick, 1000);
+            if(window.MathJax) MathJax.typesetPromise();
+        }
+
+        function renderInteraction(q) {
+            const box = document.getElementById('interaction-box');
+            let html = `<div class="val-display" id="ans-disp">...</div>`;
+
+            if(q.type === 'combo-match') {
+                html += `<div class="combo-grid">
+                    <div class="combo-col"><div class="combo-col-title">Equação Isolada</div>`;
+                    q.optsA.forEach(o => html += `<div class="combo-btn" onclick="setCombo('A','${o.id}', this)">${o.val}</div>`);
+                html += `</div><div class="combo-col"><div class="combo-col-title">Resultado</div>`;
+                    q.optsB.forEach(o => html += `<div class="combo-btn" onclick="setCombo('B','${o.id}', this)">${o.val}</div>`);
+                html += `</div></div>`;
+            }
+            else if(q.type === 'combo-3') {
+                html += `<div class="combo-grid">
+                    <div class="combo-col"><div class="combo-col-title">F. Normal</div>`;
+                    q.optsA.forEach(o => html += `<div class="combo-btn" style="font-size:1.1rem" onclick="setCombo('A','${o.id}', this)">${o.val}</div>`);
+                html += `</div><div class="combo-col"><div class="combo-col-title">Fórmula</div>`;
+                    q.optsB.forEach(o => html += `<div class="combo-btn" style="font-size:1.1rem" onclick="setCombo('B','${o.id}', this)">${o.val}</div>`);
+                html += `</div><div class="combo-col"><div class="combo-col-title">F. Atrito</div>`;
+                    q.optsC.forEach(o => html += `<div class="combo-btn" style="font-size:1.1rem" onclick="setCombo('C','${o.id}', this)">${o.val}</div>`);
+                html += `</div></div>`;
+            }
+            else if(q.type === 'dial-lock') {
+                html += `<div class="dial-container">`;
+                for(let i=0; i<4; i++) {
+                    html += `<div class="dial-col">
+                        <button class="dial-btn" onclick="changeDial(${i}, 1)">▲</button>
+                        <div class="dial-val" id="dial-${i}">0</div>
+                        <button class="dial-btn" onclick="changeDial(${i}, -1)">▼</button>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+            else if(q.type === 'equation-builder') {
+                html += `<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-bottom:15px; max-width:600px;">`;
+                q.pieces.forEach(p => html += `<button class="eq-builder-btn" onclick="appendEq('${p}')">${p}</button>`);
+                html += `</div><button class="eq-builder-btn" style="background:var(--danger); border:none;" onclick="clearEq()">Limpar Equação</button>`;
+            }
+            else if(q.type === 'fraction-combo') {
+                html += `<div style="display:flex; flex-direction:column; align-items:center;">
+                            <input type="number" id="frac-num" class="frac-input" placeholder="Ciclos" onchange="updateFrac()" onkeyup="updateFrac()">
+                            <div class="frac-divider"></div>
+                            <input type="number" id="frac-den" class="frac-input" placeholder="Tempo" onchange="updateFrac()" onkeyup="updateFrac()">
+                         </div>`;
+            }
+            else if(q.type === 'slider' || q.type === 'v-slider' || q.type === 'reverse-slider') {
+                let cls = q.type === 'v-slider' ? 'class="vertical-range"' : '';
+                let max = q.id===9 ? 10 : q.id===15 ? 1 : 150;
+                let step = q.id===15 ? 0.05 : 1;
+                html += `<input type="range" ${cls} min="0" max="${max}" step="${step}" value="${q.init}" oninput="updateAns(this.value)">`;
+            } 
+            else if(q.type === 'stepper') {
+                html += `
+                    <div style="display:flex;gap:20px;">
+                        <button style="background:rgba(139,195,74,0.2);color:#fff;border:1px solid var(--primary);" onclick="updateAns(parseFloat(currentAnswer)-1)">- 1</button>
+                        <button style="background:rgba(139,195,74,0.2);color:#fff;border:1px solid var(--primary);" onclick="updateAns(parseFloat(currentAnswer)+1)">+ 1</button>
+                        <button style="background:rgba(139,195,74,0.2);color:#fff;border:1px solid var(--primary);" onclick="updateAns(parseFloat(currentAnswer)+10)">+ 10</button>
+                    </div>`;
+            }
+            else if(q.type === 'keypad') {
+                html += `<div class="keypad">`;
+                for(let i=1; i<=9; i++) html += `<div class="key-btn" onclick="typeAns(${i})">${i}</div>`;
+                html += `<div class="key-btn" style="background:var(--danger); border-color:var(--danger)" onclick="clearAns()">C</div>`;
+                html += `<div class="key-btn" onclick="typeAns(0)">0</div>`;
+                html += `</div>`;
+            }
+            else if(q.type === 'stack') {
+                html += `<div style="display:flex; gap:15px; margin-bottom: 10px;">
+                            <button style="background:var(--primary);color:#000;padding:10px 20px" onclick="addStack()">+ 100 N</button>
+                            <button style="background:var(--danger);color:#fff;padding:10px 20px" onclick="clearStack()">Zerar</button>
+                         </div>
+                         <div class="stack-area" id="stack-area"></div>`;
+            }
+            else if(q.type === 'hold') {
+                html += `<button style="background:var(--secondary);color:#fff; width:200px; height:60px; font-size:1.5rem; border-radius:30px;" onmousedown="startFill()" onmouseup="stopFill()" onmouseleave="stopFill()" ontouchstart="startFill()" ontouchend="stopFill()">SEGURE</button>
+                         <div style="width:250px; height:30px; border:2px solid var(--primary); border-radius:15px; margin-top:20px; overflow:hidden; background:rgba(0,0,0,0.5);">
+                            <div id="fill-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--secondary), var(--primary));"></div>
+                         </div>`;
+            }
+            else if(q.type === 'checkboxes') {
+                html += `<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:15px; background:rgba(0,0,0,0.4); padding:20px; border-radius:10px;">`;
+                for(let i=0; i<16; i++) html += `<input type="checkbox" style="width:35px;height:35px;cursor:pointer;accent-color:var(--primary);" onchange="countChecks()">`;
+                html += `</div>`;
+            }
+            else if(q.type === 'tilt') {
+                html += `<div style="display:flex;gap:15px;margin-bottom:30px;">
+                            <button style="background:rgba(139,195,74,0.2);color:#fff;border:1px solid var(--primary);" onclick="tilt(1)">Inclinar ⬆</button>
+                            <button style="background:rgba(139,195,74,0.2);color:#fff;border:1px solid var(--primary);" onclick="tilt(-1)">Descer ⬇</button>
+                         </div>
+                         <div id="ramp" style="width:200px; height:15px; background:linear-gradient(90deg, var(--secondary), var(--primary)); border-radius:5px; transition:0.3s transform;"></div>`;
+            }
+            else if(q.type === 'number') {
+                html += `<input type="number" style="padding:20px; font-size:2rem; text-align:center; background:rgba(0,0,0,0.8); color:var(--primary); border:2px solid var(--primary); border-radius: 10px; width:150px; outline:none;" value="0" onchange="updateAns(this.value)" onkeyup="updateAns(this.value)">`;
+            }
+
+            box.innerHTML = html;
+            updateDisp();
+        }
+
+        // --- Novas Lógicas de Combinação ---
+        function setCombo(col, id, elem) {
+            cState[col] = id;
+            let siblings = elem.parentNode.children;
+            for(let i=1; i<siblings.length; i++) { // pula o titulo
+                siblings[i].style.background = 'rgba(139,195,74,0.15)';
+                siblings[i].style.color = '#fff';
+            }
+            elem.style.background = 'var(--primary)';
+            elem.style.color = '#000';
+
+            let q = questions[currIdx];
+            if(q.type === 'combo-match') currentAnswer = (cState.A||'?') + '-' + (cState.B||'?');
+            if(q.type === 'combo-3') currentAnswer = (cState.A||'?') + '-' + (cState.B||'?') + '-' + (cState.C||'?');
+            updateDisp();
+        }
+
+        function changeDial(idx, dir) {
+            dials[idx] += dir;
+            if(dials[idx] > 9) dials[idx] = 0;
+            if(dials[idx] < 0) dials[idx] = 9;
+            document.getElementById('dial-'+idx).innerText = dials[idx];
+            currentAnswer = dials.join('');
+            updateDisp();
+        }
+
+        function appendEq(val) { currentAnswer += val; updateDisp(); }
+        function clearEq() { currentAnswer = ""; updateDisp(); }
+
+        function updateFrac() {
+            let n = document.getElementById('frac-num').value || '?';
+            let d = document.getElementById('frac-den').value || '?';
+            currentAnswer = n + '/' + d;
+            updateDisp();
+        }
+
+        // --- Lógicas Antigas Mantidas ---
+        function updateAns(val) { currentAnswer = val; updateDisp(); }
+        function typeAns(num) { currentAnswer = currentAnswer.toString() + num; updateDisp(); }
+        function clearAns() { currentAnswer = ""; updateDisp(); }
+        let stackCount = 0; function addStack() { stackCount++; currentAnswer = stackCount * 100; document.getElementById('stack-area').innerHTML += '<div class="stack-block"></div>'; updateDisp(); }
+        function clearStack() { stackCount = 0; currentAnswer = 0; document.getElementById('stack-area').innerHTML = ''; updateDisp(); }
+        let fillTimer; let fillVal = 0; function startFill() { fillTimer = setInterval(() => { if(fillVal<100){ fillVal++; currentAnswer=fillVal; document.getElementById('fill-bar').style.width=fillVal+'%'; updateDisp();}}, 50); }
+        function stopFill() { clearInterval(fillTimer); }
+        function countChecks() { currentAnswer = document.querySelectorAll('input[type="checkbox"]:checked').length; updateDisp(); }
+        let tiltAng = 0; function tilt(dir) { tiltAng += dir*5; currentAnswer = (parseFloat(currentAnswer)||0) + dir; document.getElementById('ramp').style.transform = `rotate(${tiltAng}deg)`; updateDisp(); }
+
+        function updateDisp() { 
+            let disp = document.getElementById('ans-disp');
+            let q = questions[currIdx];
+            let txt = currentAnswer !== "" ? currentAnswer : "...";
+
+            // formatação visual customizada no display superior
+            if(q.type === 'combo-match' || q.type === 'combo-3') txt = "Combinação Registrada";
+            if(q.type === 'equation-builder') txt = currentAnswer || "____";
+
+            disp.innerText = txt + (q.unit && currentAnswer !== "" && !q.type.includes('combo') ? " " + q.unit : ""); 
+        }
+
+        // Core
+        function tick() {
+            timeLeft--;
+            if(timeLeft < 0) { submitAns(true); return; }
+            if(timeLeft < 170) { maxP = Math.max(150, 1000 - ((170 - timeLeft) * 5)); }
+            updateHUD();
+        }
+
+        function updateHUD() {
+            let m = Math.floor(timeLeft/60); let s = timeLeft%60;
+            document.getElementById('h-t').innerText = `0${m}:${s<10?'0':''}${s}`;
+            document.getElementById('h-p').innerText = usedHint ? Math.floor(maxP * 0.7) : maxP;
+            document.getElementById('h-s').innerText = score;
+        }
+
+        function useHint() {
+            usedHint = true;
+            document.getElementById('btn-hint').disabled = true;
+            document.getElementById('btn-hint').style.opacity = '0.5';
+            const hb = document.getElementById('hint-box');
+            hb.style.display = 'block';
+            hb.innerHTML = "<b style='color:#fff;'>Fórmula Recomendada:</b><br><br> " + questions[currIdx].hint;
+            if(window.MathJax) MathJax.typesetPromise([hb]);
+            updateHUD();
+        }
+
+        function getAnsTextForEnd(q, ans) {
+            if(ans === "Tempo Esgotado") return ans;
+            if(q.type === 'combo-match') {
+                let parts = ans.split('-');
+                let a = q.optsA.find(x => x.id === parts[0]);
+                let b = q.optsB.find(x => x.id === parts[1]);
+                return (a ? a.val : '?') + " | " + (b ? b.val : '?');
+            }
+            if(q.type === 'combo-3') {
+                let parts = ans.split('-');
+                let a = q.optsA.find(x => x.id === parts[0]);
+                let b = q.optsB.find(x => x.id === parts[1]);
+                let c = q.optsC.find(x => x.id === parts[2]);
+                return (a?a.val:'?') + " | " + (b?b.val:'?') + " | " + (c?c.val:'?');
+            }
+            return ans + " " + (q.unit || "");
+        }
+
+        function submitAns(timeout=false) {
+            clearInterval(timer);
+            let q = questions[currIdx];
+            // Comparacao flexivel (string vs number safe)
+            let isOk = (!timeout && currentAnswer == q.correct);
+
+            let p = 0;
+            if(isOk) { p = usedHint ? Math.floor(maxP * 0.7) : maxP; score += p; }
+
+            history.push({ q: q, uAns: timeout ? "Tempo Esgotado" : currentAnswer, ok: isOk, pts: p });
+            currIdx++;
+            if(currIdx < questions.length) loadQ();
+            else showEnd();
+        }
+
+        function showEnd() {
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('screen-play').style.display = 'none';
+            document.getElementById('screen-end').style.display = 'block';
+            document.getElementById('final-score').innerText = score;
+
+            let html = "";
+            history.forEach(h => {
+                let uTxt = getAnsTextForEnd(h.q, h.uAns);
+                let cTxt = getAnsTextForEnd(h.q, h.q.correct);
+
+                html += `
+                <div class="res-item ${h.ok ? 'res-correct' : 'res-wrong'}">
+                    <h3 style="color:${h.ok ? 'var(--success)' : 'var(--danger)'}; margin-bottom:15px; font-size:1.5rem;">${h.q.title}</h3>
+                    <p style="font-size:1.2rem; margin-bottom: 10px;"><b>Sua Resposta:</b> ${uTxt}</p>
+                    <p style="font-size:1.2rem;"><b>Gabarito:</b> ${cTxt}</p>
+                    <div class="res-math-box">
+                        <b style="color:var(--primary);">Resolução Passo a Passo:</b><br><br>
+                        ${h.q.res}
+                    </div>
+                </div>`;
+            });
+            const resContainer = document.getElementById('results');
+            resContainer.innerHTML = html;
+            if(window.MathJax) MathJax.typesetPromise([resContainer]);
+        }
+    </script>
+</body>
+</html>
