@@ -29,7 +29,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
 
     const answeredCount = approvedParticipants.filter(p => p.answered_current).length;
     const timerPct = (timeLeft / 180) * 100;
-    const timerColor = timeLeft > 60 ? '#8bc34a' : timeLeft > 30 ? '#ffb300' : '#ff4b4b';
+    const timerColor = timeLeft > 60 ? '#facc15' : timeLeft > 30 ? '#ffb300' : '#ff4b4b';
     const timerExpired = timeLeft === 0 && session?.status === 'active';
 
     if (!sessionId) {
@@ -41,7 +41,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                     <p className="text-gray-400">Crie uma nova sessão para iniciar a competição ao vivo.</p>
                 </div>
                 <button onClick={onCreateSession}
-                    className="flex items-center gap-3 bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] text-white font-black text-xl px-10 py-5 rounded-2xl shadow-[0_4px_30px_rgba(139,195,74,0.3)] hover:brightness-110 transition">
+                    className="flex items-center gap-3 bg-gradient-to-r from-[#ca8a04] to-[#facc15] text-white font-black text-xl px-10 py-5 rounded-2xl shadow-[0_4px_30px_rgba(139,195,74,0.3)] hover:brightness-110 transition">
                     <Play size={24} /> Criar Nova Sessão
                 </button>
             </div>
@@ -51,7 +51,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader size={40} className="text-[#8bc34a] animate-spin" />
+                <Loader size={40} className="text-[#facc15] animate-spin" />
             </div>
         );
     }
@@ -65,15 +65,15 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
     return (
         <div className="flex flex-col gap-4">
             {/* Header */}
-            <div className="bg-black/40 border border-[#8bc34a]/20 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-black/40 border border-[#facc15]/20 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h2 className="text-xl font-black text-white">🎮 WetWit Quest — Ao Vivo</h2>
                     <p className="text-gray-500 text-xs font-mono mt-0.5">{sessionId?.slice(0, 16)}...</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-[#8bc34a]/10 border border-[#8bc34a]/20 px-4 py-2 rounded-xl">
-                        <Users size={16} className="text-[#8bc34a]" />
-                        <span className="text-[#8bc34a] font-black text-lg">{approvedParticipants.length}</span>
+                    <div className="flex items-center gap-2 bg-[#facc15]/10 border border-[#facc15]/20 px-4 py-2 rounded-xl">
+                        <Users size={16} className="text-[#facc15]" />
+                        <span className="text-[#facc15] font-black text-lg">{approvedParticipants.length}</span>
                         {pendingParticipants.length > 0 && (
                             <span className="ml-1 text-amber-500 font-bold text-sm bg-amber-500/20 px-2 py-0.5 rounded-md">
                                 +{pendingParticipants.length} pendentes
@@ -99,7 +99,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
             <div className="flex gap-2 bg-black/30 p-1 rounded-xl border border-white/5">
                 {tabs.map(t => (
                     <button key={t.id} onClick={() => setTab(t.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition ${tab === t.id ? 'bg-[#8bc34a] text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm transition ${tab === t.id ? 'bg-[#facc15] text-black shadow' : 'text-gray-400 hover:text-white hover:bg-white/5'
                             }`}>
                         {t.icon} {t.label}
                     </button>
@@ -111,7 +111,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                 <div className="flex flex-col gap-4">
                     {/* Timer (apenas quando ativo) */}
                     {session?.status === 'active' && qi >= 0 && (
-                        <div className="bg-black/40 border border-[#8bc34a]/20 rounded-2xl p-5 flex flex-col gap-3">
+                        <div className="bg-black/40 border border-[#facc15]/20 rounded-2xl p-5 flex flex-col gap-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Timer da Questão {qi + 1}</span>
                                 <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                                     <div key={p.id} className="flex items-center justify-between bg-black/40 border border-white/5 rounded-xl px-4 py-3">
                                         <span className="text-white font-bold">{p.student_name}</span>
                                         <div className="flex gap-2">
-                                            <button onClick={() => approveParticipant(p.id)} className="flex items-center gap-1 bg-[#8bc34a]/20 text-[#8bc34a] hover:bg-[#8bc34a]/40 px-3 py-1.5 rounded-lg border border-[#8bc34a]/30 transition font-bold text-sm">
+                                            <button onClick={() => approveParticipant(p.id)} className="flex items-center gap-1 bg-[#facc15]/20 text-[#facc15] hover:bg-[#facc15]/40 px-3 py-1.5 rounded-lg border border-[#facc15]/30 transition font-bold text-sm">
                                                 <CheckSquare size={16} /> Liberar
                                             </button>
                                             <button onClick={() => rejectParticipant(p.id)} className="flex items-center gap-1 bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-1.5 rounded-lg border border-red-500/30 transition font-bold text-sm">
@@ -163,12 +163,12 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                     )}
 
                     {/* Controles */}
-                    <div className="bg-black/40 border border-[#8bc34a]/20 rounded-2xl p-5">
+                    <div className="bg-black/40 border border-[#facc15]/20 rounded-2xl p-5">
                         <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-4">Controles da Competição</div>
                         <div className="flex flex-wrap gap-3">
                             {session?.status !== 'finished' && !isLast && (
                                 <button onClick={startNextQuestion}
-                                    className="flex items-center gap-2 bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] text-white font-black px-6 py-3 rounded-xl hover:brightness-110 transition shadow-lg text-lg">
+                                    className="flex items-center gap-2 bg-gradient-to-r from-[#ca8a04] to-[#facc15] text-white font-black px-6 py-3 rounded-xl hover:brightness-110 transition shadow-lg text-lg">
                                     <SkipForward size={20} />
                                     {session?.status === 'active' && qi < 0 ? '▶ Iniciar Questão 1' : timerExpired ? '▶ Liberar Próxima Questão' : '⏭ Pular para Próxima'}
                                 </button>
@@ -202,7 +202,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
 
             {/* ─── ABA QUESTÃO ─── */}
             {tab === 'questao' && (
-                <div className="bg-black/40 border border-[#8bc34a]/20 rounded-2xl p-5">
+                <div className="bg-black/40 border border-[#facc15]/20 rounded-2xl p-5">
                     {!currentQ ? (
                         <div className="text-center py-10 text-gray-500">
                             <BookOpen size={40} className="mx-auto mb-3 opacity-30" />
@@ -213,12 +213,12 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Questão {qi + 1} de {questions.length}</span>
                                 <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#8bc34a] rounded-full transition-all" style={{ width: `${((qi + 1) / questions.length) * 100}%` }} />
+                                    <div className="h-full bg-[#facc15] rounded-full transition-all" style={{ width: `${((qi + 1) / questions.length) * 100}%` }} />
                                 </div>
                                 <span className="text-4xl">{currentQ.emoji}</span>
                             </div>
-                            <h3 className="text-[#8bc34a] font-black text-lg">{currentQ.title}</h3>
-                            <div className="bg-black/60 border-l-4 border-[#8bc34a] px-5 py-4 rounded-xl text-gray-200 text-base leading-relaxed italic">
+                            <h3 className="text-[#facc15] font-black text-lg">{currentQ.title}</h3>
+                            <div className="bg-black/60 border-l-4 border-[#facc15] px-5 py-4 rounded-xl text-gray-200 text-base leading-relaxed italic">
                                 "{currentQ.text}"
                             </div>
                             {currentQ.optsA && (
@@ -226,7 +226,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
                                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Opções A</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         {currentQ.optsA.map(o => (
-                                            <div key={o.id} className="bg-[#8bc34a]/5 border border-[#8bc34a]/20 rounded-lg px-3 py-2 text-sm text-gray-300">
+                                            <div key={o.id} className="bg-[#facc15]/5 border border-[#facc15]/20 rounded-lg px-3 py-2 text-sm text-gray-300">
                                                 <MathText text={o.val} />
                                             </div>
                                         ))}
@@ -248,7 +248,7 @@ export const TeacherControlPanel: React.FC<TeacherControlPanelProps> = ({
 
             {/* ─── ABA RANKING ─── */}
             {tab === 'ranking' && (
-                <div className="bg-black/40 border border-[#8bc34a]/20 rounded-2xl p-5">
+                <div className="bg-black/40 border border-[#facc15]/20 rounded-2xl p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <Trophy size={18} className="text-yellow-400" />
                         <h3 className="text-white font-black">Ranking Ao Vivo</h3>

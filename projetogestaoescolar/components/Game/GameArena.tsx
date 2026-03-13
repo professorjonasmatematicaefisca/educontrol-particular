@@ -57,8 +57,8 @@ export const GameArena: React.FC<GameArenaProps> = ({ userRole, userName, onShow
         return (
             <div className="min-h-full">
                 {sessionId && (
-                    <div className="mb-4 bg-[#8bc34a]/10 border border-[#8bc34a]/20 rounded-xl px-5 py-3 flex items-center gap-3 flex-wrap">
-                        <ExternalLink size={16} className="text-[#8bc34a] shrink-0" />
+                    <div className="mb-4 bg-[#facc15]/10 border border-[#facc15]/20 rounded-xl px-5 py-3 flex items-center gap-3 flex-wrap">
+                        <ExternalLink size={16} className="text-[#facc15] shrink-0" />
                         <p className="text-sm text-gray-300 flex-1">
                             Alunos entram com <span className="font-mono text-[#facc15]">joaogomes@estudante.com</span> + senha <b>123</b> e acessam a aba <span className="text-[#facc15] font-bold">Game</span>.
                         </p>
@@ -176,20 +176,20 @@ const ActiveStudentGame: React.FC<{ preAuthName?: string }> = ({ preAuthName }) 
     return (
         <div className="flex flex-col items-center justify-center min-h-[70vh] py-10 gap-6 w-full max-w-2xl mx-auto px-4">
             <div className="text-center">
-                <div className="text-6xl mb-4 text-[#8bc34a]">🎮</div>
+                <div className="text-6xl mb-4 text-[#facc15]">🎮</div>
                 <h2 className="text-3xl font-black text-white mb-2">Desafios Disponíveis</h2>
                 <p className="text-gray-400">Escolha a sala do seu professor para solicitar acesso.</p>
             </div>
 
             {searching ? (
                 <div className="flex flex-col items-center py-10 gap-4">
-                    <div className="w-10 h-10 border-4 border-[#8bc34a]/30 border-t-[#8bc34a] rounded-full animate-spin" />
+                    <div className="w-10 h-10 border-4 border-[#facc15]/30 border-t-[#facc15] rounded-full animate-spin" />
                     <p className="text-gray-400 font-bold">Procurando salas...</p>
                 </div>
             ) : availableSessions.length === 0 ? (
-                <div className="bg-black/40 border border-[#8bc34a]/30 rounded-2xl p-8 w-full text-center">
+                <div className="bg-black/40 border border-[#facc15]/30 rounded-2xl p-8 w-full text-center">
                     <p className="text-gray-300 font-bold text-lg mb-4">Nenhuma competição aberta no momento.</p>
-                    <button onClick={() => fetchSessions(true)} className="bg-white/5 hover:bg-white/10 text-[#8bc34a] border border-[#8bc34a]/30 px-6 py-3 rounded-xl transition font-bold">
+                    <button onClick={() => fetchSessions(true)} className="bg-white/5 hover:bg-white/10 text-[#facc15] border border-[#facc15]/30 px-6 py-3 rounded-xl transition font-bold">
                         Atualizar Lista
                     </button>
                 </div>
@@ -197,19 +197,19 @@ const ActiveStudentGame: React.FC<{ preAuthName?: string }> = ({ preAuthName }) 
                 <div className="w-full flex flex-col gap-3">
                     <div className="flex justify-between items-center mb-2 px-2">
                         <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Salas Encontradas ({availableSessions.length})</span>
-                        <button onClick={() => fetchSessions(true)} className="text-[#8bc34a] text-sm hover:underline font-bold">Atualizar</button>
+                        <button onClick={() => fetchSessions(true)} className="text-[#facc15] text-sm hover:underline font-bold">Atualizar</button>
                     </div>
                     {availableSessions.map(sess => (
-                        <div key={sess.id} className="bg-black/50 border border-[#8bc34a]/20 hover:border-[#8bc34a]/60 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition group">
+                        <div key={sess.id} className="bg-black/50 border border-[#facc15]/20 hover:border-[#facc15]/60 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition group">
                             <div>
-                                <h3 className="text-white font-black text-lg group-hover:text-[#8bc34a] transition">Sala do Prof. {sess.teacher_name}</h3>
+                                <h3 className="text-white font-black text-lg group-hover:text-[#facc15] transition">Sala do Prof. {sess.teacher_name}</h3>
                                 <p className="text-gray-400 text-sm">
                                     {sess.status === 'active' && sess.current_question_index < 0 ? '⏳ Aguardando jogadores' : '🔴 Em andamento'}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setSelectedSessionId(sess.id)}
-                                className="bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] text-white px-6 py-2.5 rounded-lg font-black hover:brightness-110 shadow-lg"
+                                className="bg-gradient-to-r from-[#ca8a04] to-[#facc15] text-white px-6 py-2.5 rounded-lg font-black hover:brightness-110 shadow-lg"
                             >
                                 Entrar
                             </button>

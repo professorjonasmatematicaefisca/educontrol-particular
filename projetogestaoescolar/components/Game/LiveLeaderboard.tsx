@@ -43,7 +43,7 @@ const ParticipantRow: React.FC<{
 
     return (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-500 ${isMe
-                ? 'bg-[#8bc34a]/20 border border-[#8bc34a]/50 shadow-[0_0_15px_rgba(139,195,74,0.2)]'
+                ? 'bg-[#facc15]/20 border border-[#facc15]/50 shadow-[0_0_15px_rgba(139,195,74,0.2)]'
                 : rank === 0
                     ? 'bg-yellow-500/10 border border-yellow-500/20'
                     : 'bg-white/5 border border-white/5'
@@ -63,7 +63,7 @@ const ParticipantRow: React.FC<{
                     <span className={`font-black truncate ${isMe ? 'text-white' : 'text-gray-300'}`}>
                         {p.student_name}
                     </span>
-                    {isMe && <span className="text-[10px] bg-[#8bc34a]/20 text-[#8bc34a] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">Você</span>}
+                    {isMe && <span className="text-[10px] bg-[#facc15]/20 text-[#facc15] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">Você</span>}
                 </div>
                 {compact && (
                     <div className="text-xs text-gray-400 mt-0.5 truncate flex items-center gap-2">
@@ -75,7 +75,7 @@ const ParticipantRow: React.FC<{
             </div>
             {!compact && (
                 <div className="text-right shrink-0 flex flex-col items-end">
-                    <span className={`font-black tracking-tight ${isMe ? 'text-[#8bc34a]' : 'text-emerald-400'}`}>
+                    <span className={`font-black tracking-tight ${isMe ? 'text-[#facc15]' : 'text-emerald-400'}`}>
                         {p.score.toLocaleString()} pts
                     </span>
                     <span className="text-xs text-gray-500 font-bold">
@@ -86,7 +86,7 @@ const ParticipantRow: React.FC<{
 
             {/* Já respondeu */}
             {p.answered_current && (
-                <span className="text-xs bg-[#8bc34a]/20 text-[#8bc34a] px-2 py-0.5 rounded-full shrink-0 font-bold">✓</span>
+                <span className="text-xs bg-[#facc15]/20 text-[#facc15] px-2 py-0.5 rounded-full shrink-0 font-bold">✓</span>
             )}
         </div>
     );
@@ -108,7 +108,7 @@ export const LiveLeaderboard: React.FC<LiveLeaderboardProps> = ({ participants, 
             <div className="space-y-3">
                 <div className="text-center text-gray-500 text-xs mb-1">{participants.length} competidores</div>
                 <ParticipantRow p={me} rank={myRank} isMe={true} totalCount={participants.length} />
-                <div className="text-center text-[#8bc34a] text-xs font-bold mt-1">
+                <div className="text-center text-[#facc15] text-xs font-bold mt-1">
                     {myRank === 0 ? '🏆 Você está em 1º lugar!' :
                         myRank === 1 ? '🥈 Você está em 2º lugar!' :
                             myRank === 2 ? '🥉 Você está em 3º lugar!' :

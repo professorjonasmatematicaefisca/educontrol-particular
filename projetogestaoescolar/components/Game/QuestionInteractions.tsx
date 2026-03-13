@@ -25,19 +25,19 @@ export const InteractionComboMatch: React.FC<InteractionProps> = ({ question, on
     return (
         <div className="grid grid-cols-2 gap-3 w-full">
             <div>
-                <div className="text-center text-[#8bc34a] font-bold mb-2 text-sm border-b border-[#8bc34a]/40 pb-1">Equação Isolada</div>
+                <div className="text-center text-[#facc15] font-bold mb-2 text-sm border-b border-[#facc15]/40 pb-1">Equação Isolada</div>
                 {question.optsA?.map(o => (
                     <button key={o.id} onClick={() => select('A', o.id)} disabled={disabled}
-                        className={`w-full mb-2 px-2 py-3 rounded-lg text-sm text-center transition-all border cursor-pointer ${stateA === o.id ? 'bg-[#8bc34a] text-black font-bold border-[#8bc34a]' : 'bg-[#8bc34a]/10 text-white border-[#8bc34a]/30 hover:bg-[#8bc34a]/30'}`}>
+                        className={`w-full mb-2 px-2 py-3 rounded-lg text-sm text-center transition-all border cursor-pointer ${stateA === o.id ? 'bg-[#facc15] text-black font-bold border-[#facc15]' : 'bg-[#facc15]/10 text-white border-[#facc15]/30 hover:bg-[#facc15]/30'}`}>
                         <MathText text={o.val} />
                     </button>
                 ))}
             </div>
             <div>
-                <div className="text-center text-[#8bc34a] font-bold mb-2 text-sm border-b border-[#8bc34a]/40 pb-1">Resultado</div>
+                <div className="text-center text-[#facc15] font-bold mb-2 text-sm border-b border-[#facc15]/40 pb-1">Resultado</div>
                 {question.optsB?.map(o => (
                     <button key={o.id} onClick={() => select('B', o.id)} disabled={disabled}
-                        className={`w-full mb-2 px-2 py-3 rounded-lg text-sm text-center transition-all border cursor-pointer ${stateB === o.id ? 'bg-[#8bc34a] text-black font-bold border-[#8bc34a]' : 'bg-[#8bc34a]/10 text-white border-[#8bc34a]/30 hover:bg-[#8bc34a]/30'}`}>
+                        className={`w-full mb-2 px-2 py-3 rounded-lg text-sm text-center transition-all border cursor-pointer ${stateB === o.id ? 'bg-[#facc15] text-black font-bold border-[#facc15]' : 'bg-[#facc15]/10 text-white border-[#facc15]/30 hover:bg-[#facc15]/30'}`}>
                         <MathText text={o.val} />
                     </button>
                 ))}
@@ -74,10 +74,10 @@ export const InteractionCombo3: React.FC<InteractionProps> = ({ question, onAnsw
         <div className="grid grid-cols-3 gap-2 w-full">
             {cols.map(({ key, title, opts }) => (
                 <div key={key}>
-                    <div className="text-center text-[#8bc34a] font-bold mb-2 text-xs border-b border-[#8bc34a]/40 pb-1">{title}</div>
+                    <div className="text-center text-[#facc15] font-bold mb-2 text-xs border-b border-[#facc15]/40 pb-1">{title}</div>
                     {opts?.map(o => (
                         <button key={o.id} onClick={() => select(key, o.id)} disabled={disabled}
-                            className={`w-full mb-2 px-1 py-2 rounded-lg text-xs text-center transition-all border ${states[key] === o.id ? 'bg-[#8bc34a] text-black font-bold border-[#8bc34a]' : 'bg-[#8bc34a]/10 text-white border-[#8bc34a]/30 hover:bg-[#8bc34a]/30'}`}>
+                            className={`w-full mb-2 px-1 py-2 rounded-lg text-xs text-center transition-all border ${states[key] === o.id ? 'bg-[#facc15] text-black font-bold border-[#facc15]' : 'bg-[#facc15]/10 text-white border-[#facc15]/30 hover:bg-[#facc15]/30'}`}>
                             <MathText text={o.val} />
                         </button>
                     ))}
@@ -94,8 +94,8 @@ export const InteractionSlider: React.FC<InteractionProps> = ({ question, onAnsw
         <div className="w-full flex flex-col items-center gap-4">
             <input type="range" min={0} max={max} step={1} value={Number(currentAnswer) || 0}
                 onChange={e => onAnswerChange(Number(e.target.value))} disabled={disabled}
-                className="w-4/5 accent-[#8bc34a] cursor-pointer h-3 rounded-full" />
-            <span className="text-[#8bc34a] font-bold text-2xl">{currentAnswer || 0} {question.unit}</span>
+                className="w-4/5 accent-[#facc15] cursor-pointer h-3 rounded-full" />
+            <span className="text-[#facc15] font-bold text-2xl">{currentAnswer || 0} {question.unit}</span>
         </div>
     );
 };
@@ -105,7 +105,7 @@ export const InteractionStepper: React.FC<InteractionProps> = ({ question, onAns
     const val = Number(currentAnswer) || 0;
     const btn = (label: string, delta: number) => (
         <button onClick={() => onAnswerChange(val + delta)} disabled={disabled}
-            className="bg-[#8bc34a]/20 text-white border border-[#8bc34a]/50 px-5 py-3 rounded-xl font-bold text-lg hover:bg-[#8bc34a]/40 transition disabled:opacity-50">
+            className="bg-[#facc15]/20 text-white border border-[#facc15]/50 px-5 py-3 rounded-xl font-bold text-lg hover:bg-[#facc15]/40 transition disabled:opacity-50">
             {label}
         </button>
     );
@@ -114,7 +114,7 @@ export const InteractionStepper: React.FC<InteractionProps> = ({ question, onAns
             <div className="flex gap-3">
                 {btn('- 10', -10)}{btn('- 1', -1)}{btn('+ 1', 1)}{btn('+ 10', 10)}
             </div>
-            <span className="text-[#8bc34a] font-bold text-3xl">{val} {question.unit}</span>
+            <span className="text-[#facc15] font-bold text-3xl">{val} {question.unit}</span>
         </div>
     );
 };
@@ -126,13 +126,13 @@ export const InteractionKeypad: React.FC<InteractionProps> = ({ question, onAnsw
     const clear = () => onAnswerChange('');
     return (
         <div className="flex flex-col items-center gap-3">
-            <div className="text-[#8bc34a] font-bold text-2xl mb-2 bg-black/40 px-6 py-2 rounded-xl min-w-[120px] text-center border border-[#8bc34a]/40">
+            <div className="text-[#facc15] font-bold text-2xl mb-2 bg-black/40 px-6 py-2 rounded-xl min-w-[120px] text-center border border-[#facc15]/40">
                 {val || '—'} {question.unit}
             </div>
             <div className="grid grid-cols-3 gap-2">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
                     <button key={n} onClick={() => append(n)} disabled={disabled}
-                        className="w-14 h-14 bg-[#8bc34a]/15 border border-[#8bc34a]/30 rounded-xl text-white text-xl font-bold hover:bg-[#8bc34a]/35 transition">
+                        className="w-14 h-14 bg-[#facc15]/15 border border-[#facc15]/30 rounded-xl text-white text-xl font-bold hover:bg-[#facc15]/35 transition">
                         {n}
                     </button>
                 ))}
@@ -141,7 +141,7 @@ export const InteractionKeypad: React.FC<InteractionProps> = ({ question, onAnsw
                     C
                 </button>
                 <button onClick={() => append(0)} disabled={disabled}
-                    className="w-14 h-14 bg-[#8bc34a]/15 border border-[#8bc34a]/30 rounded-xl text-white text-xl font-bold hover:bg-[#8bc34a]/35 transition">
+                    className="w-14 h-14 bg-[#facc15]/15 border border-[#facc15]/30 rounded-xl text-white text-xl font-bold hover:bg-[#facc15]/35 transition">
                     0
                 </button>
             </div>
@@ -163,10 +163,10 @@ export const InteractionDialLock: React.FC<InteractionProps> = ({ question, onAn
     return (
         <div className="flex gap-4 justify-center">
             {dials.map((d, i) => (
-                <div key={i} className="flex flex-col items-center bg-black/50 p-3 rounded-xl border border-[#8bc34a]/40 w-16">
-                    <button onClick={() => change(i, 1)} disabled={disabled} className="text-[#8bc34a] text-2xl font-bold hover:text-white transition">▲</button>
-                    <span className="text-[#8bc34a] text-3xl font-black my-2">{d}</span>
-                    <button onClick={() => change(i, -1)} disabled={disabled} className="text-[#8bc34a] text-2xl font-bold hover:text-white transition">▼</button>
+                <div key={i} className="flex flex-col items-center bg-black/50 p-3 rounded-xl border border-[#facc15]/40 w-16">
+                    <button onClick={() => change(i, 1)} disabled={disabled} className="text-[#facc15] text-2xl font-bold hover:text-white transition">▲</button>
+                    <span className="text-[#facc15] text-3xl font-black my-2">{d}</span>
+                    <button onClick={() => change(i, -1)} disabled={disabled} className="text-[#facc15] text-2xl font-bold hover:text-white transition">▼</button>
                 </div>
             ))}
         </div>
@@ -181,15 +181,15 @@ export const InteractionStack: React.FC<InteractionProps> = ({ onAnswerChange, c
     return (
         <div className="flex flex-col items-center gap-4">
             <div className="flex gap-3">
-                <button onClick={add} disabled={disabled} className="bg-[#8bc34a] text-black font-bold px-5 py-3 rounded-xl hover:brightness-110 transition disabled:opacity-50">+ 100 N</button>
+                <button onClick={add} disabled={disabled} className="bg-[#facc15] text-black font-bold px-5 py-3 rounded-xl hover:brightness-110 transition disabled:opacity-50">+ 100 N</button>
                 <button onClick={clear} disabled={disabled} className="bg-red-600 text-white font-bold px-5 py-3 rounded-xl hover:brightness-110 transition disabled:opacity-50">Zerar</button>
             </div>
             <div className="flex flex-col-reverse gap-1 h-28 justify-start items-center">
                 {Array.from({ length: Math.min(count / 100, 12) }).map((_, i) => (
-                    <div key={i} className="w-28 h-4 rounded bg-gradient-to-r from-[#2e7d32] to-[#8bc34a]" />
+                    <div key={i} className="w-28 h-4 rounded bg-gradient-to-r from-[#ca8a04] to-[#facc15]" />
                 ))}
             </div>
-            <span className="text-[#8bc34a] font-bold text-2xl">{count} N</span>
+            <span className="text-[#facc15] font-bold text-2xl">{count} N</span>
         </div>
     );
 };
@@ -209,13 +209,13 @@ export const InteractionHold: React.FC<InteractionProps> = ({ question, onAnswer
         <div className="flex flex-col items-center gap-4">
             <button onMouseDown={start} onMouseUp={stop} onMouseLeave={stop} onTouchStart={start} onTouchEnd={stop}
                 disabled={disabled}
-                className="w-44 h-14 bg-[#2e7d32] text-white font-black text-lg rounded-full hover:brightness-110 transition disabled:opacity-50 select-none">
+                className="w-44 h-14 bg-[#ca8a04] text-white font-black text-lg rounded-full hover:brightness-110 transition disabled:opacity-50 select-none">
                 SEGURE
             </button>
-            <div className="w-56 h-6 border-2 border-[#8bc34a] rounded-full overflow-hidden bg-black/50">
-                <div style={{ width: `${val}%` }} className="h-full bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] transition-all" />
+            <div className="w-56 h-6 border-2 border-[#facc15] rounded-full overflow-hidden bg-black/50">
+                <div style={{ width: `${val}%` }} className="h-full bg-gradient-to-r from-[#ca8a04] to-[#facc15] transition-all" />
             </div>
-            <span className="text-[#8bc34a] font-bold text-xl">{val} {question.unit}</span>
+            <span className="text-[#facc15] font-bold text-xl">{val} {question.unit}</span>
         </div>
     );
 };
@@ -236,10 +236,10 @@ export const InteractionCheckboxes: React.FC<InteractionProps> = ({ onAnswerChan
             <div className="grid grid-cols-4 gap-3 bg-black/40 p-4 rounded-xl">
                 {checked.map((c, i) => (
                     <input key={i} type="checkbox" checked={c} onChange={() => toggle(i)} disabled={disabled}
-                        className="w-9 h-9 accent-[#8bc34a] cursor-pointer rounded" />
+                        className="w-9 h-9 accent-[#facc15] cursor-pointer rounded" />
                 ))}
             </div>
-            <span className="text-[#8bc34a] font-bold text-2xl">{count} marcados</span>
+            <span className="text-[#facc15] font-bold text-2xl">{count} marcados</span>
         </div>
     );
 };
@@ -256,12 +256,12 @@ export const InteractionTilt: React.FC<InteractionProps> = ({ question, onAnswer
     return (
         <div className="flex flex-col items-center gap-4">
             <div className="flex gap-3">
-                <button onClick={() => tilt(1)} disabled={disabled} className="bg-[#8bc34a]/20 text-white border border-[#8bc34a]/50 px-5 py-3 rounded-xl font-bold hover:bg-[#8bc34a]/40 transition">Inclinar ⬆</button>
-                <button onClick={() => tilt(-1)} disabled={disabled} className="bg-[#8bc34a]/20 text-white border border-[#8bc34a]/50 px-5 py-3 rounded-xl font-bold hover:bg-[#8bc34a]/40 transition">Descer ⬇</button>
+                <button onClick={() => tilt(1)} disabled={disabled} className="bg-[#facc15]/20 text-white border border-[#facc15]/50 px-5 py-3 rounded-xl font-bold hover:bg-[#facc15]/40 transition">Inclinar ⬆</button>
+                <button onClick={() => tilt(-1)} disabled={disabled} className="bg-[#facc15]/20 text-white border border-[#facc15]/50 px-5 py-3 rounded-xl font-bold hover:bg-[#facc15]/40 transition">Descer ⬇</button>
             </div>
             <div style={{ transform: `rotate(${angle}deg)`, transition: '0.3s transform' }}
-                className="w-48 h-4 bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] rounded-full" />
-            <span className="text-[#8bc34a] font-bold text-2xl">{val} {question.unit}</span>
+                className="w-48 h-4 bg-gradient-to-r from-[#ca8a04] to-[#facc15] rounded-full" />
+            <span className="text-[#facc15] font-bold text-2xl">{val} {question.unit}</span>
         </div>
     );
 };
@@ -271,7 +271,7 @@ export const InteractionNumber: React.FC<InteractionProps> = ({ question, onAnsw
     <div className="flex flex-col items-center gap-3">
         <input type="number" value={String(currentAnswer)} onChange={e => onAnswerChange(Number(e.target.value))}
             disabled={disabled}
-            className="w-40 text-center text-3xl font-bold text-[#8bc34a] bg-black/80 border-2 border-[#8bc34a] rounded-xl px-4 py-3 outline-none" />
+            className="w-40 text-center text-3xl font-bold text-[#facc15] bg-black/80 border-2 border-[#facc15] rounded-xl px-4 py-3 outline-none" />
         <span className="text-gray-400 text-sm">{question.unit}</span>
     </div>
 );
@@ -283,13 +283,13 @@ export const InteractionEquationBuilder: React.FC<InteractionProps> = ({ questio
     const clear = () => onAnswerChange('');
     return (
         <div className="flex flex-col items-center gap-4 w-full">
-            <div className="bg-black/60 border border-[#8bc34a]/40 rounded-xl px-6 py-3 text-[#8bc34a] font-mono text-xl min-h-[52px] w-full text-center">
+            <div className="bg-black/60 border border-[#facc15]/40 rounded-xl px-6 py-3 text-[#facc15] font-mono text-xl min-h-[52px] w-full text-center">
                 {val || '____'}
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
                 {question.pieces?.map(p => (
                     <button key={p} onClick={() => append(p)} disabled={disabled}
-                        className="bg-white/10 border border-[#8bc34a]/40 text-white text-lg font-bold px-4 py-2 rounded-lg hover:bg-[#8bc34a]/30 transition disabled:opacity-50">
+                        className="bg-white/10 border border-[#facc15]/40 text-white text-lg font-bold px-4 py-2 rounded-lg hover:bg-[#facc15]/30 transition disabled:opacity-50">
                         {p}
                     </button>
                 ))}
@@ -312,11 +312,11 @@ export const InteractionFractionCombo: React.FC<InteractionProps> = ({ onAnswerC
         <div className="flex flex-col items-center gap-2">
             <input type="number" value={num} onChange={e => update(e.target.value, den)} disabled={disabled}
                 placeholder="Ciclos"
-                className="w-28 text-center text-3xl font-bold text-[#8bc34a] bg-black/80 border-b-0 border-2 border-[#8bc34a] rounded-t-xl px-4 py-3 outline-none" />
-            <div className="w-32 h-1 bg-[#8bc34a] rounded" />
+                className="w-28 text-center text-3xl font-bold text-[#facc15] bg-black/80 border-b-0 border-2 border-[#facc15] rounded-t-xl px-4 py-3 outline-none" />
+            <div className="w-32 h-1 bg-[#facc15] rounded" />
             <input type="number" value={den} onChange={e => update(num, e.target.value)} disabled={disabled}
                 placeholder="Tempo"
-                className="w-28 text-center text-3xl font-bold text-[#8bc34a] bg-black/80 border-t-0 border-2 border-[#8bc34a] rounded-b-xl px-4 py-3 outline-none" />
+                className="w-28 text-center text-3xl font-bold text-[#facc15] bg-black/80 border-t-0 border-2 border-[#facc15] rounded-b-xl px-4 py-3 outline-none" />
         </div>
     );
 };

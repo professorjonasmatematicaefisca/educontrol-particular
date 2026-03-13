@@ -16,10 +16,10 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-          name: 'EduControl PRO',
+          name: 'Aulas Particulares',
           short_name: 'EduControl',
           description: 'Gestão Escolar Inteligente e Controle de Sala de Aula',
-          theme_color: '#00843D', // COC Dark Green
+          theme_color: '#facc15', // Brand Yellow
           background_color: '#f8fafc', // slate-50
           icons: [
             {

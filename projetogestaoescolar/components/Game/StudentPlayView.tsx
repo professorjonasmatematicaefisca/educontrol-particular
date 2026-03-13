@@ -240,7 +240,7 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
     if (loading || autoJoining) {
         return (
             <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a1a0d' }}>
-                <Loader size={40} className="text-[#8bc34a] animate-spin" />
+                <Loader size={40} className="text-[#facc15] animate-spin" />
             </div>
         );
     }
@@ -248,7 +248,7 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
     if (!myParticipant) {
         return (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader size={40} className="text-[#8bc34a] animate-spin" />
+                <Loader size={40} className="text-[#facc15] animate-spin" />
                 <p className="text-gray-400 font-bold">Conectando à sessão...</p>
             </div>
         );
@@ -309,14 +309,14 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
 
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,195,74,0.1)_0%,transparent_60%)] animate-pulse" />
                 
-                <div className="relative z-10 w-28 h-28 bg-gradient-to-br from-[#2e7d32] to-[#8bc34a] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(139,195,74,0.6)] border-4 border-[#8bc34a]/30">
+                <div className="relative z-10 w-28 h-28 bg-gradient-to-br from-[#ca8a04] to-[#facc15] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(139,195,74,0.6)] border-4 border-[#facc15]/30">
                     <span className="text-5xl text-white font-black">{myParticipant?.student_name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="text-center relative z-10 bg-black/40 p-6 rounded-2xl border border-white/10 backdrop-blur-sm">
                     <h2 className="text-3xl font-black text-white mb-2">Entrada Autorizada!</h2>
-                    <p className="text-[#8bc34a] font-bold text-xl mb-4">Você já está na sala.</p>
+                    <p className="text-[#facc15] font-bold text-xl mb-4">Você já está na sala.</p>
                     <p className="text-gray-300 flex items-center gap-3">
-                        <Loader size={20} className="text-[#8bc34a] animate-spin" />
+                        <Loader size={20} className="text-[#facc15] animate-spin" />
                         Aguardando o professor iniciar a competição...
                     </p>
                 </div>
@@ -331,12 +331,12 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
                 <div className="text-6xl animate-bounce">🏆</div>
                 <h2 className="text-3xl font-black text-white text-center">Fim de Jogo!</h2>
 
-                <p className="text-[#8bc34a] text-xl font-bold">
+                <p className="text-[#facc15] text-xl font-bold">
                     {myParticipant?.score?.toLocaleString() ?? 0} pontos — #{myRank}º lugar
                 </p>
 
-                <div className="w-full bg-black/40 border border-[#8bc34a]/30 rounded-2xl p-6 mb-6">
-                    <h3 className="text-[#8bc34a] font-bold text-lg mb-4 flex items-center gap-2 justify-center">
+                <div className="w-full bg-black/40 border border-[#facc15]/30 rounded-2xl p-6 mb-6">
+                    <h3 className="text-[#facc15] font-bold text-lg mb-4 flex items-center gap-2 justify-center">
                         <Trophy size={18} /> Ranking Final
                     </h3>
                     <LiveLeaderboard participants={participants.filter(p => p.status === 'approved')} myName={studentName} currentQuestionIndex={session?.current_question_index} />
@@ -364,14 +364,14 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
     }
 
     const timerPct = (timeLeft / QUESTION_DURATION) * 100;
-    const timerColor = timeLeft > 60 ? '#8bc34a' : timeLeft > 30 ? '#ffb300' : '#ff4b4b';
+    const timerColor = timeLeft > 60 ? '#facc15' : timeLeft > 30 ? '#ffb300' : '#ff4b4b';
 
     return (
         <div className="min-h-screen flex flex-col"
             style={{ background: 'radial-gradient(ellipse at top, #0d2e14 0%, #050d06 100%)' }}>
 
             {/* HUD */}
-            <div className="sticky top-0 z-30 bg-black/70 backdrop-blur-sm border-b border-[#8bc34a]/20 px-4 py-3 flex items-center gap-4">
+            <div className="sticky top-0 z-30 bg-black/70 backdrop-blur-sm border-b border-[#facc15]/20 px-4 py-3 flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Clock size={16} style={{ color: timerColor }} />
                     <span className="font-black text-xl tabular-nums" style={{ color: timerColor }}>
@@ -387,31 +387,31 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
                     Q {qi + 1}/{questions.length}
                 </div>
                 <div className="shrink-0 text-right">
-                    <span className="text-[#8bc34a] font-black">{hintUsed ? Math.floor(maxPoints * 0.7) : maxPoints}</span>
+                    <span className="text-[#facc15] font-black">{hintUsed ? Math.floor(maxPoints * 0.7) : maxPoints}</span>
                     <span className="text-gray-500 text-xs ml-1">pts</span>
                 </div>
                 <div className="flex flex-col text-right">
-                   <div className="text-[#8bc34a] font-black text-sm">{myParticipant?.score?.toLocaleString() ?? 0} pts total</div>
+                   <div className="text-[#facc15] font-black text-sm">{myParticipant?.score?.toLocaleString() ?? 0} pts total</div>
                    <div className="text-gray-400 font-bold text-xs">{myParticipant?.correct_answers ?? 0}/{qi > 0 ? (answered ? qi + 1 : qi) : (answered ? 1 : 0)} acertos</div>
                 </div>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 flex flex-col gap-4">
                 {/* Banner */}
-                <div className="h-28 rounded-2xl flex items-center justify-center text-6xl shadow-xl border border-[#8bc34a]/20"
+                <div className="h-28 rounded-2xl flex items-center justify-center text-6xl shadow-xl border border-[#facc15]/20"
                     style={{ background: q.banner }}>
                     {q.emoji}
                 </div>
 
-                <h2 className="text-[#8bc34a] font-black text-xl">{q.title}</h2>
+                <h2 className="text-[#facc15] font-black text-xl">{q.title}</h2>
 
-                <div className="bg-black/60 border-l-4 border-[#8bc34a] px-5 py-4 rounded-xl text-gray-200 text-base leading-relaxed font-medium italic">
+                <div className="bg-black/60 border-l-4 border-[#facc15] px-5 py-4 rounded-xl text-gray-200 text-base leading-relaxed font-medium italic">
                     “<MathText text={q.text} />”
                 </div>
 
                 {/* Interação */}
                 {!answered ? (
-                    <div className="bg-white/3 border border-[#8bc34a]/20 rounded-2xl p-6 flex flex-col items-center gap-4 min-h-48">
+                    <div className="bg-white/3 border border-[#facc15]/20 rounded-2xl p-6 flex flex-col items-center gap-4 min-h-48">
                         <QuestionInteraction
                             question={q}
                             onAnswerChange={setCurrentAnswer}
@@ -420,12 +420,12 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
                         />
                     </div>
                 ) : (
-                    <div className="rounded-2xl p-6 border text-center bg-[#8bc34a]/10 border-[#8bc34a]/30">
+                    <div className="rounded-2xl p-6 border text-center bg-[#facc15]/10 border-[#facc15]/30">
                         <div className="text-5xl mb-3">✅</div>
-                        <p className="text-2xl font-black mb-1 text-[#8bc34a]">
+                        <p className="text-2xl font-black mb-1 text-[#facc15]">
                             Resposta registrada!
                         </p>
-                        <CheckCircle size={20} className="text-[#8bc34a] mx-auto" />
+                        <CheckCircle size={20} className="text-[#facc15] mx-auto" />
                         <p className="text-gray-400 text-sm mt-3">
                             Aguardando o professor liberar a próxima etapa...
                         </p>
@@ -440,7 +440,7 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
                             💡 Dica (-30%)
                         </button>
                         <button onClick={() => handleSubmit()} disabled={answered}
-                            className="flex-1 py-3 bg-gradient-to-r from-[#2e7d32] to-[#8bc34a] text-white font-black text-lg rounded-xl shadow-lg hover:brightness-110 transition disabled:opacity-50">
+                            className="flex-1 py-3 bg-gradient-to-r from-[#ca8a04] to-[#facc15] text-white font-black text-lg rounded-xl shadow-lg hover:brightness-110 transition disabled:opacity-50">
                             Confirmar Resposta
                         </button>
                     </div>
@@ -475,8 +475,8 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
                 </div>
 
                 {timeLeft === 0 && (
-                    <div className="bg-black/30 border border-[#8bc34a]/10 rounded-2xl p-4">
-                        <h3 className="text-[#8bc34a] font-bold text-sm mb-3 flex items-center gap-2">
+                    <div className="bg-black/30 border border-[#facc15]/10 rounded-2xl p-4">
+                        <h3 className="text-[#facc15] font-bold text-sm mb-3 flex items-center gap-2">
                             <Trophy size={14} /> Sua Posição (Tempo Esgotado)
                         </h3>
                         <LiveLeaderboard participants={participants} myName={studentName} onlyMe compact currentQuestionIndex={session?.current_question_index} />
