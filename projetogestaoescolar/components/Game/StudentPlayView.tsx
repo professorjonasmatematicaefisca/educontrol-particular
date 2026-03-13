@@ -29,7 +29,7 @@ function normalize(str: string): string {
 }
 
 /**
- * Dado um email "joaogomes@cocpaulinia.com.br", extrai "joaogomes"
+ * Dado um email "joaogomes@estudante.com", extrai "joaogomes"
  * e tenta encontrar um aluno cujos dois primeiros nomes, normalizados e concatenados,
  * correspondam exatamente à parte local do email.
  */
@@ -173,7 +173,7 @@ export const StudentPlayView: React.FC<StudentPlayViewProps> = ({ sessionId, pre
 
             if (!found) {
                 setLoginError(
-                    'Email não encontrado. Verifique se digitou corretamente seu primeiro e segundo nome sem acentos. Ex: joaogomes@cocpaulinia.com.br'
+                    'Email não encontrado. Verifique se digitou corretamente seu primeiro e segundo nome sem acentos. Ex: joaogomes@estudante.com'
                 );
                 setLoginLoading(false);
                 return;

@@ -49,7 +49,7 @@ export const GameArena: React.FC<GameArenaProps> = ({ userRole, userName, onShow
         }
         localStorage.setItem(SESSION_STORAGE_KEY, data.id);
         setSessionId(data.id);
-        onShowToast('Sessão criada! Alunos entram com email @cocpaulinia.com.br + senha 123.');
+        onShowToast('Sessão criada! Alunos entram com email @estudante.com + senha 123.');
     };
 
     // ---- Professores / Coordenadores ----
@@ -60,7 +60,7 @@ export const GameArena: React.FC<GameArenaProps> = ({ userRole, userName, onShow
                     <div className="mb-4 bg-[#8bc34a]/10 border border-[#8bc34a]/20 rounded-xl px-5 py-3 flex items-center gap-3 flex-wrap">
                         <ExternalLink size={16} className="text-[#8bc34a] shrink-0" />
                         <p className="text-sm text-gray-300 flex-1">
-                            Alunos entram com <span className="font-mono text-[#8bc34a]">joaogomes@cocpaulinia.com.br</span> + senha <b>123</b> e acessam a aba <span className="text-[#8bc34a] font-bold">Game</span>.
+                            Alunos entram com <span className="font-mono text-[#facc15]">joaogomes@estudante.com</span> + senha <b>123</b> e acessam a aba <span className="text-[#facc15] font-bold">Game</span>.
                         </p>
                     </div>
                 )}

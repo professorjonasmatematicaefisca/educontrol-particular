@@ -18,8 +18,8 @@ export const GameLogin: React.FC<GameLoginProps> = ({ sessionId, onLogin, error,
         setLocalError('');
 
         const emailLower = email.trim().toLowerCase();
-        if (!emailLower.endsWith('@cocpaulinia.com.br')) {
-            setLocalError('Use seu email escolar: primeironome+sobrenome@cocpaulinia.com.br');
+        if (!emailLower.includes('@')) {
+            setLocalError('Use seu email de estudante: primeironome+sobrenome@estudante.com');
             return;
         }
         const localPart = emailLower.split('@')[0];
@@ -53,7 +53,7 @@ export const GameLogin: React.FC<GameLoginProps> = ({ sessionId, onLogin, error,
                         <Gamepad2 size={36} className="text-white" />
                     </div>
                     <h1 className="text-4xl font-black text-white tracking-tight">WetWit Quest</h1>
-                    <p className="text-[#8bc34a] font-bold tracking-widest text-sm mt-1 uppercase">COC Paulínia • Competição ao Vivo</p>
+                    <p className="text-[#facc15] font-bold tracking-widest text-sm mt-1 uppercase">Aulas Particulares • Competição ao Vivo</p>
                 </div>
 
                 {/* Card */}
@@ -71,12 +71,12 @@ export const GameLogin: React.FC<GameLoginProps> = ({ sessionId, onLogin, error,
                                 type="text"
                                 value={email}
                                 onChange={e => setEmail(e.target.value)}
-                                placeholder="joaogomes@cocpaulinia.com.br"
+                                placeholder="joaogomes@estudante.com"
                                 autoComplete="off"
                                 className="w-full bg-black/60 border border-[#8bc34a]/30 text-white rounded-xl px-4 py-3 outline-none focus:border-[#8bc34a] focus:ring-1 focus:ring-[#8bc34a]/50 placeholder:text-gray-600 transition font-mono text-sm"
                                 required
                             />
-                            <p className="text-gray-600 text-xs mt-1.5">Formato: <span className="text-gray-500 font-mono">primeiro+segundo nome @cocpaulinia.com.br</span></p>
+                            <p className="text-gray-600 text-xs mt-1.5">Formato: <span className="text-gray-500 font-mono">nome+sobrenome@estudante.com</span></p>
                         </div>
 
                         <div>

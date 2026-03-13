@@ -133,7 +133,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                         <h1 className="text-24 font-bold text-white tracking-tight uppercase">
                                             JF <span className="text-emerald-500">EduControl</span>
                                         </h1>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Conexão COC Paulínia</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">EduControl - Aulas Particulares</p>
                                     </div>
                                 </div>
 
@@ -297,7 +297,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     {/* Support Link */}
                     <div className="mt-8 text-center pt-8 border-t border-gray-800/30">
                         <p className="text-xs text-gray-500">
-                            Suporte técnico: <a href="#" className="text-emerald-500 hover:underline">cocpaulinia.com.br</a>
+                            Suporte técnico: <a href="#" className="text-emerald-500 hover:underline">educontrol.online</a>
                         </p>
                     </div>
                 </div>

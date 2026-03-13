@@ -128,7 +128,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#0f172a] border-r border-gray-800 
+        fixed lg:static inset-y-0 left-0 z-50 w-72 bg-[#111029] border-r border-gray-800 
         transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl
         print:hidden
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -142,7 +142,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <h1 className="text-xl font-extrabold text-white tracking-tight leading-none">
                 JF EduControl
               </h1>
-              <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Control Panel</span>
+              <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Aulas Particulares</span>
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
@@ -217,7 +217,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-gray-800 bg-[#0b1120]">
+        <div className="p-4 border-t border-gray-800 bg-[#0d0c21]">
           {/* Settings Link */}
           <button
             onClick={() => {
@@ -261,7 +261,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden h-screen bg-gray-900 relative print:h-auto print:overflow-visible print:bg-white">
-        <header className="lg:hidden h-20 bg-[#0f172a] border-b border-gray-800 flex items-center px-4 justify-between z-30 shrink-0 print:hidden">
+        <header className="lg:hidden h-20 bg-[#111029] border-b border-gray-800 flex items-center px-4 justify-between z-30 shrink-0 print:hidden">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center p-1.5 overflow-hidden">
               <img src={logoUrl || "/coc-logo.png"} alt="School Logo" className="w-full h-full object-contain" />
