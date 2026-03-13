@@ -1,0 +1,137 @@
+[
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "1",
+    "module": "1",
+    "title": "Noções de estética e teoria da arte",
+    "topic": "Pense: a arte é real?; B. Por que a humanidade produz arte?; C. Arte e beleza; D. Arte e artesanato",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "2",
+    "module": "2",
+    "title": "Arte na Pré-História",
+    "topic": "Paleolítico ou Pedra Lascada; B. Neolítico ou Pedra Polida; C. Idade dos Metais; D. Pré-História no Brasil",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "3",
+    "module": "3",
+    "title": "Arte na Mesopotâmia e no Egito",
+    "topic": "Arte na Mesopotâmia e no Egito; A. Arte na Mesopotâmia; B. Arte egípcia",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "4",
+    "module": "4",
+    "title": "Arte grega",
+    "topic": "Arquitetura; B. Pintura; C. Escultura",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "4",
+    "module": "5",
+    "title": "Arte romana",
+    "topic": "Arquitetura; B. Escultura; C. Pintura",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "4",
+    "module": "6",
+    "title": "Arte cristã e bizantina",
+    "topic": "Arte Cristã primitiva e arte bizantina; A. Arte das catacumbas; B. Arte Bizantina; C. Mosaico",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "5",
+    "module": "7",
+    "title": "Parte III - Arte na Idade Média",
+    "topic": "Renascimento Carolíngio; B. Arte românica; C. Arte gótica",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "6",
+    "module": "8",
+    "title": "Renascimento I",
+    "topic": "Renascimento cultural e científico; B. Pintura",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "6",
+    "module": "9",
+    "title": "Renascimento II",
+    "topic": "Representantes dos Países Baixos e da Alemanha; B. Arquitetura; C. Escultura; D. Declínio do Renascimento",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Arte",
+    "front": "55B",
+    "chapter": "7",
+    "module": "10",
+    "title": "Arte das civilizações pré-colombianas",
+    "topic": "Maias; B. Astecas; C. Incas",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Biologia",
+    "front": "41B",
+    "chapter": "1",
+    "module": "1",
+    "title": "Metodologia científica na biologia",
+    "topic": "Investigação científica; 2. Metodologia científica; A. Perguntas originais; B. Testando hipóteses",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Biologia",
+    "front": "41B",
+    "chapter": "1",
+    "module": "2",
+    "title": "Características dos seres vivos",
+    "topic": "Vida; 4. Propriedades da vida; A. A vida no interior da célula; B. Capacidade reprodutiva; C. Interações e estímulos",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Biologia",
+    "front": "41B",
+    "chapter": "1",
+    "module": "3",
+    "title": "Níveis de organização dos seres vivos",
+    "topic": "Átomo; B. Molécula; C. Organela; D. Célula; E. Tecido; F. Órgão; G. Sistema; H. Organismo; I. População; J. Comunidade; K. Ecossistema; L. Biosfera",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Biologia",
+    "front": "41B",
+    "chapter": "1",
+    "module": "4",
+    "title": "Equilíbrio, vida e energia",
+    "topic": "Fundamentos da lógica da organização do Universo e a manifestação da vida; B. A vida obedece às leis da termodinâmica",
+    "class": "1º AEM"
+  },
+  {
+    "discipline": "Biologia",
+    "front": "41B",
+    "chapter": "1",
+    "module": "5",
+    "title": "Origem dos seres vivos",
+    "topic": "Teoria da geração espontânea; 11. Teoria da biogênese; A. Experimento de Redi; B. Needham e Spallanzani; C. Experimento de Pasteur",
+    "class": "1º AEM"
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "name": "EduControl PRO",
+  "description": "Sistema de alta performance para monitoramento escolar, análise de dados comportamentais e gestão de ocorrências. Tablet-First, tema Esmeralda.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

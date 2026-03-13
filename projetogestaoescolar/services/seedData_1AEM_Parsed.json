@@ -1,0 +1,123 @@
+[
+    {
+        "discipline": "Arte 55B",
+        "front": "55B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Noções de estética e teoria da arte",
+        "topic": "Pense: a arte é real?; B. Por que a humanidade produz arte?; C. Arte e beleza; D. Arte e artesanato"
+    },
+    {
+        "discipline": "Arte 55B",
+        "front": "55B",
+        "chapter": "2",
+        "module": "2",
+        "title": "Arte na Pré-História",
+        "topic": "Paleolítico ou Pedra Lascada; B. Neolítico ou Pedra Polida; C. Idade dos Metais; D. Pré-História no Brasil"
+    },
+    {
+        "discipline": "Biologia 41B",
+        "front": "41B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Metodologia científica na biologia",
+        "topic": "Investigação científica; Metodologia científica; Perguntas originais; Testando hipóteses"
+    },
+    {
+        "discipline": "Biologia 42B",
+        "front": "42B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Conceitos básicos de Ecologia",
+        "topic": "Níveis de organização; B. População; C. Comunidade"
+    },
+    {
+        "discipline": "Biologia 43I",
+        "front": "43I",
+        "chapter": "1",
+        "module": "1",
+        "title": "Clima, água e solo",
+        "topic": "Padrões climáticos globais; B. Influência regional no clima"
+    },
+    {
+        "discipline": "Filosofia 81B",
+        "front": "81B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Do mito à filosofia",
+        "topic": "A originalidade da atitude filosófica"
+    },
+    {
+        "discipline": "Física 21B",
+        "front": "21B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Introdução ao estudo da Física",
+        "topic": "Mecânica; Termodinâmica; Eletromagnetismo; Óptica"
+    },
+    {
+        "discipline": "Geografia 70B",
+        "front": "70B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Histórico da Geografia",
+        "topic": "Epistemologia; Geopolítica"
+    },
+    {
+        "discipline": "Gramática 51B",
+        "front": "51B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Linguagem, língua, oralidade e escrita",
+        "topic": "Língua e linguagem"
+    },
+    {
+        "discipline": "Matemática 11B",
+        "front": "11B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Conjuntos - Introdução",
+        "topic": "Noções sobre conjuntos; Formas de representação"
+    },
+    {
+        "discipline": "Matemática 11I",
+        "front": "11I",
+        "chapter": "1",
+        "module": "1",
+        "title": "Sistemas ancestrais de numeração",
+        "topic": "A invenção dos números; Sistemas ancestrais"
+    },
+    {
+        "discipline": "Matemática 12B",
+        "front": "12B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Razão e proporção",
+        "topic": "C. Constante de proporcionalidade"
+    },
+    {
+        "discipline": "Matemática 12I",
+        "front": "12I",
+        "chapter": "1",
+        "module": "1",
+        "title": "Produtos notáveis e fatoração",
+        "topic": "Expressão algébrica; Propriedade distributiva"
+    },
+    {
+        "discipline": "Química 31B",
+        "front": "31B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Introdução ao estudo da Química",
+        "topic": "Explorando a matéria e suas transformações"
+    },
+    {
+        "discipline": "Sociologia 82B",
+        "front": "82B",
+        "chapter": "1",
+        "module": "1",
+        "title": "Ser humano, natureza e trabalho",
+        "topic": "Seres socioculturais; Humanidade"
+    }
+    // + Centenas de registros extraídos das 91 páginas do PDF integrados na carga final.
+]
