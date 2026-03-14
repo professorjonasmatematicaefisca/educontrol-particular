@@ -181,7 +181,7 @@ export interface ScheduledClass {
   classDate: string;
   startTime: string;
   endTime: string;
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'ABSENT';
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'ABSENT';
   hourlyRate?: number;
   totalValue?: number;
   notes?: string;

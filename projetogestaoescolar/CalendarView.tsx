@@ -158,9 +158,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
     setCompletionData(prev => ({ ...prev, uploading: true }));
     try {
-      let pdfUrl = '';
+      let pdfUrl = selectedClass.pdfUrl || '';
       if (completionData.pdfFile) {
-        pdfUrl = (await SupabaseService.uploadPDF(completionData.pdfFile)) || '';
+        const uploaded = await SupabaseService.uploadPDF(completionData.pdfFile);
+        if (uploaded) pdfUrl = uploaded;
       }
 
       const success = await SupabaseService.updateScheduledClassStatus(selectedClass.id, 'COMPLETED', {
@@ -256,6 +257,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED': return <CheckCircle className="text-emerald-400" size={16} />;
+      case 'IN_PROGRESS': return <Target className="text-emerald-400 animate-pulse" size={16} />;
       case 'CANCELLED': return <XCircle className="text-rose-400" size={16} />;
       case 'ABSENT': return <Clock3 className="text-amber-400" size={16} />;
       default: return <Clock className="text-sky-400" size={16} />;
@@ -464,15 +466,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           {/* Sidebar: Status & Próximas */}
           <div className="lg:col-span-4 space-y-8">
             {/* Aula em Andamento (Destaque) */}
-            {classes.some(isLive) && (
+            {classes.some(c => isLive(c) || c.status === 'IN_PROGRESS') && (
               <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-700 p-6 rounded-[2rem] shadow-2xl shadow-emerald-900/40 animate-pulse-slow">
                 <div className="absolute top-0 right-0 p-4 opacity-20"><Target size={80} /></div>
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-4 bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm">
                     <div className="w-2 h-2 rounded-full bg-white animate-ping"></div>
-                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Aula em Andamento</span>
+                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Aula {classes.some(c => c.status === 'IN_PROGRESS') ? 'em Andamento' : 'Iniciando'}</span>
                   </div>
-                  {classes.filter(isLive).map(c => (
+                  {classes.filter(c => isLive(c) || c.status === 'IN_PROGRESS').map(c => (
                     <div key={c.id}>
                       <h2 className="text-xl font-black text-white">{c.studentName}</h2>
                       <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mb-3">Responsável: {c.parentName || 'Não informado'}</p>
@@ -481,12 +483,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <span className="flex items-center gap-1 text-xs"><BookOpen size={14} /> {c.className || 'Individual'}</span>
                       </div>
                       {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
-                        <button 
-                          onClick={() => openCompletionModal(c)}
-                          className="w-full py-4 bg-white text-emerald-600 font-black rounded-xl shadow-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-                        >
-                          <CheckCircle size={20} /> Concluir Agora
-                        </button>
+                        c.status === 'SCHEDULED' ? (
+                          <button 
+                            onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
+                            className="w-full py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                          >
+                            <ArrowRight size={16} /> Iniciar Aula Agora
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => openCompletionModal(c)}
+                            className="w-full py-3 bg-emerald-400 text-emerald-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle size={16} /> Encerrar e Registrar
+                          </button>
+                        )
                       )}
                     </div>
                   ))}
@@ -534,7 +545,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </div>
             </div>
           </div>
-
           {/* Main Content: Lista de Agendamentos */}
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
@@ -638,6 +648,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <td className="p-6">
                           <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
                             c.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            c.status === 'IN_PROGRESS' ? 'bg-emerald-500 text-white border-emerald-400 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.4)]' :
                             c.status === 'CANCELLED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
                             c.status === 'ABSENT' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                             'bg-sky-500/10 text-sky-400 border-sky-500/20'
@@ -650,10 +661,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
                               {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
                                 <>
-                                  <button onClick={() => openCompletionModal(c)} className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><CheckCircle size={20} /></button>
+                                  <button 
+                                    onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
+                                    className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"
+                                    title="Iniciar Aula"
+                                  >
+                                    <ArrowRight size={20} />
+                                  </button>
                                   <button onClick={() => openRescheduleModal(c)} className="w-10 h-10 flex items-center justify-center bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white rounded-xl transition-all"><Edit2 size={20} /></button>
                                   <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"><XCircle size={20} /></button>
                                 </>
+                              )}
+                            </div>
+                          ) : c.status === 'IN_PROGRESS' ? (
+                            <div className="flex justify-end gap-1">
+                              {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                                <button 
+                                  onClick={() => openCompletionModal(c)} 
+                                  className="px-4 py-2 bg-emerald-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest animate-pulse flex items-center gap-2"
+                                >
+                                  <CheckCircle size={16} /> Encerrar Aula
+                                </button>
                               )}
                             </div>
                           ) : (
@@ -758,7 +786,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </div>
                 </div>
               </div>
-            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -1027,6 +1054,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </div>
         </div>
       )}
-    </div>
+      </div>
   );
 };
