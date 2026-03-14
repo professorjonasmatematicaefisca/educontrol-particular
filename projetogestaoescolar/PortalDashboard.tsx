@@ -23,6 +23,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     const [sessions, setSessions] = useState<ClassSession[]>([]);
     const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([]);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+    const [simuladoAttempts, setSimuladoAttempts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -38,15 +39,17 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
 
             if (me) {
                 setStudent(me);
-                const [allSessions, allScheduled, allDisciplines] = await Promise.all([
+                const [allSessions, allScheduled, allDisciplines, myAttempts] = await Promise.all([
                     SupabaseService.getSessions(),
                     SupabaseService.getScheduledClasses(undefined, undefined, me.id),
-                    SupabaseService.getDisciplines()
+                    SupabaseService.getDisciplines(),
+                    SupabaseService.getSimuladoAttempts(me.id)
                 ]);
                 const filtered = allSessions.filter(s => s.className === me.className);
                 setSessions(filtered);
                 setScheduledClasses(allScheduled);
                 setDisciplines(allDisciplines);
+                setSimuladoAttempts(myAttempts || []);
             }
         } catch (err) {
             console.error("Error loading portal data:", err);
@@ -96,13 +99,9 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                     <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">Olá, {student.name.split(' ')[0]}!</h2>
                     <p className="text-emerald-400 font-medium">{student.className} • {userRole === UserRole.PARENT ? 'Espaço do Responsável' : 'Espaço do Aluno'}</p>
                     <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-4">
-                        <button onClick={() => onNavigate('MESSAGES')} className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] border border-gray-800 hover:border-emerald-500/50 rounded-lg text-xs font-bold text-white transition-all">
-                            <MessageSquare size={14} className="text-emerald-400" />
+                        <button className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] border border-gray-800 rounded-lg text-xs font-bold text-gray-500 cursor-default transition-all opacity-70">
+                            <MessageSquare size={14} className="text-gray-500" />
                             Ver Comunicados
-                        </button>
-                        <button onClick={() => onNavigate('FOA')} className="flex items-center gap-2 px-4 py-2 bg-[#0f172a] border border-gray-800 hover:border-emerald-500/50 rounded-lg text-xs font-bold text-white transition-all">
-                            <FileText size={14} className="text-emerald-400" />
-                            Ver FOA
                         </button>
                         <button onClick={() => onNavigate('CALENDAR')} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold text-emerald-400 transition-all">
                             <Calendar size={14} />
@@ -113,11 +112,11 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
             </div>
 
             {/* KPI Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Presença</p>
-                        <h4 className="text-2xl font-bold text-white">{attendanceRate}%</h4>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Aulas Realizadas</p>
+                        <h4 className="text-2xl font-bold text-white">{scheduledClasses.filter(c => c.status === 'COMPLETED').length}</h4>
                     </div>
                     <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center">
                         <CheckCircle size={22} className="text-emerald-400" />
@@ -126,21 +125,31 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
 
                 <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Média Geral</p>
-                        <h4 className="text-2xl font-bold text-white">{avgGrade}</h4>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Atividades/Simulados</p>
+                        <h4 className="text-2xl font-bold text-white">{simuladoAttempts.filter(a => a.status === 'COMPLETED').length}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                        <TrendingUp size={22} className="text-blue-400" />
+                    <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                        <Activity size={22} className="text-purple-400" />
                     </div>
                 </div>
 
                 <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Atividades</p>
-                        <h4 className="text-2xl font-bold text-white">{sessions.length}</h4>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Em Aberto</p>
+                        <h4 className="text-2xl font-bold text-white">{scheduledClasses.filter(c => c.status === 'SCHEDULED' && new Date(c.classDate) >= new Date()).length}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                        <Activity size={22} className="text-purple-400" />
+                    <div className="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                        <Clock size={22} className="text-amber-400" />
+                    </div>
+                </div>
+
+                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Desempenho</p>
+                        <h4 className="text-2xl font-bold text-white">{avgGrade}</h4>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                        <TrendingUp size={22} className="text-blue-400" />
                     </div>
                 </div>
             </div>
@@ -218,16 +227,19 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                         </div>
                                     )}
 
-                                    {c.pdfUrl && (
-                                        <a 
-                                            href={c.pdfUrl} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-sky-500/10 border border-sky-500/20 rounded-lg text-xs font-bold text-sky-400 hover:bg-sky-500 hover:text-white transition-all w-full justify-center"
-                                        >
-                                            <FileText size={14} /> DOWNLOAD MATERIAL (PDF)
-                                        </a>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {c.pdfUrl && (
+                                            <a 
+                                                href={c.pdfUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                title="Download Material (PDF)"
+                                                className="w-10 h-10 bg-red-500/20 border-2 border-red-500/50 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
+                                            >
+                                                <FileText size={20} />
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}

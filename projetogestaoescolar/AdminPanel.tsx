@@ -840,16 +840,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                             <CreditCard size={18} />
                             Contas Bancárias
                         </button>
-                        <button
-                            onClick={() => setActiveSubTab('SUMMARY')}
-                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'SUMMARY'
-                                ? 'text-blue-500 border-b-2 border-blue-500'
-                                : 'text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            <TrendingUp size={18} />
-                            Resumo Financeiro
-                        </button>
                     </>
                 )}
 
@@ -933,14 +923,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                             <div key={student.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all group relative">
                                 <div className="absolute top-4 right-4 flex gap-2">
                                     <button
-                                        onClick={() => handleDeactivateClick(student)}
+                                        onClick={() => confirmDeactivateStudent(student)}
                                         className="p-2 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                                         title="Desativar Aluno"
                                     >
                                         <XCircle size={18} />
                                     </button>
                                     <button
-                                        onClick={() => handleEditStudent(student)}
+                                        onClick={() => startEditStudent(student)}
                                         className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
                                     >
                                         <Edit2 size={18} />
@@ -991,7 +981,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                             <div key={member.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all group relative">
                                 <div className="absolute top-4 right-4 flex gap-2">
                                     <button
-                                        onClick={() => handleEditStaff(member)}
+                                        onClick={() => startEditStaff(member)}
                                         className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
                                     >
                                         <Edit2 size={18} />
@@ -1032,7 +1022,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                             <div key={classRoom.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 transition-all group relative">
                                 <div className="absolute top-4 right-4 flex gap-2">
                                     <button
-                                        onClick={() => handleEditClass(classRoom)}
+                                        onClick={() => startEditClass(classRoom)}
                                         className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
                                     >
                                         <Edit2 size={18} />
@@ -1079,7 +1069,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
 
                                 <div className="mt-6 flex justify-center gap-3">
                                     <button
-                                        onClick={() => handleEditDiscipline(discipline)}
+                                        onClick={() => startEditDiscipline(discipline)}
                                         className="p-2.5 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all bg-blue-500/5 rounded-lg"
                                     >
                                         <Edit2 size={18} />
