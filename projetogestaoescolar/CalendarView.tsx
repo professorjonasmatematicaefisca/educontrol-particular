@@ -23,6 +23,7 @@ import {
 import { UserRole, ScheduledClass, Student, Discipline, BankAccount } from './types';
 import { SupabaseService } from './services/supabaseService';
 import { supabase } from './supabaseClient';
+import { ModernCalendar } from './components/ModernCalendar';
 
 interface CalendarViewProps {
   onShowToast: (msg: string) => void;
@@ -44,6 +45,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [selectedClass, setSelectedClass] = useState<ScheduledClass | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'agenda' | 'history' | 'finance'>('agenda');
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>(userRole === UserRole.STUDENT ? 'calendar' : 'table');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -546,6 +548,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </p>
                 </div>
                 <div className="flex items-center gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
+                  <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
+                    <button 
+                      onClick={() => setViewMode('table')}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Lista
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('calendar')}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Calendário
+                    </button>
+                  </div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
                     <input 
@@ -559,14 +575,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {viewMode === 'calendar' ? (
+                <div className="p-8">
+                  <ModernCalendar classes={classes} onSelectClass={openCompletionModal} />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
                       <th className="p-6">Aluno</th>
                       <th className="p-6">Programação</th>
+                      {userRole === UserRole.STUDENT && <th className="p-6">Conteúdo Ministrado</th>}
                       <th className="p-6">Status</th>
-                      <th className="p-6 text-right">Ação Rápida</th>
+                      <th className="p-6 text-right">{userRole === UserRole.STUDENT ? 'Material' : 'Ação Rápida'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -606,6 +628,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                             </div>
                           </div>
                         </td>
+                        {userRole === UserRole.STUDENT && (
+                          <td className="p-6">
+                            <p className="text-xs text-gray-400 font-medium italic line-clamp-2">
+                              {c.subjectNotes || 'Nenhum registro disponível'}
+                            </p>
+                          </td>
+                        )}
                         <td className="p-6">
                           <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
                             c.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
@@ -628,12 +657,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                               )}
                             </div>
                           ) : (
-                            <button 
-                              onClick={() => { setSelectedClass(c); setShowCompletionModal(true); /* Reuse for details */ }}
-                              className="text-gray-600 hover:text-emerald-500 transition-colors"
-                            >
-                              <Plus size={20} />
-                            </button>
+                            <div className="flex justify-end gap-2">
+                              {c.pdfUrl && (
+                                <a 
+                                  href={c.pdfUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="w-10 h-10 flex items-center justify-center bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all shadow-lg shadow-red-500/10"
+                                  title="Baixar PDF"
+                                >
+                                  <FileText size={20} />
+                                </a>
+                              )}
+                              {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                                <button 
+                                  onClick={() => openCompletionModal(c)}
+                                  className="w-10 h-10 flex items-center justify-center bg-slate-800/50 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-500 rounded-xl transition-all"
+                                  title="Editar Registro"
+                                >
+                                  <Plus size={20} />
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -641,9 +686,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
           </div>
         </div>
+      </div>
       ) : (
         /* Aba de Histórico e Análises */
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -877,7 +923,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   {disciplines
                     .filter(d => {
                       if (!selectedClass.className) return true;
-                      return d.name.includes(selectedClass.className);
+                      return d.name.toLowerCase().includes(selectedClass.className.toLowerCase());
                     })
                     .map(d => <option key={d.id} value={d.id}>{d.displayName || d.name}</option>)
                   }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Activity, GraduationCap,
     MessageSquare, FileText, CheckCircle, History,
-    AlertCircle, TrendingUp, Clock, BookOpen, Calendar
+    AlertCircle, TrendingUp, Clock, BookOpen, Calendar as CalendarIcon
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { StorageService } from './services/storageService';
@@ -10,6 +10,7 @@ import { ClassSession, Student, UserRole, ScheduledClass, Discipline } from './t
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { UserAvatar } from './components/UserAvatar';
+import { ModernCalendar } from './components/ModernCalendar';
 
 interface PortalDashboardProps {
     userEmail: string;
@@ -104,7 +105,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                             Ver Comunicados
                         </button>
                         <button onClick={() => onNavigate('CALENDAR')} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold text-emerald-400 transition-all">
-                            <Calendar size={14} />
+                            <CalendarIcon size={14} />
                             Ver Agendamentos
                         </button>
                     </div>
@@ -165,30 +166,19 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                     </div>
 
                     <div className="space-y-3">
-                        {scheduledClasses.filter(c => c.status === 'SCHEDULED' && new Date(c.classDate) >= new Date()).length > 0 && (
-                            <div className="mb-6">
-                                <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Calendar size={14} /> Minha Agenda da Semana
-                                </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {scheduledClasses
-                                        .filter(c => c.status === 'SCHEDULED' && new Date(c.classDate) >= new Date())
-                                        .sort((a, b) => a.classDate.localeCompare(b.classDate))
-                                        .slice(0, 4)
-                                        .map(c => (
-                                            <div key={c.id} className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl flex justify-between items-center">
-                                                <div>
-                                                    <p className="text-white font-bold text-sm uppercase">{format(new Date(c.classDate + 'T00:00:00'), "EEEE", { locale: ptBR })}</p>
-                                                    <p className="text-[10px] text-emerald-400 font-bold uppercase">{format(new Date(c.classDate + 'T00:00:00'), "dd 'de' MMM", { locale: ptBR })} • {c.startTime}</p>
-                                                </div>
-                                                <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500">
-                                                    <Clock size={16} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                </div>
-                            </div>
-                        )}
+                        <div className="mb-6">
+                            <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <CalendarIcon size={14} /> Minha Agenda & Calendário
+                            </h4>
+                            <ModernCalendar 
+                                classes={scheduledClasses} 
+                                onSelectClass={(c) => {
+                                    if (c.status === 'COMPLETED') {
+                                        // Optional: show details modal
+                                    }
+                                }}
+                            />
+                        </div>
 
                         <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <History size={14} /> Aulas Realizadas & Materiais
