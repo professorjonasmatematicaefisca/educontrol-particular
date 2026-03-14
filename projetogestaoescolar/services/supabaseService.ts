@@ -1821,12 +1821,18 @@ export const SupabaseService = {
     },
 
     async saveBankAccount(account: Partial<BankAccount>): Promise<boolean> {
-        const payload = {
+        const payload: any = {
             name: account.name,
             image_url: account.imageUrl
         };
+        if (account.id) payload.id = account.id;
+        
         const { error } = await supabase.from('bank_accounts').upsert(payload);
-        return !error;
+        if (error) {
+            console.error("Error saving bank account:", error);
+            return false;
+        }
+        return true;
     },
 
     async deleteBankAccount(id: string): Promise<boolean> {
@@ -1873,6 +1879,10 @@ export const SupabaseService = {
 
         if (uploadError) {
             console.error(`Error uploading to ${bucket}:`, uploadError);
+            // Fallback for missing bucket/permission info
+            if (uploadError.message === 'Bucket not found') {
+                console.warn(`Creating bucket ${bucket} is required via Dashboard.`);
+            }
             return null;
         }
 
