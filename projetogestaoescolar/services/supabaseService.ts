@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAttempt, BankAccount } from '../types';
+import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAttempt, BankAccount, Course, CourseItem } from '../types';
 import { SEED_STUDENTS, SEED_CLASSES, SEED_TEACHERS, SEED_OCCURRENCES } from './mockData';
 import { offlineService } from './offlineService';
 
@@ -1107,37 +1107,29 @@ export const SupabaseService = {
     },
 
     // --- STORAGE ---
-    async uploadPhoto(file: File, path: string): Promise<string | null> {
+    async uploadPhoto(file: File, bucket: string): Promise<string | null> {
         try {
-            console.log('Iniciando upload de foto:', file.name, 'para:', path);
+            console.log('Iniciando upload de foto:', file.name, 'para bucket:', bucket);
 
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-            const filePath = `${path}/${fileName}`;
 
-            console.log('Caminho completo do arquivo:', filePath);
-
-            const { error: uploadError, data: uploadData } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file, {
+            const { error: uploadError } = await supabase.storage
+                .from(bucket)
+                .upload(fileName, file, {
                     cacheControl: '3600',
                     upsert: false
                 });
 
             if (uploadError) {
                 console.error("Erro detalhado no upload:", uploadError);
-                console.error("Mensagem:", uploadError.message);
-                console.error("Status:", uploadError.statusCode);
                 return null;
             }
 
-            console.log('Upload bem-sucedido:', uploadData);
-
             const { data } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
+                .from(bucket)
+                .getPublicUrl(fileName);
 
-            console.log('URL pública gerada:', data.publicUrl);
             return data.publicUrl;
         } catch (error) {
             console.error("Erro inesperado no upload:", error);
@@ -1869,29 +1861,6 @@ export const SupabaseService = {
         return data.publicUrl;
     },
 
-    async uploadPhoto(file: File, bucket: string = 'avatars'): Promise<string | null> {
-        const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, file);
-
-        if (uploadError) {
-            console.error(`Error uploading to ${bucket}:`, uploadError);
-            // Fallback for missing bucket/permission info
-            if (uploadError.message === 'Bucket not found') {
-                console.warn(`Creating bucket ${bucket} is required via Dashboard.`);
-            }
-            return null;
-        }
-
-        const { data } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(filePath);
-
-        return data.publicUrl;
-    },
 
     // --- COURSES ---
     async getCourses(): Promise<Course[]> {

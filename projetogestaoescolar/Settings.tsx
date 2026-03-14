@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StorageService } from './services/storageService';
 import { SupabaseService } from './services/supabaseService';
-import { Lock, Save, ImageIcon, Upload, Trash2, DollarSign } from 'lucide-react';
+import { Lock, Save, ImageIcon, Upload, Trash2, DollarSign, Edit2 } from 'lucide-react';
 import { UserRole, BankAccount } from './types';
 
 interface SettingsProps {
@@ -17,6 +17,7 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
 
     const [logoUrl, setLogoUrl] = useState('');
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+    const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
     const [newAccountName, setNewAccountName] = useState('');
     const [newAccountImage, setNewAccountImage] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,23 +115,31 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
             return;
         }
         const success = await SupabaseService.saveBankAccount({
+            id: editingAccount?.id,
             name: newAccountName,
             imageUrl: newAccountImage
         });
         if (success) {
-            onShowToast("Conta cadastrada com sucesso!");
+            onShowToast(editingAccount ? "Conta atualizada!" : "Conta cadastrada com sucesso!");
             setNewAccountName('');
             setNewAccountImage('');
+            setEditingAccount(null);
             loadBankAccounts();
         } else {
-            onShowToast("Erro ao cadastrar conta.");
+            onShowToast("Erro ao salvar conta.");
         }
     };
 
     const handleDeleteAccount = async (id: string) => {
+        if (!confirm("Excluir esta conta?")) return;
         const success = await SupabaseService.deleteBankAccount(id);
         if (success) {
             onShowToast("Conta removida.");
+            if (editingAccount?.id === id) {
+                setEditingAccount(null);
+                setNewAccountName('');
+                setNewAccountImage('');
+            }
             loadBankAccounts();
         }
     };
@@ -146,6 +155,12 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
                 onShowToast("Erro ao carregar imagem do banco.");
             }
         }
+    };
+
+    const startEditAccount = (account: BankAccount) => {
+        setEditingAccount(account);
+        setNewAccountName(account.name);
+        setNewAccountImage(account.imageUrl || '');
     };
 
     return (
@@ -291,7 +306,9 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Add Account Form */}
                         <div className="space-y-4 bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
-                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">Nova Conta</h3>
+                            <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">
+                                {editingAccount ? 'Editar Conta' : 'Nova Conta'}
+                            </h3>
                             <div>
                                 <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Nome da Conta / Banco</label>
                                 <input
@@ -319,12 +336,26 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
                                 </div>
                                 <input type="file" ref={bankFileInputRef} onChange={handleBankImageUpload} className="hidden" accept="image/*" />
                             </div>
-                            <button
-                                onClick={handleAddBankAccount}
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-[#0f172a] font-bold py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-                            >
-                                Adicionar Conta
-                            </button>
+                            <div className="flex gap-2">
+                                {editingAccount && (
+                                    <button
+                                        onClick={() => {
+                                            setEditingAccount(null);
+                                            setNewAccountName('');
+                                            setNewAccountImage('');
+                                        }}
+                                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 rounded-xl transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                                <button
+                                    onClick={handleAddBankAccount}
+                                    className={`flex-[2] ${editingAccount ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'} text-[#0f172a] font-bold py-3 rounded-xl transition-all shadow-lg`}
+                                >
+                                    {editingAccount ? 'Salvar Alterações' : 'Adicionar Conta'}
+                                </button>
+                            </div>
                         </div>
 
                         {/* List Accounts */}
@@ -343,12 +374,20 @@ export const Settings: React.FC<SettingsProps> = ({ userEmail, userRole, onShowT
                                             </div>
                                             <span className="text-sm font-bold text-white uppercase tracking-tight">{account.name}</span>
                                         </div>
-                                        <button 
-                                            onClick={() => handleDeleteAccount(account.id)}
-                                            className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => startEditAccount(account)}
+                                                className="p-2 text-gray-600 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteAccount(account.id)}
+                                                className="p-2 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 {bankAccounts.length === 0 && (
