@@ -99,11 +99,11 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Define allowed views per role
   const rolePermissions: Record<UserRole, ViewState[]> = {
-    [UserRole.COORDINATOR]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'ADMIN', 'SETTINGS'],
-    [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'SETTINGS'],
+    [UserRole.COORDINATOR]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'ADMIN', 'SETTINGS'],
+    [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'SETTINGS'],
     [UserRole.MONITOR]: ['DASHBOARD', 'SETTINGS'],
-    [UserRole.STUDENT]: ['DASHBOARD', 'SIMULADO', 'CALENDAR', 'SETTINGS'],
-    [UserRole.PARENT]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SETTINGS'],
+    [UserRole.STUDENT]: ['DASHBOARD', 'SIMULADO', 'CALENDAR', 'COURSES', 'SETTINGS'],
+    [UserRole.PARENT]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'COURSES', 'SETTINGS'],
     [UserRole.GAME_STUDENT]: ['SIMULADO'],
   };
 
@@ -112,6 +112,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { view: 'CALENDAR', icon: Calendar, label: 'Calendário' },
     { view: 'FINANCIAL', icon: DollarSign, label: 'Financeiro' },
     { view: 'SIMULADO', icon: FileCheck, label: 'Simulados' },
+    { view: 'COURSES', icon: BookOpen, label: 'Cursos' },
   ] as const;
 
   const allowedViews = rolePermissions[role] || [];

@@ -10,6 +10,7 @@ import { GameArena } from './components/Game/GameArena';
 import { CalendarView } from './CalendarView.tsx';
 import { FinancialView } from './FinancialView.tsx';
 import { SimuladoView } from './SimuladoView.tsx';
+import { CoursesView } from './CoursesView.tsx';
 import { UserRole, ViewState } from './types';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -193,6 +194,7 @@ function App() {
       case 'SIMULADO': return <SimuladoView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userName={userName} />;
       case 'ADMIN': return <AdminPanel onShowToast={showToast} />;
       case 'SETTINGS': return <SettingsView userEmail={userEmail} userRole={userRole!} onShowToast={showToast} />;
+      case 'COURSES': return <CoursesView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       default: return <Dashboard onNavigateToStudent={() => {}} />;
     }
   };

@@ -1861,5 +1861,135 @@ export const SupabaseService = {
             .getPublicUrl(filePath);
 
         return data.publicUrl;
+    },
+
+    async uploadPhoto(file: File, bucket: string = 'avatars'): Promise<string | null> {
+        const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error(`Error uploading to ${bucket}:`, uploadError);
+            return null;
+        }
+
+        const { data } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+        return data.publicUrl;
+    },
+
+    // --- COURSES ---
+    async getCourses(): Promise<Course[]> {
+        const { data, error } = await supabase
+            .from('courses')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching courses:", error);
+            return [];
+        }
+
+        return data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            imageUrl: c.image_url,
+            disciplineId: c.discipline_id,
+            createdAt: c.created_at
+        }));
+    },
+
+    async saveCourse(course: Partial<Course>): Promise<boolean> {
+        const { error } = await supabase
+            .from('courses')
+            .upsert({
+                id: course.id,
+                name: course.name,
+                description: course.description,
+                image_url: course.imageUrl,
+                discipline_id: course.disciplineId,
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) {
+            console.error("Error saving course:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async deleteCourse(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('courses')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting course:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async getCourseItems(courseId: string): Promise<CourseItem[]> {
+        const { data, error } = await supabase
+            .from('course_items')
+            .select('*')
+            .eq('course_id', courseId)
+            .order('order', { ascending: true });
+
+        if (error) {
+            console.error("Error fetching course items:", error);
+            return [];
+        }
+
+        return data.map((item: any) => ({
+            id: item.id,
+            courseId: item.course_id,
+            title: item.title,
+            type: item.type,
+            contentUrl: item.content_url,
+            textContent: item.text_content,
+            order: item.order
+        }));
+    },
+
+    async saveCourseItem(item: Partial<CourseItem>): Promise<boolean> {
+        const { error } = await supabase
+            .from('course_items')
+            .upsert({
+                id: item.id,
+                course_id: item.courseId,
+                title: item.title,
+                type: item.type,
+                content_url: item.contentUrl,
+                text_content: item.textContent,
+                order: item.order
+            });
+
+        if (error) {
+            console.error("Error saving course item:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async deleteCourseItem(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('course_items')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting course item:", error);
+            return false;
+        }
+        return true;
     }
 };

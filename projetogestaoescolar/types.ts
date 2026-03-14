@@ -231,7 +231,7 @@ export interface SimuladoAttempt {
   status: 'IN_PROGRESS' | 'COMPLETED';
 }
 
-export type ViewState = 'DASHBOARD' | 'CALENDAR' | 'FINANCIAL' | 'SIMULADO' | 'ADMIN' | 'SETTINGS';
+export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES';
 
 export interface RequestItem {
   id: string;
@@ -269,3 +269,23 @@ export interface MessageItem {
   createdAt: string;
 }
 
+
+export interface Course {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  disciplineId?: string;
+  createdAt: string;
+  items?: CourseItem[];
+}
+
+export interface CourseItem {
+  id: string;
+  courseId: string;
+  title: string;
+  type: 'VIDEO' | 'PDF' | 'LINK' | 'TEXT';
+  contentUrl?: string;
+  textContent?: string;
+  order: number;
+}
