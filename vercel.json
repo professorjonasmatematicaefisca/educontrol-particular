@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build --prefix projetogestaoescolar",
   "outputDirectory": "projetogestaoescolar/dist",
-  "installCommand": "npm install",
+  "installCommand": "npm install --prefix projetogestaoescolar",
   "framework": "vite"
 }
