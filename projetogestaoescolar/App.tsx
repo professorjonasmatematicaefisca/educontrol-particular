@@ -192,7 +192,7 @@ function App() {
       case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'FINANCIAL': return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SIMULADO': return <SimuladoView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userName={userName} />;
-      case 'ADMIN': return <AdminPanel onShowToast={showToast} />;
+      case 'ADMIN': return <AdminPanel onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SETTINGS': return <SettingsView userEmail={userEmail} userRole={userRole!} onShowToast={showToast} />;
       case 'COURSES': return <CoursesView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       default: return <Dashboard onNavigateToStudent={() => {}} />;

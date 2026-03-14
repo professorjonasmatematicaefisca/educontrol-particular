@@ -1,17 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Users, School, BookOpen, X, Plus, Camera, Lock, Trash2, GraduationCap, Edit2, RefreshCw, Mail, AlertCircle, CalendarRange } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { UserPlus, Users, School, BookOpen, X, Plus, Camera, Lock, Trash2, GraduationCap, Edit2, RefreshCw, Mail, AlertCircle, CalendarRange, DollarSign, TrendingUp, CreditCard, Search, Calendar, Filter, CheckCircle, XCircle, Clock, ChevronDown, ImageIcon, Upload, Save, Banknote, Settings } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
-import { Student, Teacher, ClassRoom, Discipline, UserRole, TeacherClassAssignment } from './types';
+import { Student, Teacher, ClassRoom, Discipline, UserRole, TeacherClassAssignment, ScheduledClass, BankAccount } from './types';
 import { UserAvatar } from './components/UserAvatar';
 
 interface AdminPanelProps {
     onShowToast: (msg: string) => void;
+    userEmail: string;
+    userRole: UserRole;
 }
 
-type TabType = 'STUDENTS' | 'STAFF' | 'CLASSES' | 'DISCIPLINES';
+type MainTabType = 'REGISTRATIONS' | 'CONFIG' | 'FINANCIAL';
+type SubTabType = 'STUDENTS' | 'STAFF' | 'CLASSES' | 'DISCIPLINES' | 'LOGO' | 'ACCOUNTS' | 'SUMMARY';
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
-    const [activeTab, setActiveTab] = useState<TabType>('STUDENTS');
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, userRole }) => {
+    const [activeMainTab, setActiveMainTab] = useState<MainTabType>('REGISTRATIONS');
+    const [activeSubTab, setActiveSubTab] = useState<SubTabType>('STUDENTS');
     const [loading, setLoading] = useState(true);
 
     // Data State
@@ -19,6 +23,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
     const [staff, setStaff] = useState<Teacher[]>([]);
     const [classes, setClasses] = useState<ClassRoom[]>([]);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+
+    // Institutional Logo State (from Settings)
+    const [logoUrl, setLogoUrl] = useState('');
+    const logoFileInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Financial State (from FinancialView)
+    const [financialClasses, setFinancialClasses] = useState<ScheduledClass[]>([]);
+    const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [filterAccount, setFilterAccount] = useState('ALL');
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedFinancialClass, setSelectedFinancialClass] = useState<ScheduledClass | null>(null);
+
+    // Bank Account Form State (from Settings)
+    const [editingBankAccount, setEditingBankAccount] = useState<BankAccount | null>(null);
+    const [newAccountName, setNewAccountName] = useState('');
+    const [newAccountImage, setNewAccountImage] = useState('');
+    const bankFileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Modal & Editing State
     const [showStudentModal, setShowStudentModal] = useState(false);
@@ -83,19 +105,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
         loadData();
     }, []);
 
+    useEffect(() => {
+        if (activeMainTab === 'FINANCIAL') {
+            fetchFinancialData();
+        }
+        if (activeMainTab === 'CONFIG') {
+            loadLogo();
+        }
+    }, [activeMainTab, filterMonth]);
+
+    const loadLogo = async () => {
+        const cachedLogo = localStorage.getItem('educontrol_school_logo');
+        if (cachedLogo) setLogoUrl(cachedLogo);
+        const dbLogo = await SupabaseService.getSetting('school_logo');
+        if (dbLogo && dbLogo !== cachedLogo) {
+            setLogoUrl(dbLogo);
+            localStorage.setItem('educontrol_school_logo', dbLogo);
+        }
+    };
+
+    const fetchFinancialData = async () => {
+        try {
+            const startOfMonth = `${filterMonth}-01`;
+            const endOfMonth = `${filterMonth}-31`;
+            const data = await SupabaseService.getScheduledClasses(startOfMonth, endOfMonth);
+            setFinancialClasses(data);
+        } catch (error) {
+            onShowToast('Erro ao carregar dados financeiros');
+        }
+    };
+
     const loadData = async () => {
         setLoading(true);
         try {
-            const [fetchedStudents, fetchedTeachers, fetchedClasses, fetchedDisciplines] = await Promise.all([
-                SupabaseService.getStudents(true), // We fetch all students here to be able to filter them locally
+            const [fetchedStudents, fetchedTeachers, fetchedClasses, fetchedDisciplines, fetchedBankAccounts] = await Promise.all([
+                SupabaseService.getStudents(true),
                 SupabaseService.getTeachers(),
                 SupabaseService.getClasses(),
-                SupabaseService.getDisciplines()
+                SupabaseService.getDisciplines(),
+                SupabaseService.getBankAccounts()
             ]);
             setStudents(fetchedStudents);
             setStaff(fetchedTeachers);
             setClasses(fetchedClasses);
             setDisciplines(fetchedDisciplines);
+            setBankAccounts(fetchedBankAccounts);
         } catch (error) {
             console.error('Error loading data:', error);
             onShowToast('Erro ao carregar dados');
@@ -278,6 +332,106 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
             onShowToast('Erro ao carregar foto');
         }
         setUploading(false);
+    };
+
+    // Institutional Logo Handlers
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                setLogoUrl(base64String);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSaveLogo = async () => {
+        localStorage.setItem('educontrol_school_logo', logoUrl);
+        const success = await SupabaseService.updateSetting('school_logo', logoUrl);
+        if (success) {
+            onShowToast("Logomarca escolar salva globalmente!");
+        } else {
+            onShowToast("Logomarca salva localmente (erro ao sincronizar).");
+        }
+    };
+
+    const handleRemoveLogo = async () => {
+        localStorage.removeItem('educontrol_school_logo');
+        await SupabaseService.updateSetting('school_logo', '');
+        setLogoUrl('');
+        onShowToast("Logomarca removida globalmente.");
+    };
+
+    // Financial Handlers
+    const handleConfirmPayment = async (accountId: string) => {
+        if (!selectedFinancialClass) return;
+        try {
+            const success = await SupabaseService.confirmPayment(selectedFinancialClass.id, accountId);
+            if (success) {
+                onShowToast('Pagamento confirmado com sucesso');
+                setShowPaymentModal(false);
+                fetchFinancialData();
+            }
+        } catch (error) {
+            onShowToast('Erro ao confirmar pagamento');
+        }
+    };
+
+    // Bank Account Handlers
+    const handleAddBankAccount = async () => {
+        if (!newAccountName) {
+            onShowToast("Informe o nome da conta.");
+            return;
+        }
+        const success = await SupabaseService.saveBankAccount({
+            id: editingBankAccount?.id,
+            name: newAccountName,
+            imageUrl: newAccountImage
+        });
+        if (success) {
+            onShowToast(editingBankAccount ? "Conta atualizada!" : "Conta cadastrada com sucesso!");
+            setNewAccountName('');
+            setNewAccountImage('');
+            setEditingBankAccount(null);
+            loadData();
+        } else {
+            onShowToast("Erro ao salvar conta.");
+        }
+    };
+
+    const handleDeleteBankAccount = async (id: string) => {
+        if (!confirm("Excluir esta conta?")) return;
+        const success = await SupabaseService.deleteBankAccount(id);
+        if (success) {
+            onShowToast("Conta removida.");
+            if (editingBankAccount?.id === id) {
+                setEditingBankAccount(null);
+                setNewAccountName('');
+                setNewAccountImage('');
+            }
+            loadData();
+        }
+    };
+
+    const handleBankImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const publicUrl = await SupabaseService.uploadPhoto(file, 'banks');
+            if (publicUrl) {
+                setNewAccountImage(publicUrl);
+                onShowToast("Logomarca do banco carregada.");
+            } else {
+                onShowToast("Erro ao carregar imagem do banco.");
+            }
+        }
+    };
+
+    const startEditBankAccount = (account: BankAccount) => {
+        setEditingBankAccount(account);
+        setNewAccountName(account.name);
+        setNewAccountImage(account.imageUrl || '');
     };
 
     // Staff Handlers
@@ -571,72 +725,152 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Administração</h1>
-                    <p className="text-gray-400 text-sm">Gerencie alunos, equipe e turmas</p>
+                    <p className="text-gray-400 text-sm">Gerencie a instituição em um só lugar</p>
                 </div>
 
+                {activeMainTab === 'REGISTRATIONS' && (
+                    <button
+                        onClick={() => {
+                            if (activeSubTab === 'STUDENTS') setShowStudentModal(true);
+                            else if (activeSubTab === 'STAFF') setShowStaffModal(true);
+                            else if (activeSubTab === 'CLASSES') setShowClassModal(true);
+                            else if (activeSubTab === 'DISCIPLINES') setShowDisciplineModal(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold transition-all shadow-lg"
+                    >
+                        <Plus size={20} />
+                        {activeSubTab === 'STUDENTS' && 'Novo Aluno'}
+                        {activeSubTab === 'STAFF' && 'Novo Membro'}
+                        {activeSubTab === 'CLASSES' && 'Nova Turma'}
+                        {activeSubTab === 'DISCIPLINES' && 'Nova Disciplina'}
+                    </button>
+                )}
+            </div>
+
+            {/* Level 1 Tabs (Main Sections) */}
+            <div className="flex items-center gap-4 bg-[#0f172a] p-1.5 rounded-2xl border border-gray-800 w-fit">
                 <button
-                    onClick={() => {
-                        if (activeTab === 'STUDENTS') setShowStudentModal(true);
-                        else if (activeTab === 'STAFF') setShowStaffModal(true);
-                        else if (activeTab === 'CLASSES') setShowClassModal(true);
-                        else if (activeTab === 'DISCIPLINES') setShowDisciplineModal(true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold transition-all shadow-lg"
+                    onClick={() => { setActiveMainTab('REGISTRATIONS'); setActiveSubTab('STUDENTS'); }}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all text-sm ${activeMainTab === 'REGISTRATIONS'
+                        ? 'bg-emerald-500 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
                 >
-                    <Plus size={20} />
-                    {activeTab === 'STUDENTS' && 'Novo Aluno'}
-                    {activeTab === 'STAFF' && 'Novo Membro'}
-                    {activeTab === 'CLASSES' && 'Nova Turma'}
-                    {activeTab === 'DISCIPLINES' && 'Nova Disciplina'}
+                    <GraduationCap size={18} />
+                    Cadastros
+                </button>
+                <button
+                    onClick={() => { setActiveMainTab('FINANCIAL'); setActiveSubTab('ACCOUNTS'); }}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all text-sm ${activeMainTab === 'FINANCIAL'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                >
+                    <Banknote size={18} />
+                    Financeiro
+                </button>
+                <button
+                    onClick={() => { setActiveMainTab('CONFIG'); setActiveSubTab('LOGO'); }}
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all text-sm ${activeMainTab === 'CONFIG'
+                        ? 'bg-purple-500 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                >
+                    <Settings size={18} />
+                    Configurações
                 </button>
             </div>
 
-            {/* Tabs */}
+            {/* Level 2 Tabs (Sub Sections) */}
             <div className="flex items-center gap-6 border-b border-gray-800 pb-2">
-                <button
-                    onClick={() => setActiveTab('STUDENTS')}
-                    className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeTab === 'STUDENTS'
-                        ? 'text-emerald-500 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white'
-                        }`}
-                >
-                    <GraduationCap size={20} />
-                    Alunos
-                </button>
-                <button
-                    onClick={() => setActiveTab('STAFF')}
-                    className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeTab === 'STAFF'
-                        ? 'text-emerald-500 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white'
-                        }`}
-                >
-                    <Users size={20} />
-                    Equipe
-                </button>
-                <button
-                    onClick={() => setActiveTab('CLASSES')}
-                    className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeTab === 'CLASSES'
-                        ? 'text-emerald-500 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white'
-                        }`}
-                >
-                    <School size={20} />
-                    Turmas
-                </button>
-                <button
-                    onClick={() => setActiveTab('DISCIPLINES')}
-                    className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeTab === 'DISCIPLINES'
-                        ? 'text-emerald-500 border-b-2 border-emerald-500'
-                        : 'text-gray-400 hover:text-white'
-                        }`}
-                >
-                    <BookOpen size={20} />
-                    Disciplinas
-                </button>
+                {activeMainTab === 'REGISTRATIONS' && (
+                    <>
+                        <button
+                            onClick={() => setActiveSubTab('STUDENTS')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'STUDENTS'
+                                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <UserPlus size={18} />
+                            Alunos
+                        </button>
+                        <button
+                            onClick={() => setActiveSubTab('STAFF')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'STAFF'
+                                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <Users size={18} />
+                            Equipe
+                        </button>
+                        <button
+                            onClick={() => setActiveSubTab('CLASSES')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'CLASSES'
+                                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <School size={18} />
+                            Turmas
+                        </button>
+                        <button
+                            onClick={() => setActiveSubTab('DISCIPLINES')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'DISCIPLINES'
+                                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <BookOpen size={18} />
+                            Disciplinas
+                        </button>
+                    </>
+                )}
+
+                {activeMainTab === 'FINANCIAL' && (
+                    <>
+                        <button
+                            onClick={() => setActiveSubTab('ACCOUNTS')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'ACCOUNTS'
+                                ? 'text-blue-500 border-b-2 border-blue-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <CreditCard size={18} />
+                            Contas Bancárias
+                        </button>
+                        <button
+                            onClick={() => setActiveSubTab('SUMMARY')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'SUMMARY'
+                                ? 'text-blue-500 border-b-2 border-blue-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <TrendingUp size={18} />
+                            Resumo Financeiro
+                        </button>
+                    </>
+                )}
+
+                {activeMainTab === 'CONFIG' && (
+                    <>
+                        <button
+                            onClick={() => setActiveSubTab('LOGO')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'LOGO'
+                                ? 'text-purple-500 border-b-2 border-purple-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <ImageIcon size={18} />
+                            Logomarca da Instituição
+                        </button>
+                    </>
+                )}
             </div>
 
-            {/* Filter Bar (Students Tab Only) */}
-            {activeTab === 'STUDENTS' && (
+            {/* Filter Bar (Registrations > Students Only) */}
+            {activeMainTab === 'REGISTRATIONS' && activeSubTab === 'STUDENTS' && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0f172a] p-3 rounded-lg border border-gray-800">
                     <div className="flex items-center gap-4">
                         <label className="text-sm font-bold text-gray-400 uppercase text-nowrap">Status:</label>
@@ -689,203 +923,456 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast }) => {
                 </div>
             )}
 
-            {/* Content */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {/* Students Tab */}
-                {activeTab === 'STUDENTS' && filteredStudents.map(student => (
-                    <div key={student.id} className="bg-[#1e293b] rounded-xl border border-gray-700 p-4 hover:border-emerald-500/50 transition-all relative group">
-                        <div className="absolute top-3 right-3">
-                            <span className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                {student.className}
-                            </span>
-                        </div>
+            {/* Content Area */}
+            <div className="space-y-6">
+                {/* 1. REGISTRATIONS SECTION */}
+                {activeMainTab === 'REGISTRATIONS' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {/* Students Sub-Tab */}
+                        {activeSubTab === 'STUDENTS' && filteredStudents.map(student => (
+                            <div key={student.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all group relative">
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={() => handleDeactivateClick(student)}
+                                        className="p-2 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Desativar Aluno"
+                                    >
+                                        <XCircle size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleEditStudent(student)}
+                                        className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                </div>
 
-                        <div className="flex flex-col items-center text-center mt-6">
-                            <UserAvatar
-                                name={student.name}
-                                photoUrl={student.photoUrl}
-                                size="xl"
-                                className="mb-3"
-                            />
-
-                            <h3 className="text-white font-bold mb-1">{student.name}</h3>
-
-                            <div className="flex flex-col gap-1 w-full px-4 mb-2">
-                                {student.parentName && (
-                                    <p className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                                        Responsável: {student.parentName}
-                                    </p>
-                                )}
-                                {student.phone && (
-                                    <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                                        Tel: {student.phone}
-                                    </p>
-                                )}
-                                {student.hourlyRate !== undefined && (
-                                    <p className="text-[10px] text-yellow-500 font-bold flex items-center gap-1">
-                                        R$ {student.hourlyRate}/hora
-                                    </p>
-                                )}
-                            </div>
-
-                            {student.parentEmail && (
-                                <p className="text-xs text-gray-400 mb-2 truncate w-full px-4 italic">{student.parentEmail}</p>
-                            )}
-                            
-                            <p className="text-[10px] text-gray-500">ID: {student.id.substring(0, 8)}</p>
-
-                            <div className="mt-3">
-                                {(!student.status || student.status === 'ACTIVE') ? (
-                                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-green-500/20 text-green-400 border border-green-500/30">
-                                        Ativo
-                                    </span>
-                                ) : (
-                                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-red-500/20 text-red-400 border border-red-500/30">
-                                        Inativo
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <button
-                                onClick={() => startEditStudent(student)}
-                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded transition-all"
-                            >
-                                <Edit2 size={14} />
-                            </button>
-                            {(!student.status || student.status === 'ACTIVE') && (
-                                <button
-                                    onClick={() => confirmDeactivateStudent(student)}
-                                    title="Desativar Aluno (Histórico Escolar)"
-                                    className="p-1.5 bg-orange-600/20 hover:bg-orange-600 text-orange-400 hover:text-white rounded transition-all"
-                                >
-                                    <X size={14} />
-                                </button>
-                            )}
-                            <button
-                                onClick={() => handleDeleteStudent(student.id)}
-                                title="Excluir Definitivamente"
-                                className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded transition-all"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-
-                {/* Staff Tab */}
-                {activeTab === 'STAFF' && staff.map(member => (
-                    <div key={member.id} className="bg-[#1e293b] rounded-xl border border-gray-700 p-4 hover:border-emerald-500/50 transition-all relative group">
-                        <div className="absolute top-3 right-3">
-                            <span className={`text-[10px] font-bold px-2 py-1 rounded border ${getRoleBadgeColor(member.role)}`}>
-                                {member.role}
-                            </span>
-                        </div>
-
-                        <div className="flex flex-col items-center text-center mt-6">
-                            <UserAvatar
-                                name={member.name}
-                                photoUrl={member.photoUrl}
-                                size="xl"
-                                className="mb-3"
-                            />
-
-                            <h3 className="text-white font-bold mb-1">{member.name}</h3>
-                            <p className="text-xs text-gray-400 mb-3">{member.email}</p>
-
-                            {member.assignments && member.assignments.length > 0 && (
-                                <div className="w-full space-y-1">
-                                    {member.assignments.slice(0, 2).map((assignment, idx) => (
-                                        <div key={idx} className="flex items-center gap-1 text-[10px] text-gray-400 bg-[#0f172a] px-2 py-1 rounded">
-                                            <School size={10} className="text-emerald-500" />
-                                            <span>{assignment.classId}</span>
-                                            <span className="text-gray-600">•</span>
-                                            <BookOpen size={10} className="text-orange-500" />
-                                            <span>{assignment.subject}</span>
+                                <div className="flex items-center gap-4">
+                                    <UserAvatar name={student.name} photoUrl={student.photoUrl} size="lg" />
+                                    <div>
+                                        <h3 className="text-white font-bold text-sm uppercase truncate max-w-[150px]">{student.name}</h3>
+                                        <p className="text-xs text-gray-400 font-medium">{student.className}</p>
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${student.status === 'INACTIVE' ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase">{student.status === 'INACTIVE' ? 'Inativo' : 'Ativo'}</span>
                                         </div>
-                                    ))}
-                                    {member.assignments.length > 2 && (
-                                        <p className="text-[9px] text-gray-500">+{member.assignments.length - 2} mais</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 flex flex-col gap-2">
+                                    {student.parentName && (
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                            <Users size={12} className="text-gray-600" />
+                                            <span className="truncate">{student.parentName}</span>
+                                        </div>
+                                    )}
+                                    {student.parentEmail && (
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                            <Mail size={12} className="text-gray-600" />
+                                            <span className="truncate">{student.parentEmail}</span>
+                                        </div>
+                                    )}
+                                    {student.phone && (
+                                        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                            <Lock size={12} className="text-gray-600" />
+                                            <span>{student.phone}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                        <DollarSign size={12} className="text-emerald-500" />
+                                        <span className="font-bold text-emerald-500/80">R$ {student.hourlyRate?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / hora</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Staff Sub-Tab */}
+                        {activeSubTab === 'STAFF' && staff.map(member => (
+                            <div key={member.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all group relative">
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={() => handleEditStaff(member)}
+                                        className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteStaff(member.id)}
+                                        className="p-2 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <UserAvatar name={member.name} photoUrl={member.photoUrl} size="lg" />
+                                    <div>
+                                        <h3 className="text-white font-bold text-sm uppercase truncate max-w-[150px]">{member.name}</h3>
+                                        <span className="inline-block px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded mt-1 uppercase">
+                                            {member.role === UserRole.TEACHER ? 'Professor' : member.role === UserRole.COORDINATOR ? 'Coordenador' : 'Monitor'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                        <Mail size={12} className="text-gray-600" />
+                                        <span className="truncate">{member.email}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                                        <School size={12} className="text-gray-600" />
+                                        <span>{member.assignments.length} Turmas Atribuídas</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Classes Sub-Tab */}
+                        {activeSubTab === 'CLASSES' && classes.map(classRoom => (
+                            <div key={classRoom.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 transition-all group relative">
+                                <div className="absolute top-4 right-4 flex gap-2">
+                                    <button
+                                        onClick={() => handleEditClass(classRoom)}
+                                        className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteClass(classRoom.id)}
+                                        className="p-2 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition-transform">
+                                        <School size={32} />
+                                    </div>
+                                    <h3 className="text-white font-bold text-lg uppercase mb-1">{classRoom.name}</h3>
+                                    <p className="text-xs text-emerald-500 font-bold uppercase tracking-widest">{classRoom.period}</p>
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t border-gray-800 flex justify-between items-center">
+                                    <div className="text-center flex-1 border-r border-gray-800">
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Alunos</p>
+                                        <p className="text-white font-bold">{students.filter(s => s.className === classRoom.name && s.status === 'ACTIVE').length}</p>
+                                    </div>
+                                    <div className="text-center flex-1">
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Disciplinas</p>
+                                        <p className="text-white font-bold">{classRoom.disciplineIds.length}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Disciplines Sub-Tab */}
+                        {activeSubTab === 'DISCIPLINES' && disciplines.map(discipline => (
+                            <div key={discipline.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-6 hover:border-emerald-500/50 transition-all group relative">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 mb-4 group-hover:scale-110 transition-transform">
+                                        <BookOpen size={32} />
+                                    </div>
+                                    <h3 className="text-white font-bold text-lg uppercase mb-1">{discipline.displayName || discipline.name}</h3>
+                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest truncate max-w-full">{discipline.name}</p>
+                                </div>
+
+                                <div className="mt-6 flex justify-center gap-3">
+                                    <button
+                                        onClick={() => handleEditDiscipline(discipline)}
+                                        className="p-2.5 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all bg-blue-500/5 rounded-lg"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteDiscipline(discipline.id)}
+                                        className="p-2.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all bg-red-500/5 rounded-lg"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 2. FINANCIAL SECTION */}
+                {activeMainTab === 'FINANCIAL' && (
+                    <div className="space-y-8">
+                        {/* Summary Sub-Tab */}
+                        {activeSubTab === 'SUMMARY' && (
+                            <>
+                                {/* Financial Stats Summary */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 Transition-opacity"><TrendingUp size={100} /></div>
+                                        <p className="text-emerald-500 font-black uppercase text-[10px] tracking-[0.2em] mb-2">Faturamento Recebido</p>
+                                        <h4 className="text-4xl font-black text-white">
+                                            R$ {financialClasses.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PAID').reduce((acc, curr) => acc + (curr.totalValue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </h4>
+                                    </div>
+
+                                    <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 Transition-opacity"><Clock size={100} /></div>
+                                        <p className="text-amber-500 font-black uppercase text-[10px] tracking-[0.2em] mb-2">Aguardando Pagamento</p>
+                                        <h4 className="text-4xl font-black text-white">
+                                            R$ {financialClasses.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').reduce((acc, curr) => acc + (curr.totalValue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </h4>
+                                    </div>
+
+                                    <div className="bg-emerald-500 p-8 rounded-[2.5rem] shadow-[0_0_30px_rgba(16,185,129,0.2)] relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 p-6 opacity-20"><Search size={100} className="text-white" /></div>
+                                        <p className="text-emerald-900 font-black uppercase text-[10px] tracking-[0.2em] mb-2">Total do Período</p>
+                                        <h4 className="text-4xl font-black text-white">
+                                            R$ {financialClasses.filter(c => c.status === 'COMPLETED').reduce((acc, curr) => acc + (curr.totalValue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </h4>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900/50 p-6 rounded-[2rem] border border-slate-800">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <div className="flex items-center gap-2 px-3">
+                                            <Calendar size={16} className="text-emerald-500" />
+                                            <input
+                                                type="month"
+                                                value={filterMonth}
+                                                onChange={(e) => setFilterMonth(e.target.value)}
+                                                className="bg-transparent border-none text-white text-sm font-bold focus:ring-0 outline-none"
+                                            />
+                                        </div>
+                                        <div className="h-8 w-[1px] bg-slate-800 hidden md:block" />
+                                        <div className="flex items-center gap-2 px-3">
+                                            <Filter size={16} className="text-emerald-500" />
+                                            <select
+                                                value={filterAccount}
+                                                onChange={(e) => setFilterAccount(e.target.value)}
+                                                className="bg-transparent border-none text-white text-sm font-bold focus:ring-0 outline-none"
+                                            >
+                                                <option value="ALL">Todas as Contas</option>
+                                                {bankAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+                                    <div className="p-8 border-b border-slate-800 bg-slate-900/80">
+                                        <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tight">Confirmar Recebimentos</h3>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Clique para atribuir o pagamento a uma conta</p>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
+                                                    <th className="p-6">Data</th>
+                                                    <th className="p-6">Aluno</th>
+                                                    <th className="p-6">Valor</th>
+                                                    <th className="p-6 text-right">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-800/50">
+                                                {financialClasses.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').map(c => (
+                                                    <tr key={c.id} className="hover:bg-slate-800/30 transition-all group">
+                                                        <td className="p-6 text-gray-400 font-bold text-sm">
+                                                            {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                                        </td>
+                                                        <td className="p-6">
+                                                            <span className="text-white font-black text-sm uppercase tracking-tight">{c.studentName}</span>
+                                                        </td>
+                                                        <td className="p-6">
+                                                            <span className="text-amber-500 font-black text-sm">R$ {(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                        </td>
+                                                        <td className="p-6 text-right">
+                                                            <button
+                                                                onClick={() => { setSelectedFinancialClass(c); setShowPaymentModal(true); }}
+                                                                className="px-6 py-2.5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest Transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95"
+                                                            >
+                                                                Confirmar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {financialClasses.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="p-20 text-center text-gray-500 uppercase text-xs font-bold italic opacity-30">Nenhuma aula pendente</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Accounts Sub-Tab */}
+                        {activeSubTab === 'ACCOUNTS' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="space-y-4 bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800">
+                                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">
+                                        {editingBankAccount ? 'Editar Conta' : 'Nova Conta Bancária'}
+                                    </h3>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Nome da Conta / Banco</label>
+                                        <input
+                                            type="text"
+                                            value={newAccountName}
+                                            onChange={e => setNewAccountName(e.target.value)}
+                                            className="w-full bg-[#1e293b] border border-gray-700 rounded-xl p-4 text-white outline-none focus:border-emerald-500 text-sm"
+                                            placeholder="Ex: Banco Itaú, Pix CNPJ, etc"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-500 uppercase mb-2">Imagem / Logo do Banco</label>
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                onClick={() => bankFileInputRef.current?.click()}
+                                                className="w-20 h-20 bg-white/5 border border-dashed border-gray-700 rounded-2xl flex items-center justify-center text-gray-500 hover:text-emerald-500 hover:border-emerald-500/50 Transition-all overflow-hidden"
+                                            >
+                                                {newAccountImage ? (
+                                                    <img src={newAccountImage} className="w-full h-full object-contain" alt="" />
+                                                ) : (
+                                                    <Upload size={24} />
+                                                )}
+                                            </button>
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-tight">Use logos<br />quadradas (1:1)</p>
+                                        </div>
+                                        <input type="file" ref={bankFileInputRef} onChange={handleBankImageUpload} className="hidden" accept="image/*" />
+                                    </div>
+                                    <div className="flex gap-4 pt-4">
+                                        {editingBankAccount && (
+                                            <button
+                                                onClick={() => {
+                                                    setEditingBankAccount(null);
+                                                    setNewAccountName('');
+                                                    setNewAccountImage('');
+                                                }}
+                                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl Transition-all"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={handleAddBankAccount}
+                                            className={`flex-[2] ${editingBankAccount ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'} text-[#0f172a] font-black uppercase tracking-widest py-4 rounded-xl Transition-all shadow-lg`}
+                                        >
+                                            {editingBankAccount ? 'Salvar Alterações' : 'Adicionar Conta'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6">Contas Ativas</h3>
+                                    <div className="space-y-3">
+                                        {bankAccounts.map(account => (
+                                            <div key={account.id} className="flex items-center justify-between p-5 bg-[#1e293b]/50 border border-gray-800 rounded-2xl group hover:border-blue-500/50 Transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden border border-white/5 shadow-inner">
+                                                        {account.imageUrl ? (
+                                                            <img src={account.imageUrl} className="w-full h-full object-contain" alt="" />
+                                                        ) : (
+                                                            <DollarSign size={20} className="text-gray-500" />
+                                                        )}
+                                                    </div>
+                                                    <span className="text-sm font-black text-white uppercase tracking-tight">{account.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => startEditBankAccount(account)}
+                                                        className="p-2.5 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 Transition-all bg-blue-500/5 rounded-lg"
+                                                    >
+                                                        <Edit2 size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteBankAccount(account.id)}
+                                                        className="p-2.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 Transition-all bg-red-500/5 rounded-lg"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 3. CONFIGURATION SECTION */}
+                {activeMainTab === 'CONFIG' && (
+                    <div className="max-w-4xl">
+                        {activeSubTab === 'LOGO' && (
+                            <div className="bg-[#0f172a] border border-gray-800 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+                                <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl" />
+                                <div className="flex items-center gap-4 mb-8 border-b border-gray-800/50 pb-6 relative z-10">
+                                    <div className="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-500 shadow-inner">
+                                        <ImageIcon size={28} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Logomarca da <span className="text-purple-500">Instituição</span></h2>
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Personalize a identidade do sistema e relatórios</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-10 relative z-10">
+                                    <div className="flex flex-col items-center justify-center w-full">
+                                        {logoUrl ? (
+                                            <div className="relative group w-full flex flex-col items-center gap-8">
+                                                <div className="w-full max-w-sm bg-white/95 rounded-3xl p-10 border border-white/20 flex justify-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-sm Transition-transform hover:scale-[1.02]">
+                                                    <img src={logoUrl} alt="Logo Preview" className="max-h-32 object-contain" />
+                                                </div>
+                                                <div className="flex gap-4 w-full max-w-md">
+                                                    <button
+                                                        onClick={handleRemoveLogo}
+                                                        className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-black py-4 rounded-2xl flex justify-center items-center gap-3 Transition-all border border-red-500/20 uppercase text-xs tracking-widest shadow-lg"
+                                                    >
+                                                        <Trash2 size={18} /> Remover
+                                                    </button>
+                                                    <button
+                                                        onClick={() => logoFileInputRef.current?.click()}
+                                                        className="flex-1 bg-white/5 hover:bg-white/10 text-white font-black py-4 rounded-2xl flex justify-center items-center gap-3 Transition-all border border-white/10 uppercase text-xs tracking-widest shadow-lg"
+                                                    >
+                                                        <Upload size={18} /> Alterar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => logoFileInputRef.current?.click()}
+                                                className="w-full h-56 border-2 border-dashed border-gray-800 hover:border-purple-500/50 bg-white/[0.02] hover:bg-purple-500/5 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-500 hover:text-purple-400 Transition-all cursor-pointer group"
+                                            >
+                                                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center group-hover:bg-purple-500/20 Transition-colors">
+                                                    <Upload size={32} />
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className="text-sm font-black uppercase tracking-widest block mb-1">Carregar Logomarca</span>
+                                                    <span className="text-[10px] font-bold text-gray-600 block px-6">Envie arquivos PNG com fundo transparente para melhor resultado</span>
+                                                </div>
+                                            </button>
+                                        )}
+                                        <input
+                                            type="file"
+                                            ref={logoFileInputRef}
+                                            onChange={handleLogoUpload}
+                                            accept="image/*"
+                                            className="hidden"
+                                        />
+                                    </div>
+
+                                    {logoUrl && (
+                                        <button
+                                            onClick={handleSaveLogo}
+                                            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 Transition-all shadow-xl shadow-purple-900/40 uppercase tracking-[0.2em] transform active:scale-95"
+                                        >
+                                            <Save size={20} />
+                                            Salvar Configurações
+                                        </button>
                                     )}
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <button
-                                onClick={() => startEditStaff(member)}
-                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded transition-all"
-                            >
-                                <Edit2 size={14} />
-                            </button>
-                            <button
-                                onClick={() => handleDeleteStaff(member.id)}
-                                className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded transition-all"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-
-                {/* Classes Tab */}
-                {activeTab === 'CLASSES' && classes.map(classRoom => (
-                    <div key={classRoom.id} className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 hover:border-emerald-500/50 transition-all relative group">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
-                                <School size={32} className="text-purple-500" />
                             </div>
-
-                            <h3 className="text-white font-bold text-lg mb-1">{classRoom.name}</h3>
-                            <p className="text-sm text-gray-400">Período: {classRoom.period}</p>
-                        </div>
-
-                        <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <button
-                                onClick={() => startEditClass(classRoom)}
-                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded transition-all"
-                            >
-                                <Edit2 size={14} />
-                            </button>
-                            <button
-                                onClick={() => handleDeleteClass(classRoom.id)}
-                                className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded transition-all"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
+                        )}
                     </div>
-                ))}
-
-                {/* Disciplines Tab */}
-                {activeTab === 'DISCIPLINES' && disciplines.map(discipline => (
-                    <div key={discipline.id} className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 hover:border-emerald-500/50 transition-all relative group">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mb-3">
-                                <BookOpen size={32} className="text-orange-500" />
-                            </div>
-
-                            <h3 className="text-white font-bold text-lg mb-1">{discipline.name}</h3>
-                            <p className="text-xs text-gray-500">ID: {discipline.id.substring(0, 8)}</p>
-                        </div>
-
-                        <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <button
-                                onClick={() => startEditDiscipline(discipline)}
-                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded transition-all"
-                            >
-                                <Edit2 size={14} />
-                            </button>
-                            <button
-                                onClick={() => handleDeleteDiscipline(discipline.id)}
-                                className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded transition-all"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
+                )}
             </div>
 
             {/* Advance Year Modal */}
