@@ -478,12 +478,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <span className="flex items-center gap-1 text-xs"><Clock size={14} /> {c.startTime} - {c.endTime}</span>
                         <span className="flex items-center gap-1 text-xs"><BookOpen size={14} /> {c.className || 'Individual'}</span>
                       </div>
-                      <button 
-                        onClick={() => openCompletionModal(c)}
-                        className="w-full py-4 bg-white text-emerald-600 font-black rounded-xl shadow-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle size={20} /> Concluir Agora
-                      </button>
+                      {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                        <button 
+                          onClick={() => openCompletionModal(c)}
+                          className="w-full py-4 bg-white text-emerald-600 font-black rounded-xl shadow-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle size={20} /> Concluir Agora
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -506,10 +508,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <span className="text-xs font-black text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/20">
                           {c.startTime}
                         </span>
-                        <div className="flex gap-1">
-                          <button onClick={() => openRescheduleModal(c)} className="p-2 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all" title="Remarcar"><Edit2 size={16} /></button>
-                          <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="p-2 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all" title="Cancelar"><XCircle size={16} /></button>
-                        </div>
+                        {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                          <div className="flex gap-1">
+                            <button onClick={() => openRescheduleModal(c)} className="p-2 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all" title="Remarcar"><Edit2 size={16} /></button>
+                            <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="p-2 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all" title="Cancelar"><XCircle size={16} /></button>
+                          </div>
+                        )}
                       </div>
                       <p className="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors uppercase">{c.studentName}</p>
                       <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Resp: {c.parentName || '-'}</p>
@@ -615,9 +619,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <td className="p-6 text-right">
                           {c.status === 'SCHEDULED' ? (
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                              <button onClick={() => openCompletionModal(c)} className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><CheckCircle size={20} /></button>
-                              <button onClick={() => openRescheduleModal(c)} className="w-10 h-10 flex items-center justify-center bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white rounded-xl transition-all"><Edit2 size={20} /></button>
-                              <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"><XCircle size={20} /></button>
+                              {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                                <>
+                                  <button onClick={() => openCompletionModal(c)} className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all"><CheckCircle size={20} /></button>
+                                  <button onClick={() => openRescheduleModal(c)} className="w-10 h-10 flex items-center justify-center bg-sky-500/10 hover:bg-sky-500 text-sky-500 hover:text-white rounded-xl transition-all"><Edit2 size={20} /></button>
+                                  <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="w-10 h-10 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all"><XCircle size={20} /></button>
+                                </>
+                              )}
                             </div>
                           ) : (
                             <button 
