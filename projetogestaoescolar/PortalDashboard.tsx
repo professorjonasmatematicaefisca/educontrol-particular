@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Activity, GraduationCap,
     MessageSquare, FileText, CheckCircle, History,
-    AlertCircle, TrendingUp, Clock, BookOpen, Calendar as CalendarIcon
+    AlertCircle, TrendingUp, Clock, BookOpen, Calendar as CalendarIcon, Star, ArrowRight
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { StorageService } from './services/storageService';
@@ -78,18 +78,29 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     }
 
     // --- CALCULATIONS ---
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 1. Aulas no Mês
+    const monthlyClasses = scheduledClasses.filter(c => {
+        const d = new Date(c.classDate + 'T00:00:00');
+        return c.status === 'COMPLETED' && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+
+    // 2. Atividades/Simulados em Aberto
+    // Assuming simulados have a status property
+    const openActivities = simuladoAttempts.filter(a => a.status !== 'COMPLETED').length;
+
+    // 3. Desempenho (Média)
     const myRecords = sessions.map(s => s.records.find(r => r.studentId === student.id)).filter(Boolean);
+    const sessionGrades = myRecords.map(r => r ? StorageService.calculateGrade(r) : 0);
+    const simuladoGrades = simuladoAttempts.filter(a => a.status === 'COMPLETED').map(a => a.score || 0);
+    const allGrades = [...sessionGrades, ...simuladoGrades];
+    const avgGrade = allGrades.length > 0 ? (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1) : '0.0';
 
-    // 1. Attendance
-    const totalPresences = myRecords.filter(r => r?.present).length;
-    const attendanceRate = myRecords.length > 0 ? ((totalPresences / myRecords.length) * 100).toFixed(1) : '0.0';
-
-    // 2. Performance
-    const grades = myRecords.map(r => r ? StorageService.calculateGrade(r) : 0);
-    const avgGrade = grades.length > 0 ? (grades.reduce((a, b) => a + b, 0) / grades.length).toFixed(1) : '0.0';
-
-    // 3. Recent Activity (Class Registers)
-    const recentSessions = sessions.slice(0, 5);
+    // 4. Performance Chart Data (Last 5 activities)
+    const recentGrades = allGrades.slice(-6);
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -104,9 +115,9 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                             <MessageSquare size={14} className="text-gray-500" />
                             Ver Comunicados
                         </button>
-                        <button onClick={() => onNavigate('CALENDAR')} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold text-emerald-400 transition-all">
+                        <button onClick={() => onNavigate('CALENDAR')} className="flex items-center gap-2 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20">
                             <CalendarIcon size={14} />
-                            Ver Agendamentos
+                            Acessar Minha Agenda
                         </button>
                     </div>
                 </div>
@@ -114,160 +125,188 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
 
             {/* KPI Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
+                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Aulas Realizadas</p>
-                        <h4 className="text-2xl font-bold text-white">{scheduledClasses.filter(c => c.status === 'COMPLETED').length}</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Aulas no Mês</p>
+                        <h4 className="text-2xl font-black text-white">{monthlyClasses}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <CheckCircle size={22} className="text-emerald-400" />
                     </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
+                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-amber-500/30 transition-all">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Atividades/Simulados</p>
-                        <h4 className="text-2xl font-bold text-white">{simuladoAttempts.filter(a => a.status === 'COMPLETED').length}</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Atividades em Aberto</p>
+                        <h4 className="text-2xl font-black text-white">{openActivities}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                        <Activity size={22} className="text-purple-400" />
+                    <div className="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Activity size={22} className="text-amber-400" />
                     </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
+                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Em Aberto</p>
-                        <h4 className="text-2xl font-bold text-white">{scheduledClasses.filter(c => c.status === 'SCHEDULED' && new Date(c.classDate) >= new Date()).length}</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Aulas Realizadas (Total)</p>
+                        <h4 className="text-2xl font-black text-white">{scheduledClasses.filter(c => c.status === 'COMPLETED').length}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center">
-                        <Clock size={22} className="text-amber-400" />
+                    <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <GraduationCap size={22} className="text-purple-400" />
                     </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl flex items-center justify-between">
+                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-blue-500/30 transition-all">
                     <div>
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Desempenho</p>
-                        <h4 className="text-2xl font-bold text-white">{avgGrade}</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Nota Desempenho</p>
+                        <h4 className="text-2xl font-black text-white">{avgGrade}</h4>
                     </div>
-                    <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                    <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <TrendingUp size={22} className="text-blue-400" />
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent Activities */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <Clock size={20} className="text-emerald-400" />
-                            Atividades Recentes
-                        </h3>
+                {/* Performance Chart & Recent Activities */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Evolution Chart */}
+                    <div className="bg-[#0f172a] border border-gray-800 p-6 rounded-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                                <TrendingUp size={20} className="text-blue-400" />
+                                Desempenho em Atividades
+                            </h3>
+                        </div>
+                        <div className="h-48 w-full flex items-end justify-around gap-2 px-4 relative">
+                            {/* Grid Lines */}
+                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5 border-y border-gray-500 py-1">
+                                <div className="w-full border-t border-gray-500"></div>
+                                <div className="w-full border-t border-gray-500"></div>
+                                <div className="w-full border-t border-gray-500"></div>
+                            </div>
+                            
+                            {recentGrades.length > 0 ? recentGrades.map((grade, idx) => (
+                                <div key={idx} className="flex flex-col items-center gap-2 group w-full max-w-[40px]">
+                                    <div className="relative w-full">
+                                        <div 
+                                            className="w-full bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all duration-1000 group-hover:from-emerald-500 group-hover:to-teal-400"
+                                            style={{ height: `${(grade / 100) * 160}px` }}
+                                        ></div>
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap">
+                                            {grade.toFixed(1)}
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Act {idx + 1}</span>
+                                </div>
+                            )) : (
+                                <div className="flex flex-col items-center justify-center w-full h-full text-gray-600 italic text-sm">
+                                    Nenhuma atividade registrada para gerar o gráfico.
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="mb-6">
-                            <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <CalendarIcon size={14} /> Minha Agenda & Calendário
-                            </h4>
-                            <ModernCalendar 
-                                classes={scheduledClasses} 
-                                onSelectClass={(c) => {
-                                    if (c.status === 'COMPLETED') {
-                                        // Optional: show details modal
-                                    }
-                                }}
-                            />
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                                <Star size={20} className="text-amber-400" />
+                                Aula da Semana
+                            </h3>
                         </div>
 
-                        <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <History size={14} /> Aulas Realizadas & Materiais
-                        </h4>
-                        {scheduledClasses.filter(c => c.status === 'COMPLETED').length === 0 ? (
-                            <div className="bg-[#0f172a] border border-gray-800 border-dashed p-10 rounded-xl text-center">
-                                <p className="text-gray-500 italic">Nenhum registro de aula concluída.</p>
-                            </div>
-                        ) : (
-                            scheduledClasses.filter(c => c.status === 'COMPLETED').map(c => (
-                                <div key={c.id} className="bg-[#0f172a] border border-gray-800 p-5 rounded-xl hover:border-gray-700 transition-all group">
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-gray-800 p-2 rounded-lg text-gray-400">
-                                                <BookOpen size={18} />
-                                            </div>
-                                                <div className="flex items-center gap-2">
-                                                    <UserAvatar name={c.teacherName || ''} photoUrl={c.teacherPhoto} size="sm" />
-                                                    <div>
-                                                        <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">Aula de {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</h4>
-                                                        <p className="text-[10px] text-gray-500">{c.startTime} • {c.disciplineId ? disciplines.find(d => d.id === c.disciplineId)?.name : 'Individual'} • Prof. {c.teacherName}</p>
-                                                    </div>
-                                                </div>
-                                        </div>
-                                        <div className="px-2 py-1 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400">
-                                            Concluída
-                                        </div>
-                                    </div>
-
-                                    {c.subjectNotes && (
-                                        <div className="bg-gray-800/50 p-3 rounded-lg border-l-4 border-emerald-500 mt-2">
-                                            <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1 flex items-center gap-1">
-                                                <TrendingUp size={10} /> Conteúdo Ministrado
-                                            </p>
-                                            <p className="text-xs text-gray-300 leading-relaxed italic">{c.subjectNotes}</p>
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center gap-2">
-                                        {c.pdfUrl && (
-                                            <a 
-                                                href={c.pdfUrl} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                title="Download Material (PDF)"
-                                                className="w-10 h-10 bg-red-500/20 border-2 border-red-500/50 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
-                                            >
-                                                <FileText size={20} />
-                                            </a>
-                                        )}
-                                    </div>
+                        {scheduledClasses
+                            .filter(c => c.status === 'SCHEDULED' && new Date(c.classDate + 'T00:00:00') >= new Date(new Date().setHours(0,0,0,0)))
+                            .sort((a,b) => (a.classDate + a.startTime).localeCompare(b.classDate + b.startTime))
+                            .slice(0, 1)
+                            .map(c => (
+                            <div key={c.id} className="relative overflow-hidden bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] group hover:border-emerald-500/50 transition-all shadow-2xl">
+                                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:rotate-12 transition-transform">
+                                    <Star size={100} />
                                 </div>
-                            ))
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-lg border border-amber-500/20">
+                                            Destaque da Semana
+                                        </div>
+                                        <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-lg border border-emerald-500/20">
+                                            {format(new Date(c.classDate + 'T12:00:00'), 'EEEE', { locale: ptBR })}
+                                        </div>
+                                    </div>
+                                    <h2 className="text-2xl font-black text-white mb-2 uppercase">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</h2>
+                                    <div className="flex flex-wrap items-center gap-6 text-gray-400">
+                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
+                                            <CalendarIcon size={16} className="text-emerald-500" />
+                                            <span className="text-sm font-bold">{new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
+                                            <Clock size={16} className="text-emerald-500" />
+                                            <span className="text-sm font-bold uppercase">{c.startTime}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
+                                            <UserAvatar name={c.teacherName || ''} size="xs" />
+                                            <span className="text-sm font-bold">Prof. {c.teacherName}</span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => onNavigate('CALENDAR')}
+                                        className="mt-8 flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-[0.2em] group/btn"
+                                    >
+                                        Ver Detalhes na Agenda 
+                                        <ArrowRight size={14} className="group-hover/btn:translate-x-2 transition-transform" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {scheduledClasses.filter(c => c.status === 'SCHEDULED' && new Date(c.classDate + 'T00:00:00') >= new Date(new Date().setHours(0,0,0,0))).length === 0 && (
+                            <div className="bg-[#0f172a] border border-gray-800 border-dashed p-10 rounded-[2rem] text-center">
+                                <p className="text-xs text-gray-500 font-bold uppercase italic">Nenhuma aula agendada para esta semana.</p>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Right Column: Mini Stats & Actions */}
+                {/* Right Column: Quick Actions & Highlights */}
                 <div className="space-y-6">
-                    {/* Focus Info */}
-                    <div className="bg-[#0f172a] border border-gray-800 rounded-xl p-5">
-                        <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                            <GraduationCap size={18} className="text-emerald-400" />
-                            Destaques do Semestre
+                    <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
+                        <h3 className="font-black text-white mb-6 flex items-center gap-2 uppercase tracking-tight text-sm">
+                            <Activity size={18} className="text-emerald-400" />
+                            Status de Atividades
                         </h3>
-                        <div className="space-y-4 text-sm">
-                            <div className="flex justify-between items-center text-gray-400 uppercase text-[10px] font-bold tracking-widest border-b border-gray-800 pb-2">
-                                <span>Disciplina</span>
-                                <span>Status</span>
+                        {simuladoAttempts.length > 0 ? (
+                            <div className="space-y-4">
+                                {simuladoAttempts.slice(0, 3).map((a, idx) => (
+                                    <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-white uppercase truncate max-w-[120px]">{a.simuladoTitle || 'Simulado'}</span>
+                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${a.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                                {a.status === 'COMPLETED' ? 'Finalizado' : 'Em aberto'}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full ${a.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                                style={{ width: `${a.status === 'COMPLETED' ? 100 : 40}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            {/* We could aggregate grades by subject here, but for now we list placeholders or just icons */}
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-300">Presença Geral</span>
-                                <span className="text-emerald-400 font-bold">{attendanceRate}%</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-300">Desempenho</span>
-                                <span className="text-blue-400 font-bold">{avgGrade}</span>
-                            </div>
-                        </div>
+                        ) : (
+                            <p className="text-[10px] text-gray-500 font-bold italic uppercase">Sem atividades recentes.</p>
+                        )}
+                        <button onClick={() => onNavigate('SIMULADOS')} className="w-full mt-6 py-2.5 text-[10px] font-black text-white uppercase border border-slate-700 hover:bg-slate-800 rounded-xl transition-all tracking-widest">
+                            Ver Todas Atividades
+                        </button>
                     </div>
 
-                    {/* Quick Request */}
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 text-center">
-                        <h4 className="text-sm font-bold text-white mb-2">Precisa de algo?</h4>
-                        <p className="text-xs text-gray-500 mb-4 px-2">Solicite justificativas de falta ou documentos diretamente pelo portal.</p>
-                        <button onClick={() => onNavigate('REQUESTS')} className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-[#0f172a] rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2">
-                            <Clock size={14} />
-                            Fazer Solicitação
+                    <div className="bg-gradient-to-br from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-2xl p-6 text-center">
+                        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                            <GraduationCap size={24} className="text-emerald-500" />
+                        </div>
+                        <h4 className="text-sm font-black text-white mb-2 uppercase">Precisa de suporte?</h4>
+                        <p className="text-[10px] text-gray-500 mb-6 font-bold uppercase tracking-tight leading-relaxed">Solicite documentos ou suporte para suas aulas.</p>
+                        <button onClick={() => onNavigate('REQUESTS')} className="w-full py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl">
+                            Nova Solicitação
                         </button>
                     </div>
                 </div>
