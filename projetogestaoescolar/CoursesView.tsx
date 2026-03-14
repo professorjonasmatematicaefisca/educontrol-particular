@@ -12,7 +12,8 @@ import {
   Trash2, 
   ChevronRight,
   ExternalLink,
-  PlayCircle
+  PlayCircle,
+  Upload
 } from 'lucide-react';
 import { UserRole, Course, CourseItem, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -27,13 +28,14 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
   const [courses, setCourses] = useState<Course[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'VIDEO' | 'PDF'>('VIDEO');
+  const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Modals
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [selectedItem, setSelectedItem] = useState<CourseItem | null>(null);
   const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
 
   // Form States
@@ -129,11 +131,32 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      const publicUrl = await SupabaseService.uploadPhoto(file, 'materials');
+      if (publicUrl) {
+        setItemData(prev => ({ ...prev, contentUrl: publicUrl }));
+        onShowToast('Arquivo carregado com sucesso!');
+      } else {
+        onShowToast('Erro ao carregar arquivo.');
+      }
+      setIsUploading(false);
+    }
+  };
+
   const isEditor = userRole === UserRole.COORDINATOR || userRole === UserRole.TEACHER;
+
+  const filteredItems = courseItems.filter(item => {
+    if (activeTab === 'VIDEO') return item.type === 'VIDEO';
+    if (activeTab === 'PDF') return item.type === 'PDF' || item.type === 'LINK' || item.type === 'TEXT';
+    return true;
+  });
 
   if (selectedCourse && !showCourseModal && !showItemModal) {
     return (
-      <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 px-4">
         <div className="flex items-center gap-4">
           <button onClick={() => setSelectedCourse(null)} className="p-2 bg-slate-800 rounded-xl text-gray-400 hover:text-white transition-all">
             <ChevronRight className="rotate-180" size={24} />
@@ -144,10 +167,26 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-4">
-            {courseItems.length > 0 ? (
-              courseItems.map((item, idx) => (
+        {/* Tabs */}
+        <div className="flex gap-2 p-1 bg-slate-900/50 rounded-2xl border border-slate-800 w-fit">
+          <button 
+            onClick={() => setActiveTab('VIDEO')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'VIDEO' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <Video size={16} /> Videoaulas
+          </button>
+          <button 
+            onClick={() => setActiveTab('PDF')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'PDF' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            <FileText size={16} /> Materiais PDF
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4">
+            {filteredItems.length > 0 ? (
+              filteredItems.map((item, idx) => (
                 <div key={item.id} className="bg-slate-900/40 border border-slate-800 p-6 rounded-3xl hover:border-emerald-500/30 transition-all flex items-center justify-between group">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500">
@@ -157,7 +196,7 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
                     </div>
                     <div>
                       <h4 className="text-white font-black uppercase text-sm">{item.title}</h4>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Aula {idx + 1} • {item.type}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Item {idx + 1} • {item.type}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -182,16 +221,16 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
             ) : (
               <div className="p-20 text-center bg-slate-900/40 border-2 border-dashed border-slate-800 rounded-[3rem] opacity-30">
                 <BookOpen size={64} className="mx-auto mb-4" />
-                <p className="font-black uppercase tracking-widest text-sm">Este curso ainda não possui conteúdo</p>
+                <p className="font-black uppercase tracking-widest text-sm">Nenhum conteúdo nesta categoria</p>
               </div>
             )}
             
             {isEditor && (
               <button 
-                onClick={() => { setItemData({ title: '', type: 'TEXT', order: courseItems.length }); setShowItemModal(true); }}
+                onClick={() => { setItemData({ title: '', type: activeTab, order: courseItems.length }); setShowItemModal(true); }}
                 className="w-full py-6 border-2 border-dashed border-slate-800 rounded-[2.5rem] text-gray-500 font-black uppercase tracking-widest hover:border-emerald-500/50 hover:text-emerald-500 transition-all flex items-center justify-center gap-3"
               >
-                <Plus size={24} /> Adicionar Conteúdo
+                <Plus size={24} /> Adicionar {activeTab === 'VIDEO' ? 'Videoaula' : 'Material'}
               </button>
             )}
           </div>
@@ -315,11 +354,11 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
       )}
 
       {/* Item Modal */}
-      {showItemModal && (
+      {showItemModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-4">
           <div className="bg-[#0f172a] w-full max-w-lg rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden">
             <div className="p-8 border-b border-slate-800">
-              <h3 className="text-xl font-black text-white mb-1 uppercase">Adicionar Conteúdo</h3>
+              <h3 className="text-xl font-black text-white mb-1 uppercase">{itemData.id ? 'Editar' : 'Adicionar'} Conteúdo</h3>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Aulas, PDFs ou Links</p>
             </div>
             <div className="p-8 space-y-6">
@@ -342,10 +381,10 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
                       onChange={e => setItemData({...itemData, type: e.target.value as any})}
                       className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold outline-none"
                     >
-                      <option value="VIDEO">Vídeo (URL)</option>
+                      <option value="VIDEO">Vídeo (YouTube)</option>
                       <option value="PDF">Arquivo (PDF)</option>
                       <option value="LINK">Link Externo</option>
-                      <option value="TEXT">Texto</option>
+                      <option value="TEXT">Texto / Descrição</option>
                     </select>
                   </div>
                   <div>
@@ -358,15 +397,33 @@ export const CoursesView: React.FC<CoursesViewProps> = ({ onShowToast, userEmail
                     />
                   </div>
                 </div>
+                
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">URL / Link</label>
-                  <input 
-                    type="text" 
-                    value={itemData.contentUrl}
-                    onChange={e => setItemData({...itemData, contentUrl: e.target.value})}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold outline-none"
-                    placeholder="https://..."
-                  />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">
+                    {itemData.type === 'VIDEO' ? 'Link do YouTube (Vídeo ou Playlist)' : 
+                     itemData.type === 'PDF' ? 'URL do PDF ou Upload' : 'URL / Link'}
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={itemData.contentUrl}
+                      onChange={e => setItemData({...itemData, contentUrl: e.target.value})}
+                      className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold outline-none"
+                      placeholder="https://..."
+                    />
+                    {itemData.type === 'PDF' && (
+                      <label className="cursor-pointer p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all">
+                        <Upload size={20} />
+                        <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} disabled={isUploading} />
+                      </label>
+                    )}
+                  </div>
+                  {isUploading && (
+                    <p className="text-[10px] text-emerald-500 font-bold uppercase mt-2 animate-pulse">Enviando arquivo...</p>
+                  )}
+                  {itemData.type === 'VIDEO' && itemData.contentUrl?.includes('youtube.com') && (
+                    <p className="text-[10px] text-sky-500 font-bold uppercase mt-2">✨ Link do YouTube detectado</p>
+                  )}
                 </div>
               </div>
             </div>
