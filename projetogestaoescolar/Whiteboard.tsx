@@ -323,6 +323,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 break;
         }
         ctx.restore();
+    };
+
     const getCoordinates = (e: React.MouseEvent | MouseEvent) => {
         if (!canvasRef.current) return { x: 0, y: 0 };
         const rect = canvasRef.current.getBoundingClientRect();
