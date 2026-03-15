@@ -299,16 +299,6 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                         </button>
                     </div>
 
-                    <div className="bg-gradient-to-br from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-2xl p-6 text-center">
-                        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                            <GraduationCap size={24} className="text-emerald-500" />
-                        </div>
-                        <h4 className="text-sm font-black text-white mb-2 uppercase">Precisa de suporte?</h4>
-                        <p className="text-[10px] text-gray-500 mb-6 font-bold uppercase tracking-tight leading-relaxed">Solicite documentos ou suporte para suas aulas.</p>
-                        <button onClick={() => onNavigate('REQUESTS')} className="w-full py-3 bg-white text-emerald-600 hover:bg-emerald-50 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl">
-                            Nova Solicitação
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

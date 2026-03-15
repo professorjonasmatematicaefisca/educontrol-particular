@@ -544,19 +544,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 )}
               </div>
             </div>
-
-            {/* Calendário para o Aluno (Sidebar) */}
-            {userRole === UserRole.STUDENT && (
-              <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-[2rem] backdrop-blur-xl">
-                 <h3 className="text-sm font-black text-white flex items-center gap-2 mb-4 px-2 uppercase tracking-tight">
-                  <CalendarIcon size={16} className="text-emerald-500" />
-                  Calendário Escolar
-                </h3>
-                <div className="scale-90 origin-top">
-                  <ModernCalendar classes={classes} onSelectClass={() => {}} />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Main Content: Lista de Agendamentos / Histórico */}
@@ -572,7 +559,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {userRole === UserRole.STUDENT ? (
+                  <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
+                    <button 
+                      onClick={() => setViewMode('table')}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Lista
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('calendar')}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Calendário
+                    </button>
+                  </div>
+                  
+                  {userRole === UserRole.STUDENT && (
                     <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
                       <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
@@ -585,21 +587,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                           {disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
-                      <button 
-                        onClick={() => setViewMode('table')}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        Lista
-                      </button>
-                      <button 
-                        onClick={() => setViewMode('calendar')}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        Calendário
-                      </button>
                     </div>
                   )}
                   <div className="relative">
@@ -615,9 +602,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </div>
               </div>
 
-              {viewMode === 'calendar' && userRole !== UserRole.STUDENT ? (
+              {viewMode === 'calendar' ? (
                 <div className="p-8">
-                  <ModernCalendar classes={classes} onSelectClass={openCompletionModal} />
+                  <ModernCalendar classes={classes} onSelectClass={userRole !== UserRole.STUDENT ? openCompletionModal : undefined} />
                 </div>
               ) : (
                 <div className="overflow-x-auto">
