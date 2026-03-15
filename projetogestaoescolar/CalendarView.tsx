@@ -29,9 +29,10 @@ interface CalendarViewProps {
   onShowToast: (msg: string) => void;
   userEmail: string;
   userRole: UserRole;
+  onViewChange?: (view: 'WHITEBOARD', context?: { classId: string; disciplineId: string }) => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userRole }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userRole, onViewChange }) => {
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -484,12 +485,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       </div>
                       {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
                         c.status === 'SCHEDULED' ? (
-                          <button 
-                            onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
-                            className="w-full py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-                          >
-                            <ArrowRight size={16} /> Iniciar Aula Agora
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => {
+                                // If class has disciplineId already, start immediately
+                                if (c.disciplineId) {
+                                  handleUpdateStatus(c.id, 'IN_PROGRESS');
+                                  onViewChange?.('WHITEBOARD', { classId: c.id, disciplineId: c.disciplineId });
+                                } else {
+                                  // Otherwise open completion/selection modal
+                                  setSelectedClass(c);
+                                  setShowCompletionModal(true);
+                                }
+                              }}
+                              className="flex-1 py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                            >
+                              <ArrowRight size={16} /> Dar Início à Aula
+                            </button>
+                          </div>
                         ) : (
                           <button 
                             onClick={() => openCompletionModal(c)}

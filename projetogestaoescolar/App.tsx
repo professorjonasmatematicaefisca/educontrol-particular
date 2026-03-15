@@ -7,10 +7,10 @@ import { Settings as SettingsView } from './Settings';
 import { PortalDashboard } from './PortalDashboard';
 import { UpdatePassword } from './UpdatePassword';
 import { GameArena } from './components/Game/GameArena';
-import { CalendarView } from './CalendarView.tsx';
-import { FinancialView } from './FinancialView.tsx';
-import { SimuladoView } from './SimuladoView.tsx';
-import { CoursesView } from './CoursesView.tsx';
+import { CalendarView } from './CalendarView';
+import { FinancialView } from './FinancialView';
+import { SimuladoView } from './SimuladoView';
+import { CoursesView } from './CoursesView';
 import { Whiteboard } from './Whiteboard';
 import { UserRole, ViewState } from './types';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -31,6 +31,7 @@ function App() {
   const [isDark, setIsDark] = useState(false);
   const [toast, setToast] = useState<{ msg: string, visible: boolean }>({ msg: '', visible: false });
   const [isRecovering, setIsRecovering] = useState(false);
+  const [activeWhiteboardContext, setActiveWhiteboardContext] = useState<{ classId: string; disciplineId: string } | null>(null);
 
   // Theme Init
   useEffect(() => {
@@ -190,13 +191,22 @@ function App() {
           return <PortalDashboard userEmail={userEmail} userRole={userRole} onNavigate={handleViewChange} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
-      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} onViewChange={(view, context) => {
+        if (view === 'WHITEBOARD' && context) setActiveWhiteboardContext(context);
+        handleViewChange(view);
+      }} />;
       case 'FINANCIAL': return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SIMULADO': return <SimuladoView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userName={userName} />;
       case 'ADMIN': return <AdminPanel onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SETTINGS': return <SettingsView userEmail={userEmail} userRole={userRole!} onShowToast={showToast} />;
       case 'COURSES': return <CoursesView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
-      case 'WHITEBOARD': return <Whiteboard onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+      case 'WHITEBOARD': return <Whiteboard 
+        onShowToast={showToast} 
+        userEmail={userEmail} 
+        userRole={userRole!} 
+        activeClassId={activeWhiteboardContext?.classId}
+        initialDisciplineId={activeWhiteboardContext?.disciplineId}
+      />;
       default: return <Dashboard onNavigateToStudent={() => {}} />;
     }
   };

@@ -23,7 +23,8 @@ import {
     ZoomIn,
     ZoomOut,
     Copy,
-    Clipboard
+    Clipboard,
+    Save
 } from 'lucide-react';
 import { UserRole, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -36,9 +37,11 @@ interface WhiteboardProps {
     onShowToast: (msg: string) => void;
     userEmail: string;
     userRole: UserRole;
+    activeClassId?: string;
+    initialDisciplineId?: string;
 }
 
-type Tool = 'pen' | 'eraser' | 'highlighter' | 'text' | 'rect' | 'circle' | 'line' | 'select' | 'pan' | 'compass' | 'ruler';
+type Tool = 'pen' | 'eraser' | 'highlighter' | 'text' | 'rect' | 'circle' | 'line' | 'select' | 'pan' | 'compass' | 'ruler' | 'image';
 
 interface Point {
     x: number;
@@ -59,7 +62,7 @@ interface DrawElement {
     rotation?: number;
 }
 
-export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, userRole }) => {
+export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, userRole, activeClassId, initialDisciplineId }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const bgCanvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -143,6 +146,12 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
     const loadDisciplines = async () => {
         const data = await SupabaseService.getDisciplines();
         setDisciplines(data);
+        
+        // If initialDisciplineId is provided, set it.
+        if (initialDisciplineId) {
+            const discipline = data.find(d => d.id === initialDisciplineId);
+            if (discipline) setSelectedDiscipline(discipline);
+        }
     };
 
     // Initialize Canvas with proper High-DPI support and A4 aspect ratio
@@ -314,12 +323,19 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 break;
         }
         ctx.restore();
+    const getCoordinates = (e: React.MouseEvent | MouseEvent) => {
+        if (!canvasRef.current) return { x: 0, y: 0 };
+        const rect = canvasRef.current.getBoundingClientRect();
+        
+        // Accurate coordinates relative to canvas taking scale into account
+        const x = (e.clientX - rect.left) / zoom;
+        const y = (e.clientY - rect.top) / zoom;
+        
+        return { x, y };
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        const { offsetX, offsetY } = e.nativeEvent;
-        const x = offsetX / zoom - pan.x;
-        const y = offsetY / zoom - pan.y;
+        const { x, y } = getCoordinates(e);
 
         if (selectedTool === 'pan') {
             setIsPanning(true);
@@ -352,9 +368,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
 
         if (!isDrawing || !currentElement) return;
 
-        const { offsetX, offsetY } = e.nativeEvent;
-        const x = offsetX / zoom - pan.x;
-        const y = offsetY / zoom - pan.y;
+        const { x, y } = getCoordinates(e);
 
         if (['pen', 'eraser', 'highlighter'].includes(selectedTool)) {
             setCurrentElement({
@@ -407,59 +421,65 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
         }
     };
 
+    const selectTool = (tool: DrawElement['type']) => {
+        setSelectedTool(tool);
+        if (tool === 'pen') setBrushSize(3);
+        if (tool === 'highlighter') setBrushSize(20);
+        if (tool === 'eraser') setBrushSize(40);
+    };
+
     const renderToolbar = () => (
-        <div className="flex flex-col gap-2 bg-[#1e293b] p-3 rounded-xl border border-white/10 shadow-2xl z-20">
-            <div className="grid grid-cols-2 gap-2">
-                <ToolButton icon={<Pencil size={20}/>} active={selectedTool === 'pen'} onClick={() => setSelectedTool('pen')} title="Caneta" />
-                <ToolButton icon={<Highlighter size={20}/>} active={selectedTool === 'highlighter'} onClick={() => setSelectedTool('highlighter')} title="Marca Texto" />
-                <ToolButton icon={<Eraser size={20}/>} active={selectedTool === 'eraser'} onClick={() => setSelectedTool('eraser')} title="Borracha" />
-                <ToolButton icon={<Square size={20}/>} active={selectedTool === 'rect'} onClick={() => setSelectedTool('rect')} title="Retângulo" />
-                <ToolButton icon={<Circle size={20}/>} active={selectedTool === 'circle'} onClick={() => setSelectedTool('circle')} title="Círculo" />
-                <ToolButton icon={<Minus size={20}/>} active={selectedTool === 'line'} onClick={() => setSelectedTool('line')} title="Linha" />
-                <ToolButton icon={<RulerIcon size={20}/>} active={selectedTool === 'ruler'} onClick={() => setSelectedTool('ruler')} title="Régua" />
-                <ToolButton icon={<Compass size={20}/>} active={selectedTool === 'compass'} onClick={() => setSelectedTool('compass')} title="Compasso" />
-                <ToolButton icon={<MousePointer2 size={20}/>} active={selectedTool === 'select'} onClick={() => setSelectedTool('select')} title="Selecionar" />
-                <ToolButton icon={<Move size={20}/>} active={selectedTool === 'pan'} onClick={() => setSelectedTool('pan')} title="Mover Tela" />
+        <div className="flex bg-[#1e293b]/90 backdrop-blur-md p-2 rounded-2xl border border-white/10 shadow-2xl z-20 items-center gap-4">
+            <div className="flex gap-1 border-r border-white/10 pr-4">
+                <ToolButton icon={<Pencil size={20}/>} active={selectedTool === 'pen'} onClick={() => selectTool('pen')} title="Caneta" />
+                <ToolButton icon={<Highlighter size={20}/>} active={selectedTool === 'highlighter'} onClick={() => selectTool('highlighter')} title="Marca Texto" />
+                <ToolButton icon={<Eraser size={20}/>} active={selectedTool === 'eraser'} onClick={() => selectTool('eraser')} title="Borracha" />
+                <ToolButton icon={<Square size={20}/>} active={selectedTool === 'rect'} onClick={() => selectTool('rect')} title="Retângulo" />
+                <ToolButton icon={<Circle size={20}/>} active={selectedTool === 'circle'} onClick={() => selectTool('circle')} title="Círculo" />
+                <ToolButton icon={<Minus size={20}/>} active={selectedTool === 'line'} onClick={() => selectTool('line')} title="Linha" />
+            </div>
+
+            <div className="flex gap-1 border-r border-white/10 pr-4">
+                <ToolButton icon={<RulerIcon size={20}/>} active={selectedTool === 'ruler'} onClick={() => selectTool('ruler')} title="Régua" />
+                <ToolButton icon={<Compass size={20}/>} active={selectedTool === 'compass'} onClick={() => selectTool('compass')} title="Compasso" />
+                <ToolButton icon={<MousePointer2 size={20}/>} active={selectedTool === 'select'} onClick={() => selectTool('select')} title="Selecionar" />
+                <ToolButton icon={<Move size={20}/>} active={selectedTool === 'pan'} onClick={() => selectTool('pan')} title="Mover Tela" />
             </div>
             
-            <hr className="border-white/5 my-1" />
-            
-            <div className="flex flex-wrap gap-1.5 justify-center py-2">
-                {['#ffffff', '#000000', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899', '#a855f7'].map(c => (
-                    <button 
-                        key={c}
-                        onClick={() => setColor(c)}
-                        className={`w-6 h-6 rounded-full border-2 ${color === c ? 'border-white' : 'border-transparent'}`}
-                        style={{ backgroundColor: c }}
+            <div className="flex items-center gap-2 px-2 border-r border-white/10 pr-4">
+                <div className="flex flex-wrap gap-1 max-w-[100px]">
+                    {['#ffffff', '#000000', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899', '#a855f7'].map(c => (
+                        <button 
+                            key={c}
+                            onClick={() => setColor(c)}
+                            className={`w-5 h-5 rounded-full border-2 ${color === c ? 'border-white' : 'border-transparent'}`}
+                            style={{ backgroundColor: c }}
+                        />
+                    ))}
+                </div>
+                <div className="flex flex-col gap-1 w-24">
+                    <input 
+                        type="range" 
+                        min="1" 
+                        max="100" 
+                        value={brushSize} 
+                        onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                        className="w-full accent-emerald-500"
                     />
-                ))}
+                </div>
             </div>
 
-            <div className="flex flex-col gap-1 px-1">
-                <label className="text-[10px] text-gray-500 font-bold uppercase">Tamanho</label>
-                <input 
-                    type="range" 
-                    min="1" 
-                    max="50" 
-                    value={brushSize} 
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                    className="w-full accent-emerald-500"
-                />
-            </div>
-
-            <hr className="border-white/5 my-1" />
-
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex gap-1">
                 <ToolButton icon={<Undo size={20}/>} onClick={handleUndo} title="Desfazer" />
                 <ToolButton icon={<Redo size={20}/>} onClick={handleRedo} title="Refazer" />
-                <ToolButton icon={<Trash2 size={20}/>} onClick={clearCanvas} title="Limpar" className="text-red-400 hover:bg-red-400/10" />
-                <ToolButton icon={<Download size={20}/>} onClick={() => {}} title="Salvar" />
+                <ToolButton icon={<Trash2 size={20}/>} onClick={clearCanvas} title="Limpar" className="text-red-400" />
+                <ToolButton icon={<Save size={20}/>} onClick={() => {}} title="Salvar Aula" className="text-emerald-400" />
             </div>
         </div>
     );
 
     return (
-        <div className="h-[calc(100vh-140px)] flex bg-[#0f172a] rounded-2xl overflow-hidden border border-white/5 relative">
+        <div className="h-[calc(100vh-80px)] flex bg-[#0f172a] relative">
             <div className={`transition-all duration-300 ${showDisciplinePicker ? 'w-64' : 'w-0'} bg-[#1e293b] border-r border-white/10 flex flex-col overflow-hidden`}>
                 <div className="p-4 border-b border-white/5 flex justify-between items-center">
                     <h3 className="font-bold text-white text-sm">Disciplina / Aula</h3>
@@ -490,10 +510,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 </button>
             )}
 
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-6 flex gap-4 items-end pointer-events-none">
-                <div className="pointer-events-auto">
-                    {renderToolbar()}
-                </div>
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-6 z-30">
+                {renderToolbar()}
             </div>
 
             <div className="absolute right-6 bottom-6 flex items-center gap-3 bg-[#1e293b] p-2 rounded-xl border border-white/10 shadow-2xl z-20">

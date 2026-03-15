@@ -196,9 +196,10 @@ export interface ScheduledClass {
   parentName?: string; // Join field
   teacherName?: string; // Join field
   teacherPhoto?: string; // Join field
+  whiteboardUrl?: string; // New: Saved whiteboard PDF
+  paymentStatus?: 'PENDING' | 'PAID'; // New: Payment status for private lessons
   previousClassDate?: string; // New: Audit history
   previousStartTime?: string; // New: Audit history
-  paymentStatus?: 'PENDING' | 'PAID'; // New: Financial tracking
   paymentAccountId?: string; // New: Bank account used
   paidAt?: string; // New: Payment date
   pdfUrl?: string; // New: Attachment associated with the completed class
