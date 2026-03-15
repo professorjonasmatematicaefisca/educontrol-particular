@@ -24,7 +24,12 @@ import {
     ZoomOut,
     Copy,
     Clipboard,
-    Save
+    Save,
+    GripVertical,
+    Hand,
+    Trash,
+    PenLine,
+    ArrowRight
 } from 'lucide-react';
 import { UserRole, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -78,6 +83,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
     // History for Undo/Redo
     const [elements, setElements] = useState<DrawElement[]>([]);
     const [redoStack, setRedoStack] = useState<DrawElement[]>([]);
+    const [selectedElement, setSelectedElement] = useState<DrawElement | null>(null);
+    const [toolbarPos, setToolbarPos] = useState({ x: window.innerWidth / 2 - 250, y: window.innerHeight - 150 });
+    const [isDraggingToolbar, setIsDraggingToolbar] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     
     // Interaction state
     const [isDrawing, setIsDrawing] = useState(false);
@@ -87,6 +96,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
 
     // Tools visibility
     const [showDisciplinePicker, setShowDisciplinePicker] = useState(true);
+    const [showStartModal, setShowStartModal] = useState(!!activeClassId);
 
     // Specialized tools positions
     const [rulerPos, setRulerPos] = useState({ x: 200, y: 300, rotation: 0 });
@@ -162,16 +172,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             const container = containerRef.current;
             if (!canvas || !bgCanvas || !container) return;
 
-            // A4 Portrait aspect ratio: 210 x 297 mm -> ~1 : 1.414
             const containerWidth = container.clientWidth - 40;
             const containerHeight = container.clientHeight - 40;
+
+            // A4 Portrait: height = width * 1.414.
+            // User wants 100% vertical occupation if possible.
+            let height = containerHeight;
+            let width = height / 1.414;
             
-            let width = containerWidth;
-            let height = width * 1.414;
-            
-            if (height > containerHeight) {
-                height = containerHeight;
-                width = height / 1.414;
+            if (width > containerWidth) {
+                width = containerWidth;
+                height = width * 1.414;
             }
 
             const dpr = window.devicePixelRatio || 1;
@@ -204,13 +215,19 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
         
         if (selectedDiscipline?.whiteboardBackgroundUrl) {
             try {
-                const loadingTask = pdfjs.getDocument(selectedDiscipline.whiteboardBackgroundUrl);
+                // Use a proxy or direct URL depends on CORS, but we'll try direct first
+                const loadingTask = pdfjs.getDocument({
+                    url: selectedDiscipline.whiteboardBackgroundUrl,
+                });
                 const pdf = await loadingTask.promise;
                 const page = await pdf.getPage(1);
                 
+                const dpr = window.devicePixelRatio || 1;
                 const viewport = page.getViewport({ scale: 1 });
-                const scale = bgCanvas.width / (viewport.width * (window.devicePixelRatio || 1));
-                const scaledViewport = page.getViewport({ scale });
+                
+                // Calculate scale to fit our background canvas exactly
+                const scale = (bgCanvas.width / dpr) / viewport.width;
+                const scaledViewport = page.getViewport({ scale: scale * dpr });
                 
                 await page.render({
                     canvasContext: ctx,
@@ -257,7 +274,40 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
         
         elements.forEach(el => drawElement(ctx, el));
         if (currentElement) drawElement(ctx, currentElement);
-    }, [elements, currentElement]);
+    }, [elements, currentElement, zoom, pan]);
+
+    useEffect(() => {
+        renderAllElements();
+    }, [elements, currentElement, renderAllElements, zoom, pan]);
+    
+    // Toolbar Drag Logic
+    const handleToolbarMouseDown = (e: React.MouseEvent) => {
+        setIsDraggingToolbar(true);
+        setDragOffset({
+            x: e.clientX - toolbarPos.x,
+            y: e.clientY - toolbarPos.y
+        });
+    };
+    
+    useEffect(() => {
+        if (!isDraggingToolbar) return;
+        
+        const handleMouseMove = (e: MouseEvent) => {
+            setToolbarPos({
+                x: e.clientX - dragOffset.x,
+                y: e.clientY - dragOffset.y
+            });
+        };
+        
+        const handleMouseUp = () => setIsDraggingToolbar(false);
+        
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDraggingToolbar, dragOffset]);
 
     const drawElement = (ctx: CanvasRenderingContext2D, el: DrawElement) => {
         ctx.save();
@@ -276,10 +326,29 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                     ctx.globalAlpha = 0.4;
                     ctx.lineWidth = el.size ? el.size * 3 : brushSize * 3;
                 }
+                
                 if (el.points && el.points.length > 0) {
                     ctx.beginPath();
                     ctx.moveTo(el.points[0].x, el.points[0].y);
-                    el.points.forEach(p => ctx.lineTo(p.x, p.y));
+                    
+                    if (el.points.length < 3) {
+                        el.points.forEach(p => ctx.lineTo(p.x, p.y));
+                    } else {
+                        // Smoothing with Quadratic Curves (Midpoint technique)
+                        let i;
+                        for (i = 1; i < el.points.length - 2; i++) {
+                            const xc = (el.points[i].x + el.points[i + 1].x) / 2;
+                            const yc = (el.points[i].y + el.points[i + 1].y) / 2;
+                            ctx.quadraticCurveTo(el.points[i].x, el.points[i].y, xc, yc);
+                        }
+                        // For the last 2 points
+                        ctx.quadraticCurveTo(
+                            el.points[i].x,
+                            el.points[i].y,
+                            el.points[i + 1].x,
+                            el.points[i + 1].y
+                        );
+                    }
                     ctx.stroke();
                 }
                 break;
@@ -322,7 +391,49 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 }
                 break;
         }
+
+        // Highlight if selected
+        if (selectedElement === el) {
+            ctx.strokeStyle = '#10b981'; // emerald-500
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            // Simplified bounding box highlight
+            if (el.x !== undefined && el.y !== undefined) {
+                const w = el.width || 0;
+                const h = el.height || 0;
+                ctx.strokeRect(el.x - 5, el.y - 5, w + 10, h + 10);
+            }
+            ctx.setLineDash([]);
+        }
+
         ctx.restore();
+    };
+
+    const isPointNearLine = (x: number, y: number, p1: {x: number, y: number}, p2: {x: number, y: number}, threshold: number) => {
+        const L2 = (p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2;
+        if (L2 === 0) return Math.sqrt((x - p1.x) ** 2 + (y - p1.y) ** 2) <= threshold;
+        let t = ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / L2;
+        t = Math.max(0, Math.min(1, t));
+        const dist = Math.sqrt((x - (p1.x + t * (p2.x - p1.x))) ** 2 + (y - (p1.y + t * (p2.y - p1.y))) ** 2);
+        return dist <= threshold;
+    };
+
+    const getElementAt = (x: number, y: number): DrawElement | null => {
+        // Search backwards (topmost first)
+        for (let i = elements.length - 1; i >= 0; i--) {
+            const el = elements[i];
+            if (el.points && el.points.length > 1) {
+                for (let j = 0; j < el.points.length - 1; j++) {
+                    if (isPointNearLine(x, y, el.points[j], el.points[j+1], 10)) return el;
+                }
+            }
+            if (el.x !== undefined && el.y !== undefined) {
+                const w = el.width || 20;
+                const h = el.height || 20;
+                if (x >= el.x && x <= el.x + w && y >= el.y && y <= el.y + h) return el;
+            }
+        }
+        return null;
     };
 
     const getCoordinates = (e: React.MouseEvent | MouseEvent) => {
@@ -345,6 +456,16 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             return;
         }
 
+        if (selectedTool === 'select') {
+            const el = getElementAt(x, y);
+            setSelectedElement(el);
+            if (el) {
+                setIsDrawing(true); // Reusing for "isMoving"
+                setLastPoint({ x, y });
+            }
+            return;
+        }
+
         setIsDrawing(true);
         const newEl: DrawElement = {
             type: selectedTool,
@@ -360,6 +481,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
+        const { x, y } = getCoordinates(e);
+
         if (isPanning && lastPoint) {
             const dx = e.clientX - lastPoint.x;
             const dy = e.clientY - lastPoint.y;
@@ -368,9 +491,24 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             return;
         }
 
-        if (!isDrawing || !currentElement) return;
+        if (selectedTool === 'select' && isDrawing && selectedElement && lastPoint) {
+            const dx = x - lastPoint.x;
+            const dy = y - lastPoint.y;
+            
+            const updatedEl = { ...selectedElement };
+            if (updatedEl.points) {
+                updatedEl.points = updatedEl.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+            }
+            if (updatedEl.x !== undefined) updatedEl.x += dx;
+            if (updatedEl.y !== undefined) updatedEl.y += dy;
+            
+            setElements(prev => prev.map(el => el === selectedElement ? updatedEl : el));
+            setSelectedElement(updatedEl);
+            setLastPoint({ x, y });
+            return;
+        }
 
-        const { x, y } = getCoordinates(e);
+        if (!isDrawing || !currentElement) return;
 
         if (['pen', 'eraser', 'highlighter'].includes(selectedTool)) {
             setCurrentElement({
@@ -394,12 +532,25 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             return;
         }
 
+        if (selectedTool === 'select') {
+            setIsDrawing(false);
+            setLastPoint(null);
+            return;
+        }
+
         if (!isDrawing || !currentElement) return;
         
         setElements([...elements, currentElement]);
         setCurrentElement(null);
         setIsDrawing(false);
         setRedoStack([]);
+    };
+
+    const deleteSelected = () => {
+        if (selectedElement) {
+            setElements(elements.filter(el => el !== selectedElement));
+            setSelectedElement(null);
+        }
     };
 
     const handleUndo = () => {
@@ -431,51 +582,65 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
     };
 
     const renderToolbar = () => (
-        <div className="flex bg-[#1e293b]/90 backdrop-blur-md p-2 rounded-2xl border border-white/10 shadow-2xl z-20 items-center gap-4">
-            <div className="flex gap-1 border-r border-white/10 pr-4">
-                <ToolButton icon={<Pencil size={20}/>} active={selectedTool === 'pen'} onClick={() => selectTool('pen')} title="Caneta" />
-                <ToolButton icon={<Highlighter size={20}/>} active={selectedTool === 'highlighter'} onClick={() => selectTool('highlighter')} title="Marca Texto" />
-                <ToolButton icon={<Eraser size={20}/>} active={selectedTool === 'eraser'} onClick={() => selectTool('eraser')} title="Borracha" />
-                <ToolButton icon={<Square size={20}/>} active={selectedTool === 'rect'} onClick={() => selectTool('rect')} title="Retângulo" />
-                <ToolButton icon={<Circle size={20}/>} active={selectedTool === 'circle'} onClick={() => selectTool('circle')} title="Círculo" />
-                <ToolButton icon={<Minus size={20}/>} active={selectedTool === 'line'} onClick={() => selectTool('line')} title="Linha" />
-            </div>
-
-            <div className="flex gap-1 border-r border-white/10 pr-4">
-                <ToolButton icon={<RulerIcon size={20}/>} active={selectedTool === 'ruler'} onClick={() => selectTool('ruler')} title="Régua" />
-                <ToolButton icon={<Compass size={20}/>} active={selectedTool === 'compass'} onClick={() => selectTool('compass')} title="Compasso" />
-                <ToolButton icon={<MousePointer2 size={20}/>} active={selectedTool === 'select'} onClick={() => selectTool('select')} title="Selecionar" />
-                <ToolButton icon={<Move size={20}/>} active={selectedTool === 'pan'} onClick={() => selectTool('pan')} title="Mover Tela" />
-            </div>
-            
-            <div className="flex items-center gap-2 px-2 border-r border-white/10 pr-4">
-                <div className="flex flex-wrap gap-1 max-w-[100px]">
-                    {['#ffffff', '#000000', '#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899', '#a855f7'].map(c => (
-                        <button 
-                            key={c}
-                            onClick={() => setColor(c)}
-                            className={`w-5 h-5 rounded-full border-2 ${color === c ? 'border-white' : 'border-transparent'}`}
-                            style={{ backgroundColor: c }}
-                        />
-                    ))}
+        <div 
+            className="fixed z-[100] transition-shadow duration-300"
+            style={{ 
+                left: `${toolbarPos.x}px`, 
+                top: `${toolbarPos.y}px`,
+                cursor: isDraggingToolbar ? 'grabbing' : 'default'
+            }}
+        >
+            <div className="bg-[#0f172a]/95 backdrop-blur-xl border border-slate-700/50 p-3 rounded-[2rem] shadow-2xl flex items-center gap-2 group">
+                {/* Drag Handle */}
+                <div 
+                    onMouseDown={handleToolbarMouseDown}
+                    className="p-2 cursor-grab active:cursor-grabbing hover:bg-white/5 rounded-full text-slate-500"
+                >
+                    <GripVertical size={20} />
                 </div>
-                <div className="flex flex-col gap-1 w-24">
-                    <input 
-                        type="range" 
-                        min="1" 
-                        max="100" 
-                        value={brushSize} 
-                        onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                        className="w-full accent-emerald-500"
-                    />
-                </div>
-            </div>
 
-            <div className="flex gap-1">
-                <ToolButton icon={<Undo size={20}/>} onClick={handleUndo} title="Desfazer" />
-                <ToolButton icon={<Redo size={20}/>} onClick={handleRedo} title="Refazer" />
-                <ToolButton icon={<Trash2 size={20}/>} onClick={clearCanvas} title="Limpar" className="text-red-400" />
-                <ToolButton icon={<Save size={20}/>} onClick={() => {}} title="Salvar Aula" className="text-emerald-400" />
+                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
+                    <ToolButton icon={<PenLine size={20} />} active={selectedTool === 'pen'} onClick={() => selectTool('pen')} title="Caneta" />
+                    <ToolButton icon={<Highlighter size={20} />} active={selectedTool === 'highlighter'} onClick={() => selectTool('highlighter')} title="Marca Texto" />
+                    <ToolButton icon={<Eraser size={20} />} active={selectedTool === 'eraser'} onClick={() => selectTool('eraser')} title="Borracha" />
+                </div>
+
+                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
+                    <ToolButton icon={<Square size={20} />} active={selectedTool === 'rect'} onClick={() => setSelectedTool('rect')} title="Retângulo" />
+                    <ToolButton icon={<Circle size={20} />} active={selectedTool === 'circle'} onClick={() => setSelectedTool('circle')} title="Círculo" />
+                    <ToolButton icon={<Minus size={20} />} active={selectedTool === 'line'} onClick={() => setSelectedTool('line')} title="Linha" />
+                </div>
+
+                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
+                    <ToolButton icon={<Type size={20} />} active={selectedTool === 'text'} onClick={() => setSelectedTool('text')} title="Texto" />
+                    <ToolButton icon={<RulerIcon size={20} />} active={selectedTool === 'ruler'} onClick={() => setSelectedTool('ruler')} title="Régua" />
+                    <ToolButton icon={<Compass size={20} />} active={selectedTool === 'compass'} onClick={() => setSelectedTool('compass')} title="Compasso" />
+                </div>
+
+                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
+                    <ToolButton icon={<MousePointer2 size={20} />} active={selectedTool === 'select'} onClick={() => setSelectedTool('select')} title="Selecionar" />
+                    <ToolButton icon={<Hand size={20} />} active={selectedTool === 'pan'} onClick={() => setSelectedTool('pan')} title="Mover Tela" />
+                    {selectedElement && (
+                        <ToolButton icon={<Trash2 size={20} />} onClick={deleteSelected} title="Deletar Selecionado" className="text-red-400 hover:bg-red-500/10" />
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
+                    <ToolButton icon={<Undo size={20} />} onClick={handleUndo} title="Desfazer" />
+                    <ToolButton icon={<Redo size={20} />} onClick={handleRedo} title="Refazer" />
+                    <ToolButton icon={<Trash size={20} />} onClick={clearCanvas} title="Limpar Tudo" />
+                </div>
+
+                <div className="flex items-center gap-3 px-2">
+                    <div className="flex flex-wrap gap-1 w-24">
+                        {['#ffffff', '#000000', '#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'].map(c => (
+                            <button key={c} onClick={() => setColor(c)} className={`w-5 h-5 rounded-full border border-white/10 transition-transform active:scale-95 ${color === c ? 'scale-125 shadow-lg' : ''}`} style={{ backgroundColor: c }} />
+                        ))}
+                    </div>
+                    <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} className="w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                </div>
+
+                <ToolButton icon={<Save size={20} />} onClick={() => {}} title="Salvar" className="bg-emerald-500 text-white ml-2 rounded-2xl px-6" />
             </div>
         </div>
     );
@@ -512,9 +677,7 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 </button>
             )}
 
-            <div className="absolute left-1/2 -translate-x-1/2 bottom-6 z-30">
-                {renderToolbar()}
-            </div>
+            {renderToolbar()}
 
             <div className="absolute right-6 bottom-6 flex items-center gap-3 bg-[#1e293b] p-2 rounded-xl border border-white/10 shadow-2xl z-20">
                 <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-2 hover:bg-white/5 rounded-lg text-gray-400"><ZoomOut size={18}/></button>
@@ -566,6 +729,39 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                     )}
                 </div>
             </div>
+            {showStartModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                    <div className="bg-[#0f172a] w-full max-w-lg rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 border-b border-slate-800">
+                            <h3 className="text-xl font-black text-white mb-1 uppercase tracking-tight">Iniciar Aula Digital</h3>
+                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Confirme a disciplina para carregar o layout</p>
+                        </div>
+                        <div className="p-8 space-y-4 max-h-[400px] overflow-y-auto">
+                            {disciplines.map(d => (
+                                <button
+                                    key={d.id}
+                                    onClick={() => {
+                                        setSelectedDiscipline(d);
+                                        setShowStartModal(false);
+                                    }}
+                                    className={`w-full p-6 text-left rounded-3xl border transition-all flex items-center justify-between group ${selectedDiscipline?.id === d.id ? 'bg-emerald-500 border-emerald-400' : 'bg-slate-800/40 border-slate-700/50 hover:border-emerald-500/50 hover:bg-emerald-500/5'}`}
+                                >
+                                    <div>
+                                        <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${selectedDiscipline?.id === d.id ? 'text-emerald-100' : 'text-emerald-500'}`}>Disciplina</div>
+                                        <div className={`text-lg font-black ${selectedDiscipline?.id === d.id ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>{d.displayName || d.name}</div>
+                                    </div>
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
+                                        <ArrowRight className={selectedDiscipline?.id === d.id ? 'text-white' : 'text-slate-500'} size={20} />
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="p-8 bg-slate-900/50 flex justify-end">
+                            <button onClick={() => setShowStartModal(false)} className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all">Pular</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -237,7 +237,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     try {
       const success = await SupabaseService.updateScheduledClassStatus(id, status);
       if (success) {
-        onShowToast(`Aula marcada como ${status === 'CANCELLED' ? 'Cancelada' : 'Faltosa'}`);
+        if (status === 'IN_PROGRESS') {
+          const cls = classes.find(c => c.id === id);
+          onShowToast('Aula iniciada!');
+          if (onViewChange && cls) {
+            onViewChange('WHITEBOARD', { classId: cls.id, disciplineId: cls.disciplineId || '' });
+          }
+        } else {
+          onShowToast(`Aula marcada como ${status === 'CANCELLED' ? 'Cancelada' : 'Faltosa'}`);
+        }
         fetchData();
       }
     } catch (error) {
