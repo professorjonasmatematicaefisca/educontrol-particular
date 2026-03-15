@@ -493,7 +493,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       </div>
                       {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
                         c.status === 'SCHEDULED' ? (
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2">
                             <button 
                               onClick={() => {
                                 // If class has disciplineId already, start immediately
@@ -506,9 +506,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                                   setShowCompletionModal(true);
                                 }
                               }}
-                              className="flex-1 py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                              className="w-full py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
                             >
                               <ArrowRight size={16} /> Dar Início à Aula
+                            </button>
+                            <button 
+                              onClick={() => openRescheduleModal(c)}
+                              className="w-full py-2 bg-white/10 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+                            >
+                              <History size={14} /> Remarcar Aula
                             </button>
                           </div>
                         ) : (

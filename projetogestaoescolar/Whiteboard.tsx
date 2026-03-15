@@ -29,24 +29,28 @@ import {
     Hand,
     Trash,
     PenLine,
-    ArrowRight
+    ArrowRight,
+    CheckCircle
 } from 'lucide-react';
 import { UserRole, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
 import * as pdfjs from 'pdfjs-dist';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // pdfjs worker setup
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface WhiteboardProps {
     onShowToast: (msg: string) => void;
+    onClose: () => void;
     userEmail: string;
     userRole: UserRole;
     activeClassId?: string;
     initialDisciplineId?: string;
 }
 
-type Tool = 'pen' | 'eraser' | 'highlighter' | 'text' | 'rect' | 'circle' | 'line' | 'select' | 'pan' | 'compass' | 'ruler' | 'image';
+type Tool = 'pen' | 'eraser' | 'highlighter' | 'text' | 'rect' | 'circle' | 'line' | 'select' | 'lasso' | 'pan' | 'compass' | 'ruler' | 'image';
 
 interface Point {
     x: number;
@@ -67,7 +71,7 @@ interface DrawElement {
     rotation?: number;
 }
 
-export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, userRole, activeClassId, initialDisciplineId }) => {
+export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, userEmail, userRole, activeClassId, initialDisciplineId }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const bgCanvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -80,11 +84,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
     const [selectedDiscipline, setSelectedDiscipline] = useState<Discipline | null>(null);
     
-    // History for Undo/Redo
-    const [elements, setElements] = useState<DrawElement[]>([]);
-    const [redoStack, setRedoStack] = useState<DrawElement[]>([]);
-    const [selectedElement, setSelectedElement] = useState<DrawElement | null>(null);
-    const [toolbarPos, setToolbarPos] = useState({ x: window.innerWidth / 2 - 250, y: window.innerHeight - 150 });
+    // History for Undo/Redo - Multi-page support
+    const [pages, setPages] = useState<DrawElement[][]>([[]]);
+    const [currentPageIndex, setCurrentPageIndex] = useState(0);
+    const [redoStacks, setRedoStacks] = useState<DrawElement[][]>([[]]);
+    
+    const elements = pages[currentPageIndex] || [];
+    const redoStack = redoStacks[currentPageIndex] || [];
+
+    const [selectedElements, setSelectedElements] = useState<DrawElement[]>([]);
+    const selectedElement = selectedElements[0] || null;
+    const [toolbarPos, setToolbarPos] = useState({ x: 20, y: 150 });
     const [isDraggingToolbar, setIsDraggingToolbar] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     
@@ -127,7 +137,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                                 width: 300,
                                 height: 300
                             };
-                            setElements(prev => [...prev, newEl]);
+                            setPages(prev => {
+                                const newPages = [...prev];
+                                newPages[currentPageIndex] = [...(newPages[currentPageIndex] || []), newEl];
+                                return newPages;
+                            });
                             onShowToast('Imagem colada com sucesso!');
                         };
                         reader.readAsDataURL(blob);
@@ -142,15 +156,137 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                             color,
                             size: 24
                         };
-                        setElements(prev => [...prev, newEl]);
+                        setPages(prev => {
+                            const newPages = [...prev];
+                            newPages[currentPageIndex] = [...(newPages[currentPageIndex] || []), newEl];
+                            return newPages;
+                        });
                         onShowToast('Texto colado com sucesso!');
                     });
                 }
             }
         };
 
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                handleUndo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
+        };
+
+        const handleWheel = (e: WheelEvent) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                setZoom(z => Math.max(0.2, Math.min(5, z + delta)));
+            }
+        };
+
         window.addEventListener('paste', handlePaste);
-        return () => window.removeEventListener('paste', handlePaste);
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('wheel', handleWheel, { passive: false });
+        
+        return () => {
+            window.removeEventListener('paste', handlePaste);
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('wheel', handleWheel);
+        };
+    };
+
+    const handleSave = async (isAuto = false) => {
+        if (!activeClassId) {
+            onShowToast('Inicie uma aula para salvar!');
+            return false;
+        }
+
+        try {
+            onShowToast(isAuto ? 'Finalizando e salvando aula...' : 'Gerando PDF da aula...');
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const canvas = canvasRef.current;
+            const bgCanvas = bgCanvasRef.current;
+            if (!canvas || !bgCanvas) return false;
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            // Create a temporary high-res canvas for flat rendering
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tCtx = tempCanvas.getContext('2d')!;
+
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+                
+                tCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // 1. Draw Background
+                if (selectedDiscipline?.whiteboardBackgroundUrl) {
+                    try {
+                        const loadingTask = pdfjs.getDocument({
+                            url: selectedDiscipline.whiteboardBackgroundUrl,
+                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.6.172/cmaps/',
+                            cMapPacked: true,
+                        });
+                        const pdfDoc = await loadingTask.promise;
+                        const page = await pdfDoc.getPage(1);
+                        const viewport = page.getViewport({ scale: tempCanvas.width / page.getViewport({scale: 1}).width });
+                        await page.render({ canvasContext: tCtx, viewport }).promise;
+                    } catch (e) {
+                        renderGrid(tCtx, tempCanvas.width, tempCanvas.height);
+                    }
+                } else {
+                    renderGrid(tCtx, tempCanvas.width, tempCanvas.height);
+                }
+
+                // 2. Draw elements for this page
+                pages[i].forEach(el => drawElement(tCtx, el));
+
+                // 3. Add to PDF
+                const imgData = tempCanvas.toDataURL('image/jpeg', 0.85);
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            const pdfBlob = pdf.output('blob');
+            const file = new File([pdfBlob], `aula_${activeClassId}_${Date.now()}.pdf`, { type: 'application/pdf' });
+            
+            const pdfUrl = await SupabaseService.uploadPDF(file);
+            if (pdfUrl) {
+                const success = await SupabaseService.updateScheduledClassStatus(activeClassId, 'COMPLETED', { pdfUrl });
+                if (success) {
+                    onShowToast('Aula salva e concluída com sucesso!');
+                    return true;
+                } else {
+                    onShowToast('PDF enviado, mas erro ao vincular à aula.');
+                    return false;
+                }
+            } else {
+                onShowToast('Erro ao enviar PDF para o servidor.');
+                return false;
+            }
+        } catch (err) {
+            console.error("Error saving whiteboard:", err);
+            onShowToast('Erro ao salvar aula.');
+            return false;
+        }
+    };
+
+    const handleFinishClass = async () => {
+        if (confirm('Deseja realmente finalizar a aula? A lousa será salva e vinculada ao aluno automaticamente.')) {
+            const saved = await handleSave(true);
+            if (saved) {
+                onClose();
+            }
+        }
     };
 
     const loadDisciplines = async () => {
@@ -215,9 +351,11 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
         
         if (selectedDiscipline?.whiteboardBackgroundUrl) {
             try {
-                // Use a proxy or direct URL depends on CORS, but we'll try direct first
+                // Improved PDF loading
                 const loadingTask = pdfjs.getDocument({
                     url: selectedDiscipline.whiteboardBackgroundUrl,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.6.172/cmaps/',
+                    cMapPacked: true,
                 });
                 const pdf = await loadingTask.promise;
                 const page = await pdf.getPage(1);
@@ -393,7 +531,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
         }
 
         // Highlight if selected
-        if (selectedElement === el) {
+        const isSelected = selectedElements.includes(el);
+        if (isSelected) {
             ctx.strokeStyle = '#10b981'; // emerald-500
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
@@ -401,12 +540,32 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             if (el.x !== undefined && el.y !== undefined) {
                 const w = el.width || 0;
                 const h = el.height || 0;
-                ctx.strokeRect(el.x - 5, el.y - 5, w + 10, h + 10);
+                ctx.strokeRect(el.x - 5, el.y - 5, (w || 10) + 10, (h || 10) + 10);
+            } else if (el.points && el.points.length > 0) {
+                // For lines/pen, find bounds
+                const minX = Math.min(...el.points.map(p => p.x));
+                const maxX = Math.max(...el.points.map(p => p.x));
+                const minY = Math.min(...el.points.map(p => p.y));
+                const maxY = Math.max(...el.points.map(p => p.y));
+                ctx.strokeRect(minX - 5, minY - 5, (maxX - minX) + 10, (maxY - minY) + 10);
             }
             ctx.setLineDash([]);
         }
 
         ctx.restore();
+    };
+
+    const isPointInLasso = (point: Point, lassoPoints: Point[]) => {
+        // Point-in-polygon (ray casting)
+        let inside = false;
+        for (let i = 0, j = lassoPoints.length - 1; i < lassoPoints.length; j = i++) {
+            const xi = lassoPoints[i].x, yi = lassoPoints[i].y;
+            const xj = lassoPoints[j].x, yj = lassoPoints[j].y;
+            const intersect = ((yi > point.y) !== (yj > point.y))
+                && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     };
 
     const isPointNearLine = (x: number, y: number, p1: {x: number, y: number}, p2: {x: number, y: number}, threshold: number) => {
@@ -458,11 +617,22 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
 
         if (selectedTool === 'select') {
             const el = getElementAt(x, y);
-            setSelectedElement(el);
+            setSelectedElements(el ? [el] : []);
             if (el) {
                 setIsDrawing(true); // Reusing for "isMoving"
                 setLastPoint({ x, y });
             }
+            return;
+        }
+
+        if (selectedTool === 'lasso') {
+            setIsDrawing(true);
+            setCurrentElement({
+                type: 'lasso',
+                points: [{ x, y }],
+                color: '#10b981',
+                size: 1
+            });
             return;
         }
 
@@ -491,20 +661,44 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             return;
         }
 
-        if (selectedTool === 'select' && isDrawing && selectedElement && lastPoint) {
+        if (selectedTool === 'select' && isDrawing && selectedElements.length > 0 && lastPoint) {
             const dx = x - lastPoint.x;
             const dy = y - lastPoint.y;
             
-            const updatedEl = { ...selectedElement };
-            if (updatedEl.points) {
-                updatedEl.points = updatedEl.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-            }
-            if (updatedEl.x !== undefined) updatedEl.x += dx;
-            if (updatedEl.y !== undefined) updatedEl.y += dy;
-            
-            setElements(prev => prev.map(el => el === selectedElement ? updatedEl : el));
-            setSelectedElement(updatedEl);
+            setPages(prev => {
+                const newPages = [...prev];
+                const currentPage = [...newPages[currentPageIndex]];
+                
+                selectedElements.forEach(selEl => {
+                    const idx = currentPage.findIndex(el => el === selEl);
+                    if (idx !== -1) {
+                        const updatedEl = { ...selEl };
+                        if (updatedEl.points) {
+                            updatedEl.points = updatedEl.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+                        }
+                        if (updatedEl.x !== undefined) updatedEl.x += dx;
+                        if (updatedEl.y !== undefined) updatedEl.y += dy;
+                        
+                        currentPage[idx] = updatedEl;
+                        
+                        // Update selectedElements as well
+                        setSelectedElements(prevSel => prevSel.map(p => p === selEl ? updatedEl : p));
+                    }
+                });
+                
+                newPages[currentPageIndex] = currentPage;
+                return newPages;
+            });
+
             setLastPoint({ x, y });
+            return;
+        }
+
+        if (selectedTool === 'lasso' && isDrawing && currentElement) {
+            setCurrentElement({
+                ...currentElement,
+                points: [...(currentElement.points || []), { x, y }]
+            });
             return;
         }
 
@@ -538,40 +732,105 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             return;
         }
 
+        if (selectedTool === 'lasso') {
+            if (currentElement?.points) {
+                const found = elements.filter(el => {
+                    if (el.x !== undefined && el.y !== undefined) {
+                        return isPointInLasso({ x: el.x, y: el.y }, currentElement.points!);
+                    }
+                    if (el.points && el.points.length > 0) {
+                        return el.points.some(p => isPointInLasso(p, currentElement.points!));
+                    }
+                    return false;
+                });
+                setSelectedElements(found);
+            }
+            setCurrentElement(null);
+            setIsDrawing(false);
+            return;
+        }
+
         if (!isDrawing || !currentElement) return;
         
-        setElements([...elements, currentElement]);
+        setPages(prev => {
+            const newPages = [...prev];
+            newPages[currentPageIndex] = [...(newPages[currentPageIndex] || []), currentElement];
+            return newPages;
+        });
         setCurrentElement(null);
         setIsDrawing(false);
-        setRedoStack([]);
+        setRedoStacks(prev => {
+            const newStacks = [...prev];
+            newStacks[currentPageIndex] = [];
+            return newStacks;
+        });
     };
 
     const deleteSelected = () => {
-        if (selectedElement) {
-            setElements(elements.filter(el => el !== selectedElement));
-            setSelectedElement(null);
+        if (selectedElements.length > 0) {
+            setPages(prev => {
+                const newPages = [...prev];
+                newPages[currentPageIndex] = newPages[currentPageIndex].filter(el => !selectedElements.includes(el));
+                return newPages;
+            });
+            setSelectedElements([]);
         }
     };
 
     const handleUndo = () => {
         if (elements.length === 0) return;
         const last = elements[elements.length - 1];
-        setRedoStack([...redoStack, last]);
-        setElements(elements.slice(0, -1));
+        
+        setRedoStacks(prev => {
+            const newStacks = [...prev];
+            newStacks[currentPageIndex] = [...(newStacks[currentPageIndex] || []), last];
+            return newStacks;
+        });
+
+        setPages(prev => {
+            const newPages = [...prev];
+            newPages[currentPageIndex] = newPages[currentPageIndex].slice(0, -1);
+            return newPages;
+        });
     };
 
     const handleRedo = () => {
         if (redoStack.length === 0) return;
         const last = redoStack[redoStack.length - 1];
-        setElements([...elements, last]);
-        setRedoStack(redoStack.slice(0, -1));
+
+        setPages(prev => {
+            const newPages = [...prev];
+            newPages[currentPageIndex] = [...(newPages[currentPageIndex] || []), last];
+            return newPages;
+        });
+
+        setRedoStacks(prev => {
+            const newStacks = [...prev];
+            newStacks[currentPageIndex] = newStacks[currentPageIndex].slice(0, -1);
+            return newStacks;
+        });
     };
 
     const clearCanvas = () => {
         if (confirm('Limpar toda a lousa?')) {
-            setElements([]);
-            setRedoStack([]);
+            setPages(prev => {
+                const newPages = [...prev];
+                newPages[currentPageIndex] = [];
+                return newPages;
+            });
+            setRedoStacks(prev => {
+                const newStacks = [...prev];
+                newStacks[currentPageIndex] = [];
+                return newStacks;
+            });
         }
+    };
+
+    const addPage = () => {
+        setPages([...pages, []]);
+        setRedoStacks([...redoStacks, []]);
+        setCurrentPageIndex(pages.length);
+        onShowToast('Nova página adicionada!');
     };
 
     const selectTool = (tool: DrawElement['type']) => {
@@ -590,57 +849,97 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
                 cursor: isDraggingToolbar ? 'grabbing' : 'default'
             }}
         >
-            <div className="bg-[#0f172a]/95 backdrop-blur-xl border border-slate-700/50 p-3 rounded-[2rem] shadow-2xl flex items-center gap-2 group">
+            <div className="bg-[#0f172a]/95 backdrop-blur-xl border border-slate-700/50 p-4 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 group">
                 {/* Drag Handle */}
                 <div 
                     onMouseDown={handleToolbarMouseDown}
-                    className="p-2 cursor-grab active:cursor-grabbing hover:bg-white/5 rounded-full text-slate-500"
+                    className="w-full flex justify-center p-1 cursor-grab active:cursor-grabbing hover:bg-white/5 rounded-t-2xl text-slate-500 border-b border-slate-800 pb-2"
                 >
-                    <GripVertical size={20} />
+                    <GripVertical size={20} className="rotate-90" />
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
-                    <ToolButton icon={<PenLine size={20} />} active={selectedTool === 'pen'} onClick={() => selectTool('pen')} title="Caneta" />
-                    <ToolButton icon={<Highlighter size={20} />} active={selectedTool === 'highlighter'} onClick={() => selectTool('highlighter')} title="Marca Texto" />
-                    <ToolButton icon={<Eraser size={20} />} active={selectedTool === 'eraser'} onClick={() => selectTool('eraser')} title="Borracha" />
+                <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
+                    <ToolButton icon={<PenLine size={24} />} active={selectedTool === 'pen'} onClick={() => selectTool('pen')} title="Caneta (Ctrl+P)" />
+                    <ToolButton icon={<Highlighter size={24} />} active={selectedTool === 'highlighter'} onClick={() => selectTool('highlighter')} title="Marca Texto" />
+                    <ToolButton icon={<Eraser size={24} />} active={selectedTool === 'eraser'} onClick={() => selectTool('eraser')} title="Borracha" />
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
-                    <ToolButton icon={<Square size={20} />} active={selectedTool === 'rect'} onClick={() => setSelectedTool('rect')} title="Retângulo" />
-                    <ToolButton icon={<Circle size={20} />} active={selectedTool === 'circle'} onClick={() => setSelectedTool('circle')} title="Círculo" />
-                    <ToolButton icon={<Minus size={20} />} active={selectedTool === 'line'} onClick={() => setSelectedTool('line')} title="Linha" />
+                <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
+                    <ToolButton icon={<Square size={22} />} active={selectedTool === 'rect'} onClick={() => setSelectedTool('rect')} title="Retângulo" />
+                    <ToolButton icon={<Circle size={22} />} active={selectedTool === 'circle'} onClick={() => setSelectedTool('circle')} title="Círculo" />
+                    <ToolButton icon={<Minus size={22} />} active={selectedTool === 'line'} onClick={() => setSelectedTool('line')} title="Linha" />
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
-                    <ToolButton icon={<Type size={20} />} active={selectedTool === 'text'} onClick={() => setSelectedTool('text')} title="Texto" />
-                    <ToolButton icon={<RulerIcon size={20} />} active={selectedTool === 'ruler'} onClick={() => setSelectedTool('ruler')} title="Régua" />
-                    <ToolButton icon={<Compass size={20} />} active={selectedTool === 'compass'} onClick={() => setSelectedTool('compass')} title="Compasso" />
+                <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
+                    <ToolButton icon={<Type size={22} />} active={selectedTool === 'text'} onClick={() => setSelectedTool('text')} title="Texto" />
+                    <ToolButton icon={<RulerIcon size={22} />} active={selectedTool === 'ruler'} onClick={() => setSelectedTool('ruler')} title="Régua" />
+                    <ToolButton icon={<Compass size={22} />} active={selectedTool === 'compass'} onClick={() => setSelectedTool('compass')} title="Compasso" />
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
-                    <ToolButton icon={<MousePointer2 size={20} />} active={selectedTool === 'select'} onClick={() => setSelectedTool('select')} title="Selecionar" />
-                    <ToolButton icon={<Hand size={20} />} active={selectedTool === 'pan'} onClick={() => setSelectedTool('pan')} title="Mover Tela" />
-                    {selectedElement && (
-                        <ToolButton icon={<Trash2 size={20} />} onClick={deleteSelected} title="Deletar Selecionado" className="text-red-400 hover:bg-red-500/10" />
+                <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
+                    <ToolButton icon={<MousePointer2 size={22} />} active={selectedTool === 'select'} onClick={() => setSelectedTool('select')} title="Selecionar" />
+                    <ToolButton icon={<ArrowRight size={22} className="rotate-45" />} active={selectedTool === 'lasso'} onClick={() => setSelectedTool('lasso')} title="Laço de Seleção" />
+                    <ToolButton icon={<Hand size={22} />} active={selectedTool === 'pan'} onClick={() => setSelectedTool('pan')} title="Mover Tela" />
+                    {selectedElements.length > 0 && (
+                        <ToolButton icon={<Trash2 size={22} />} onClick={deleteSelected} title="Deletar Selecionado" className="text-red-400 hover:bg-red-500/10" />
                     )}
                 </div>
 
-                <div className="flex items-center gap-1 border-r border-slate-800 pr-2">
-                    <ToolButton icon={<Undo size={20} />} onClick={handleUndo} title="Desfazer" />
-                    <ToolButton icon={<Redo size={20} />} onClick={handleRedo} title="Refazer" />
-                    <ToolButton icon={<Trash size={20} />} onClick={clearCanvas} title="Limpar Tudo" />
+                <div className="flex flex-col items-center gap-2 border-b border-slate-800 pb-4">
+                    <ToolButton icon={<Undo size={22} />} onClick={handleUndo} title="Desfazer (Ctrl+Z)" />
+                    <ToolButton icon={<Redo size={22} />} onClick={handleRedo} title="Refazer (Ctrl+Y)" />
+                    <ToolButton icon={<Trash size={22} />} onClick={clearCanvas} title="Limpar Tudo" />
                 </div>
 
-                <div className="flex items-center gap-3 px-2">
-                    <div className="flex flex-wrap gap-1 w-24">
-                        {['#ffffff', '#000000', '#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'].map(c => (
-                            <button key={c} onClick={() => setColor(c)} className={`w-5 h-5 rounded-full border border-white/10 transition-transform active:scale-95 ${color === c ? 'scale-125 shadow-lg' : ''}`} style={{ backgroundColor: c }} />
+                <div className="flex flex-col items-center gap-4 py-2">
+                    <div className="grid grid-cols-2 gap-2">
+                        {['#ffffff', '#ef4444', '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#000000'].map(c => (
+                            <button key={c} onClick={() => setColor(c)} className={`w-6 h-6 rounded-full border border-white/10 transition-transform active:scale-95 ${color === c ? 'scale-125 shadow-lg border-white' : ''}`} style={{ backgroundColor: c }} />
                         ))}
                     </div>
-                    <input type="range" min="1" max="50" value={brushSize} onChange={(e) => setBrushSize(parseInt(e.target.value))} className="w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                    
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase">Tamanho</div>
+                        <div className="flex gap-1 mb-2">
+                            {[2, 5, 10, 20].map(sz => (
+                                <button 
+                                    key={sz} 
+                                    onClick={() => setBrushSize(sz)}
+                                    className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold transition-all border ${brushSize === sz ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                                >
+                                    {sz}
+                                </button>
+                            ))}
+                        </div>
+                        <input 
+                            type="range" 
+                            min="1" 
+                            max="50" 
+                            value={brushSize} 
+                            onChange={(e) => setBrushSize(parseInt(e.target.value))} 
+                            className="w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 -rotate-90 my-8" 
+                        />
+                        <div className="text-xs font-mono text-emerald-500">{brushSize}px</div>
+                    </div>
                 </div>
 
-                <ToolButton icon={<Save size={20} />} onClick={() => {}} title="Salvar" className="bg-emerald-500 text-white ml-2 rounded-2xl px-6" />
+                <div className="flex flex-col gap-2 w-full">
+                    <button 
+                        onClick={() => handleSave()} 
+                        title="Salvar PDF (Ctrl+S)"
+                        className="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-2xl transition-all flex items-center justify-center gap-2"
+                    >
+                        <Save size={20} />
+                    </button>
+                    <button 
+                        onClick={handleFinishClass} 
+                        title="Finalizar Aula e Salvar"
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-white p-4 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <CheckCircle size={24} />
+                        <span className="text-[10px] font-black uppercase">Concluir</span>
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -680,11 +979,17 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, userEmail, 
             {renderToolbar()}
 
             <div className="absolute right-6 bottom-6 flex items-center gap-3 bg-[#1e293b] p-2 rounded-xl border border-white/10 shadow-2xl z-20">
-                <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-2 hover:bg-white/5 rounded-lg text-gray-400"><ZoomOut size={18}/></button>
+                <div className="flex items-center gap-1 bg-white/5 rounded-lg px-2 mr-2">
+                    <button onClick={() => setCurrentPageIndex(p => Math.max(0, p - 1))} disabled={currentPageIndex === 0} className="p-2 text-gray-400 hover:text-white disabled:opacity-30"><ChevronLeft size={18}/></button>
+                    <span className="text-xs font-bold text-emerald-500 px-2">Pág {currentPageIndex + 1} / {pages.length}</span>
+                    <button onClick={() => setCurrentPageIndex(p => Math.min(pages.length - 1, p + 1))} disabled={currentPageIndex === pages.length - 1} className="p-2 text-gray-400 hover:text-white disabled:opacity-30"><ChevronRight size={18}/></button>
+                    <button onClick={addPage} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg ml-1" title="Nova Página"><Maximize2 size={18}/></button>
+                </div>
+                <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 hover:bg-white/5 rounded-lg text-gray-400"><ZoomOut size={18}/></button>
                 <span className="text-xs font-mono text-gray-400 w-12 text-center">{Math.round(zoom * 100)}%</span>
-                <button onClick={() => setZoom(z => Math.min(3, z + 0.1))} className="p-2 hover:bg-white/5 rounded-lg text-gray-400"><ZoomIn size={18}/></button>
+                <button onClick={() => setZoom(z => Math.min(5, z + 0.1))} className="p-2 hover:bg-white/5 rounded-lg text-gray-400"><ZoomIn size={18}/></button>
                 <div className="w-px h-6 bg-white/10 mx-1"></div>
-                <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400" title="A4 Retrato"><Maximize2 size={18}/></button>
+                <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400" title="Reiniciar Zoom" onClick={() => { setZoom(1); setPan({x:0, y:0}); }}><Minimize2 size={18}/></button>
             </div>
 
             <div 

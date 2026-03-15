@@ -206,6 +206,7 @@ function App() {
         userRole={userRole!} 
         activeClassId={activeWhiteboardContext?.classId}
         initialDisciplineId={activeWhiteboardContext?.disciplineId}
+        onClose={() => handleViewChange('CALENDAR')}
       />;
       default: return <Dashboard onNavigateToStudent={() => {}} />;
     }
