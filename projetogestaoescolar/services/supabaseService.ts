@@ -989,7 +989,8 @@ export const SupabaseService = {
         const disciplines = data.map((d: any) => ({
             id: d.id,
             name: d.name,
-            displayName: d.display_name
+            displayName: d.display_name,
+            whiteboardBackgroundUrl: d.whiteboard_background_url
         }));
 
         await offlineService.setCache('disciplines', disciplines);
@@ -1243,7 +1244,8 @@ export const SupabaseService = {
     async createDiscipline(discipline: Omit<Discipline, 'id'>): Promise<boolean> {
         const { error } = await supabase.from('disciplines').insert({
             name: discipline.name,
-            display_name: discipline.displayName
+            display_name: discipline.displayName,
+            whiteboard_background_url: discipline.whiteboardBackgroundUrl
         });
 
         if (error) {
@@ -1258,7 +1260,8 @@ export const SupabaseService = {
             .from('disciplines')
             .update({
                 name: discipline.name,
-                display_name: discipline.displayName
+                display_name: discipline.displayName,
+                whiteboard_background_url: discipline.whiteboardBackgroundUrl
             })
             .eq('id', discipline.id);
 

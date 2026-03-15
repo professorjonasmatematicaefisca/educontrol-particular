@@ -11,6 +11,7 @@ import { CalendarView } from './CalendarView.tsx';
 import { FinancialView } from './FinancialView.tsx';
 import { SimuladoView } from './SimuladoView.tsx';
 import { CoursesView } from './CoursesView.tsx';
+import { Whiteboard } from './Whiteboard';
 import { UserRole, ViewState } from './types';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -195,6 +196,7 @@ function App() {
       case 'ADMIN': return <AdminPanel onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SETTINGS': return <SettingsView userEmail={userEmail} userRole={userRole!} onShowToast={showToast} />;
       case 'COURSES': return <CoursesView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+      case 'WHITEBOARD': return <Whiteboard onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       default: return <Dashboard onNavigateToStudent={() => {}} />;
     }
   };

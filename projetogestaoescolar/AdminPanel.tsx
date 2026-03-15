@@ -85,7 +85,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
         assignments: [] as TeacherClassAssignment[]
     });
     const [classForm, setClassForm] = useState({ name: '', period: 'Matutino', disciplineIds: [] as string[] });
-    const [disciplineForm, setDisciplineForm] = useState({ name: '', displayName: '' });
+    const [disciplineForm, setDisciplineForm] = useState({ name: '', displayName: '', whiteboardBackgroundUrl: '' });
 
     // Deactivation State
     const [showDeactivateModal, setShowDeactivateModal] = useState(false);
@@ -643,12 +643,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
             success = await SupabaseService.updateDiscipline({
                 id: editingDisciplineId,
                 name: disciplineForm.name,
-                displayName: finalDisplayName
+                displayName: finalDisplayName,
+                whiteboardBackgroundUrl: disciplineForm.whiteboardBackgroundUrl
             });
         } else {
             success = await SupabaseService.createDiscipline({
                 name: disciplineForm.name,
-                displayName: finalDisplayName
+                displayName: finalDisplayName,
+                whiteboardBackgroundUrl: disciplineForm.whiteboardBackgroundUrl
             });
         }
 
@@ -656,7 +658,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
             onShowToast(editingDisciplineId ? 'Disciplina atualizada com sucesso!' : 'Disciplina cadastrada com sucesso!');
             setShowDisciplineModal(false);
             setEditingDisciplineId(null);
-            setDisciplineForm({ name: '', displayName: '' });
+            setDisciplineForm({ name: '', displayName: '', whiteboardBackgroundUrl: '' });
             loadData();
         } else {
             onShowToast(editingDisciplineId ? 'Erro ao atualizar disciplina' : 'Erro ao cadastrar disciplina');
@@ -667,7 +669,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
         setEditingDisciplineId(disc.id);
         setDisciplineForm({
             name: disc.name,
-            displayName: disc.displayName || ''
+            displayName: disc.displayName || '',
+            whiteboardBackgroundUrl: disc.whiteboardBackgroundUrl || ''
         });
         setShowDisciplineModal(true);
     };
@@ -1873,7 +1876,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                         <div className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 max-w-md w-full">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-bold text-white">{editingDisciplineId ? 'Editar Disciplina' : 'Cadastrar Disciplina'}</h2>
-                                <button onClick={() => { setShowDisciplineModal(false); setEditingDisciplineId(null); setDisciplineForm({ name: '', displayName: '' }); }} className="text-gray-400 hover:text-white">
+                                <button onClick={() => { setShowDisciplineModal(false); setEditingDisciplineId(null); setDisciplineForm({ name: '', displayName: '', whiteboardBackgroundUrl: '' }); }} className="text-gray-400 hover:text-white">
                                     <X size={24} />
                                 </button>
                             </div>
@@ -1907,6 +1910,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
                                         placeholder="Como aparecerá nos registros..."
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">PDF de Fundo da Lousa (A4)</label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="text"
+                                            value={disciplineForm.whiteboardBackgroundUrl || ''}
+                                            readOnly
+                                            className="flex-1 bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white text-xs whitespace-nowrap overflow-hidden text-ellipsis"
+                                            placeholder="Nenhum PDF selecionado"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'application/pdf';
+                                                input.onchange = async (e) => {
+                                                    const file = (e.target as HTMLInputElement).files?.[0];
+                                                    if (file) {
+                                                        const url = await SupabaseService.uploadPhoto(file, 'whiteboard');
+                                                        if (url) {
+                                                            setDisciplineForm({ ...disciplineForm, whiteboardBackgroundUrl: url });
+                                                            onShowToast('PDF de fundo carregado com sucesso!');
+                                                        } else {
+                                                            onShowToast('Erro ao carregar PDF');
+                                                        }
+                                                    }
+                                                };
+                                                input.click();
+                                            }}
+                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-all border border-white/10"
+                                        >
+                                            <Upload size={18} />
+                                        </button>
+                                        {disciplineForm.whiteboardBackgroundUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setDisciplineForm({ ...disciplineForm, whiteboardBackgroundUrl: '' })}
+                                                className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-all border border-red-500/20"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <button

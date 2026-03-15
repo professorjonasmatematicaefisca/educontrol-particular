@@ -113,6 +113,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { view: 'FINANCIAL', icon: DollarSign, label: 'Financeiro' },
     { view: 'SIMULADO', icon: FileCheck, label: 'Simulados' },
     { view: 'COURSES', icon: BookOpen, label: 'Cursos' },
+    { view: 'WHITEBOARD', icon: FileText, label: 'Lousa Digital' },
   ] as const;
 
   const allowedViews = rolePermissions[role] || [];

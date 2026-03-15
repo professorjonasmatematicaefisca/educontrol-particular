@@ -46,6 +46,7 @@ export interface Discipline {
   id: string;
   name: string; // e.g. "Matemática 9º EFII"
   displayName?: string; // e.g. "Matemática"
+  whiteboardBackgroundUrl?: string; // PDF A4 background for the whiteboard
 }
 
 export interface Student {
@@ -231,7 +232,7 @@ export interface SimuladoAttempt {
   status: 'IN_PROGRESS' | 'COMPLETED';
 }
 
-export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES';
+export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES' | 'WHITEBOARD';
 
 export interface RequestItem {
   id: string;
