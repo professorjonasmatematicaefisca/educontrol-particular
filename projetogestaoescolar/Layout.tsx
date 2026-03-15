@@ -99,8 +99,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Define allowed views per role
   const rolePermissions: Record<UserRole, ViewState[]> = {
-    [UserRole.COORDINATOR]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'ADMIN', 'SETTINGS'],
-    [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'SETTINGS'],
+    [UserRole.COORDINATOR]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'WHITEBOARD', 'ADMIN', 'SETTINGS'],
+    [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'WHITEBOARD', 'SETTINGS'],
     [UserRole.MONITOR]: ['DASHBOARD', 'SETTINGS'],
     [UserRole.STUDENT]: ['DASHBOARD', 'SIMULADO', 'CALENDAR', 'COURSES', 'SETTINGS'],
     [UserRole.PARENT]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'COURSES', 'SETTINGS'],

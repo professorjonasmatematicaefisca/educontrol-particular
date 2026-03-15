@@ -1067,7 +1067,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         <BookOpen size={32} />
                                     </div>
                                     <h3 className="text-white font-bold text-lg uppercase mb-1">{discipline.displayName || discipline.name}</h3>
-                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest truncate max-w-full">{discipline.name}</p>
+                                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest truncate max-w-full mb-2">{discipline.name}</p>
+                                    
+                                    {discipline.whiteboardBackgroundUrl ? (
+                                        <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">
+                                            <FileText size={10} />
+                                            <span>PDF Ativo</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-1 text-[10px] text-gray-600 font-bold bg-gray-800/20 px-2 py-0.5 rounded-full border border-gray-800">
+                                            <CloudOff size={10} />
+                                            <span>Sem PDF</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-6 flex justify-center gap-3">
