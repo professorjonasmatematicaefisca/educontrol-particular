@@ -1752,6 +1752,15 @@ export const SupabaseService = {
         return !error;
     },
 
+    async updateScheduledClassDateTime(id: string, date: string, startTime: string, endTime: string): Promise<boolean> {
+        const { error } = await supabase.from('scheduled_classes').update({
+            class_date: date,
+            start_time: startTime,
+            end_time: endTime
+        }).eq('id', id);
+        return !error;
+    },
+
     // --- SIMULADOS ---
     async getSimulados(): Promise<Simulado[]> {
         const { data, error } = await supabase.from('simulados').select('*');

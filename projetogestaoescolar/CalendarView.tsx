@@ -113,9 +113,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     }
   };
 
+  const isConflict = (date: string, start: string, end: string, excludeId?: string) => {
+    return classes.some(c => 
+      c.id !== excludeId && 
+      c.classDate === date && 
+      c.status !== 'CANCELLED' &&
+      (start < c.endTime && end > c.startTime)
+    );
+  };
+
   const handleCreateClass = async () => {
     if (!newClass.studentId || !newClass.classDate || !newClass.startTime) {
       onShowToast('Preencha os campos obrigatórios');
+      return;
+    }
+
+    if (isConflict(newClass.classDate, newClass.startTime, newClass.endTime || '')) {
+      onShowToast('Já existe uma aula agendada neste horário');
       return;
     }
 
@@ -204,16 +218,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
 
+    if (isConflict(rescheduleData.date, rescheduleData.startTime, rescheduleData.endTime, selectedClass.id)) {
+      onShowToast('Horário ocupado por outra aula');
+      return;
+    }
+
+    const saveHistory = window.confirm('Deseja registrar esta remarcação no histórico?');
+
     try {
-      const success = await SupabaseService.rescheduleClass(
-        selectedClass.id,
-        selectedClass.classDate,
-        selectedClass.startTime,
-        rescheduleData.date,
-        rescheduleData.startTime,
-        rescheduleData.endTime,
-        userEmail
-      );
+      let success;
+      if (saveHistory) {
+        success = await SupabaseService.rescheduleClass(
+          selectedClass.id,
+          selectedClass.classDate,
+          selectedClass.startTime,
+          rescheduleData.date,
+          rescheduleData.startTime,
+          rescheduleData.endTime,
+          userEmail
+        );
+      } else {
+        success = await SupabaseService.updateScheduledClassDateTime(
+          selectedClass.id,
+          rescheduleData.date,
+          rescheduleData.startTime,
+          rescheduleData.endTime
+        );
+      }
 
       if (success) {
         onShowToast('Aula remarcada com sucesso');
@@ -231,17 +262,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     const item = classes.find(c => c.id === classId);
     if (!item) return;
 
+    if (isConflict(newDate, item.startTime, item.endTime, item.id)) {
+      onShowToast('Este horário já está ocupado por outra aula');
+      return;
+    }
+
+    const saveHistory = window.confirm('Mover aula? Deseja registrar esta remarcação no histórico?');
+
     try {
-      // Automatic reschedule without modal/confirmation as requested
-      const success = await SupabaseService.rescheduleClass(
-        item.id,
-        item.classDate,
-        item.startTime,
-        newDate,
-        item.startTime, // Keeping the same time
-        item.endTime,   // Keeping the same time
-        userEmail
-      );
+      let success;
+      if (saveHistory) {
+        success = await SupabaseService.rescheduleClass(
+          item.id,
+          item.classDate,
+          item.startTime,
+          newDate,
+          item.startTime,
+          item.endTime,
+          userEmail
+        );
+      } else {
+        success = await SupabaseService.updateScheduledClassDateTime(
+          item.id,
+          newDate,
+          item.startTime,
+          item.endTime
+        );
+      }
 
       if (success) {
         onShowToast('Aula remanejada com sucesso');
@@ -428,7 +475,56 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     </div>
   );
 
-  const TimeGrid: React.FC<{ selected: string, onSelect: (time: string) => void }> = ({ selected, onSelect }) => (
+  const ModernDatePicker: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
+    const [viewDate, setViewDate] = useState(new Date(value + 'T00:00:00'));
+    const monthDays = eachDayOfInterval({
+      start: startOfWeek(startOfMonth(viewDate)),
+      end: endOfWeek(endOfMonth(viewDate)),
+    });
+
+    return (
+      <div className="bg-slate-950/50 border border-slate-700/50 rounded-2xl overflow-hidden backdrop-blur-md">
+        <div className="p-3 border-b border-slate-700/50 flex justify-between items-center bg-slate-900/50">
+          <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-1.5 hover:bg-slate-800 rounded-lg text-gray-400 transition-all">
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-xs font-black text-white capitalize tracking-wider">
+            {format(viewDate, 'MMMM yyyy', { locale: ptBR })}
+          </span>
+          <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-1.5 hover:bg-slate-800 rounded-lg text-gray-400 transition-all">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+        <div className="grid grid-cols-7 p-2 gap-1 bg-slate-950/20">
+          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
+            <div key={d} className="text-[9px] font-black text-slate-600 text-center py-1">{d}</div>
+          ))}
+          {monthDays.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const isSelected = value === dateStr;
+            const isCurrentMonth = isSameMonth(day, viewDate);
+            return (
+              <button
+                key={day.toString()}
+                onClick={() => onChange(dateStr)}
+                className={`aspect-square p-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center ${
+                  isSelected 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                  : isCurrentMonth 
+                    ? 'text-slate-300 hover:bg-white/5' 
+                    : 'text-slate-700'
+                }`}
+              >
+                {format(day, 'd')}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const TimeGrid: React.FC<{ selected: string; onSelect: (time: string) => void }> = ({ selected, onSelect }) => (
     <div className="grid grid-cols-4 gap-2">
       {Array.from({ length: 15 }, (_, i) => i + 7).map(h => {
         const time = `${h.toString().padStart(2, '0')}:00`;
@@ -488,7 +584,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
         {userRole !== UserRole.STUDENT && (
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setNewClass({
+                ...newClass,
+                classDate: new Date().toISOString().split('T')[0],
+                startTime: '08:00',
+                endTime: '09:00',
+                studentId: ''
+              });
+              setShowModal(true);
+            }}
             className="group relative flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
           >
             <Plus size={20} className="group-hover:rotate-90 transition-transform" />
@@ -960,23 +1065,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
-                  <input type="date" className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white" value={newClass.classDate} onChange={(e) => setNewClass({ ...newClass, classDate: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Selecione o Horário</label>
-                  <TimeGrid 
-                    selected={newClass.startTime || ''} 
-                    onSelect={(time) => {
-                      const h = parseInt(time.split(':')[0]);
-                      setNewClass({ 
-                        ...newClass, 
-                        startTime: time, 
-                        endTime: `${(h + 1).toString().padStart(2, '0')}:00` 
-                      });
-                    }} 
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Selecione o Dia</label>
+                    <ModernDatePicker value={newClass.classDate || ''} onChange={(date) => setNewClass({ ...newClass, classDate: date })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Selecione o Horário</label>
+                    <TimeGrid 
+                      selected={newClass.startTime || ''} 
+                      onSelect={(time) => {
+                        const h = parseInt(time.split(':')[0]);
+                        setNewClass({ 
+                          ...newClass, 
+                          startTime: time, 
+                          endTime: `${(h + 1).toString().padStart(2, '0')}:00` 
+                        });
+                      }} 
+                    />
+                  </div>
                 </div>
               </div>
               <button 
@@ -1086,10 +1193,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             <div className="p-6 space-y-4">
               <p className="text-sm text-gray-400">Alterando aula de <strong>{selectedClass.studentName}</strong></p>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nova Data</label>
-                  <input type="date" className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white" value={rescheduleData.date} onChange={(e) => setRescheduleData({ ...rescheduleData, date: e.target.value })} />
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Nova Data</label>
+                  <ModernDatePicker value={rescheduleData.date} onChange={(date) => setRescheduleData({ ...rescheduleData, date })} />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Novo Horário</label>
