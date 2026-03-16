@@ -836,6 +836,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             )}
           </div>
   
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-[#1e293b]/50 p-1 rounded-xl border border-gray-700">
+            <button 
+              onClick={() => { setAgendaDate(prev => subDays(prev, 1)); setAgendaPage(1); }}
+              className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="px-3 py-1 bg-emerald-500/10 rounded-lg">
+              <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">
+                {format(agendaDate, "dd MMM", { locale: ptBR })}
+              </span>
+            </div>
+            <button 
+              onClick={() => { setAgendaDate(prev => addDays(prev, 1)); setAgendaPage(1); }}
+              className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
           {userRole !== UserRole.STUDENT && (
             <button 
               onClick={() => {
@@ -856,6 +877,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           )}
         </div>
       </div>
+    </div>
   
       <div className="max-w-7xl mx-auto space-y-8">
 
@@ -943,7 +965,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(() => {
                   const filtered = classes
                     .filter(c => 
@@ -953,12 +975,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                     )
                     .sort((a,b) => a.startTime.localeCompare(b.startTime));
                   
-                  const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
-
                   return (
                     <>
-                      <div className="grid grid-cols-1 gap-4">
-                        {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
+                      <div className="space-y-3">
+                        {filtered.map(c => (
+                          <div key={c.id} className="group flex items-center gap-4 p-4 bg-[#0f172a]/60 hover:bg-[#0f172a] rounded-2xl border border-gray-800/50 hover:border-emerald-500/30 transition-all">
+                            <div className="flex flex-col items-center min-w-[50px] py-1 border-r border-gray-800/50 pr-4">
+                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">{c.startTime}</span>
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 mt-1 group-hover:bg-blue-500 transition-colors"></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
+                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
+                              </p>
+                            </div>
+                            <button 
+                              onClick={() => openRescheduleModal(c)}
+                              className="p-2 opacity-0 group-hover:opacity-100 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                       
                       {filtered.length === 0 && (
@@ -967,12 +1006,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                           <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
                         </div>
                       )}
-
-                      <Pagination 
-                        current={agendaPage} 
-                        total={filtered.length} 
-                        onPageChange={setAgendaPage} 
-                      />
                     </>
                   );
                 })()}
