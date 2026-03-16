@@ -39,6 +39,24 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
     e.preventDefault();
   };
 
+  const getStudentColor = (studentId: string) => {
+    const colors = [
+      { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400', hover: 'hover:bg-emerald-500/20' },
+      { bg: 'bg-sky-500/10', border: 'border-sky-500/20', text: 'text-sky-400', hover: 'hover:bg-sky-500/20' },
+      { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400', hover: 'hover:bg-amber-500/20' },
+      { bg: 'bg-rose-500/10', border: 'border-rose-500/20', text: 'text-rose-400', hover: 'hover:bg-rose-500/20' },
+      { bg: 'bg-teal-500/10', border: 'border-teal-500/20', text: 'text-teal-400', hover: 'hover:bg-teal-500/20' },
+      { bg: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-400', hover: 'hover:bg-cyan-500/20' },
+      { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', hover: 'hover:bg-orange-500/20' },
+      { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', hover: 'hover:bg-blue-500/20' },
+      { bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400', hover: 'hover:bg-slate-500/20' },
+    ];
+    
+    // Simple hash to pick a color based on studentId
+    const hash = studentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-[2rem] overflow-hidden backdrop-blur-xl shadow-2xl">
       <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/80">
@@ -86,25 +104,26 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
                 </span>
               </div>
               <div className="space-y-1">
-                {dayClasses.map(c => (
-                  <button
-                    key={c.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, c.id)}
-                    onClick={() => onSelectClass?.(c)}
-                    className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border cursor-grab active:cursor-grabbing ${
-                      c.status === 'COMPLETED' 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
-                        : 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      {c.status === 'COMPLETED' ? <CheckCircle size={8} /> : <Clock size={8} />}
-                      {c.startTime}
-                    </div>
-                    <div className="truncate opacity-80">{c.studentName?.split(' ')[0]}</div>
-                  </button>
-                ))}
+                {dayClasses.map(c => {
+                  const studentColor = getStudentColor(c.studentId);
+                  return (
+                    <button
+                      key={c.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, c.id)}
+                      onClick={() => onSelectClass?.(c)}
+                      className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border cursor-grab active:cursor-grabbing ${studentColor.bg} ${studentColor.border} ${studentColor.text} ${studentColor.hover} ${
+                        c.status === 'COMPLETED' ? 'opacity-60 grayscale-[0.3]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        {c.status === 'COMPLETED' ? <CheckCircle size={8} /> : <Clock size={8} />}
+                        {c.startTime}
+                      </div>
+                      <div className="truncate opacity-80">{c.studentName?.split(' ')[0]}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

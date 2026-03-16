@@ -20,6 +20,20 @@ import {
   DollarSign,
   Filter
 } from 'lucide-react';
+import { 
+  format, 
+  addMonths, 
+  subMonths, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isValid,
+  parseISO
+} from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { UserRole, ScheduledClass, Student, Discipline, BankAccount } from './types';
 import { SupabaseService } from './services/supabaseService';
 import { supabase } from './supabaseClient';
@@ -476,11 +490,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   );
 
   const ModernDatePicker: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
-    const [viewDate, setViewDate] = useState(new Date(value + 'T00:00:00'));
-    const monthDays = eachDayOfInterval({
-      start: startOfWeek(startOfMonth(viewDate)),
-      end: endOfWeek(endOfMonth(viewDate)),
-    });
+    const initialDate = value ? parseISO(value) : new Date();
+    const [viewDate, setViewDate] = useState(isValid(initialDate) ? initialDate : new Date());
+    
+    // Safety check for monthDays generation
+    let monthDays: Date[] = [];
+    try {
+      monthDays = eachDayOfInterval({
+        start: startOfWeek(startOfMonth(viewDate)),
+        end: endOfWeek(endOfMonth(viewDate)),
+      });
+    } catch (e) {
+      monthDays = [];
+    }
 
     return (
       <div className="bg-slate-950/50 border border-slate-700/50 rounded-2xl overflow-hidden backdrop-blur-md">
