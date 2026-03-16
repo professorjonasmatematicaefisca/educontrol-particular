@@ -419,6 +419,9 @@ export const SupabaseService = {
             photoUrl: String(s.photo_url || ''),
             parentEmail: String(s.parent_email || ''),
             parentName: String(s.parent_name || ''),
+            parentId: s.parent_id,
+            billing_day: s.billing_day,
+            billing_period: s.billing_period,
             hourlyRate: s.hourly_rate ? Number(s.hourly_rate) : 0,
             phone: String(s.phone || ''),
             className: String(s.class_name || ''),
@@ -441,8 +444,11 @@ export const SupabaseService = {
         const { data, error } = await supabase.from('students').insert({
             name: student.name || '',
             photo_url: student.photoUrl || null,
+            parent_id: student.parentId || null,
             parent_email: student.parentEmail?.toLowerCase() || null,
             parent_name: student.parentName || null,
+            billing_day: student.billing_day || null,
+            billing_period: student.billing_period || null,
             hourly_rate: hourlyRateNormalized,
             phone: student.phone || null,
             class_name: student.className,
@@ -658,6 +664,26 @@ export const SupabaseService = {
 
         await offlineService.setCache('staff', teachers);
         return teachers;
+    },
+
+    async getParents(): Promise<import('../types').User[]> {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('role', UserRole.PARENT)
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error("Error fetching parents:", error);
+            return [];
+        }
+        return data.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role as UserRole,
+            photoUrl: u.photo_url
+        }));
     },
 
     // --- HELPERS ---
@@ -1042,8 +1068,11 @@ export const SupabaseService = {
             .update({
                 name: student.name,
                 photo_url: student.photoUrl || null,
+                parent_id: student.parentId || null,
                 parent_email: student.parentEmail?.toLowerCase() || null,
                 parent_name: student.parentName || null,
+                billing_day: student.billing_day || null,
+                billing_period: student.billing_period || null,
                 hourly_rate: hourlyRateNormalized,
                 phone: student.phone || null,
                 class_name: student.className,

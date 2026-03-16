@@ -54,10 +54,13 @@ export interface Student {
   name: string;
   photoUrl: string;
   parentEmail: string;
-  parentName?: string; // Novo campo
-  hourlyRate?: number; // Novo campo
-  phone?: string;      // Novo campo
-  className: string; // Links to ClassRoom
+  parentName?: string;
+  parentId?: string; // Link to users table
+  billing_day?: number;
+  billing_period?: 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY' | 'PER_CLASS';
+  hourlyRate?: number;
+  phone?: string;
+  className: string;
   status?: string; // 'ACTIVE' | 'INACTIVE'
   inactiveReason?: string;
   inactiveDate?: string;

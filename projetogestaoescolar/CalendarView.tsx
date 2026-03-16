@@ -885,63 +885,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Sidebar: Status & Próximas */}
           <div className="lg:col-span-4 space-y-8">
-            {/* Aula em Andamento (Destaque) */}
-            {classes.some(c => isLive(c) || c.status === 'IN_PROGRESS') && (
-              <div className={`relative overflow-hidden p-6 rounded-[2rem] shadow-2xl animate-pulse-slow ${
-                classes.some(c => c.status === 'IN_PROGRESS') 
-                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-orange-900/40' 
-                  : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-emerald-900/40'
-              }`}>
-                <div className="absolute top-0 right-0 p-4 opacity-20"><Target size={80} /></div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-4 bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm">
-                    <div className="w-2 h-2 rounded-full bg-white animate-ping"></div>
-                    <span className="text-[10px] font-black uppercase text-white tracking-widest">
-                      {classes.some(c => c.status === 'IN_PROGRESS') ? 'Aula em Andamento' : 'Iniciando'}
-                    </span>
-                  </div>
-                  {classes.filter(c => isLive(c) || c.status === 'IN_PROGRESS').map(c => (
-                    <div key={c.id}>
-                      <h2 className="text-xl font-black text-white">{c.studentName}</h2>
-                      <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mb-3">Responsável: {c.parentName || 'Não informado'}</p>
-                      <div className="flex items-center gap-4 text-emerald-50/80 font-bold mb-6">
-                        <span className="flex items-center gap-1 text-xs"><Clock size={14} /> {c.startTime} - {c.endTime}</span>
-                        <span className="flex items-center gap-1 text-xs"><BookOpen size={14} /> {c.className || 'Individual'}</span>
-                      </div>
-                      {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
-                        c.status === 'SCHEDULED' ? (
-                          <div className="flex flex-col gap-2">
-                            <button 
-                              onClick={() => {
-                                handleUpdateStatus(c.id, 'IN_PROGRESS');
-                              }}
-                              className="w-full py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-                            >
-                              <ArrowRight size={16} /> Dar Início à Aula
-                            </button>
-                            <button 
-                              onClick={() => openRescheduleModal(c)}
-                              className="w-full py-2 bg-white/10 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2"
-                            >
-                              <HistoryIcon size={14} /> Alterar Horário
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            <button 
-                              onClick={() => openCompletionModal(c)}
-                              className="w-full py-3 bg-white text-orange-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-lg"
-                            >
-                              <CheckCircle size={16} /> Concluir Aula
-                            </button>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
               <div className="flex items-center justify-between mb-6">

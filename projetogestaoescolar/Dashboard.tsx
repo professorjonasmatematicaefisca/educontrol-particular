@@ -12,7 +12,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Check
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { ScheduledClass, Student, UserRole } from './types';
@@ -54,25 +55,27 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     const [dailyData, setDailyData] = useState<{name: string, valor: number}[]>([]);
     const [upcomingPayments, setUpcomingPayments] = useState<PaymentItem[]>([]);
     const [paymentRange, setPaymentRange] = useState(0); // 0 = esta semana, 1 = próxima, etc.
+    const [baseDate, setBaseDate] = useState(new Date());
+    const [paymentFilter, setPaymentFilter] = useState<'WEEKLY' | 'OVERDUE'>('WEEKLY');
 
     useEffect(() => {
         loadDashboardData();
-    }, [paymentRange]);
+    }, [paymentRange, baseDate, paymentFilter]);
 
     const loadDashboardData = async () => {
+        const now = new Date();
         setLoading(true);
         try {
-            const now = new Date();
-            const startM = startOfMonth(now);
-            const endM = endOfMonth(now);
+            // Agregar faturamento diário para o gráfico (baseado no baseDate)
+            const startM = startOfMonth(baseDate);
+            const endM = endOfMonth(baseDate);
+            const daysInterval = eachDayOfInterval({ start: startM, end: endM });
             
             const [students, allSchedule] = await Promise.all([
                 SupabaseService.getStudents(),
                 SupabaseService.getScheduledClasses(format(startM, 'yyyy-MM-dd'))
             ]);
 
-            // Agregar faturamento diário para o gráfico
-            const daysInterval = eachDayOfInterval({ start: startM, end: endM });
             const processedChartData = daysInterval.map(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
                 const dayValue = allSchedule
@@ -81,7 +84,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 
                 return {
                     name: format(day, 'dd'),
-                    valor: dayValue
+                    valor: dayValue,
+                    fullDate: format(day, "dd 'de' MMMM", { locale: ptBR })
                 };
             });
             setDailyData(processedChartData);
@@ -100,27 +104,39 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 pendingSimulados: 2
             });
 
-            setUpcomingClasses(classesToday.filter(c => c.status === 'SCHEDULED' || c.status === 'COMPLETED').slice(0, 5));
+            if (paymentFilter === 'WEEKLY') {
+                const weekStart = startOfWeek(addWeeks(now, paymentRange), { weekStartsOn: 1 });
+                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
 
-            // Simular vencimentos baseados na configuração dos alunos
-            // Na vida real, isso viria da nova lógica financeira
-            const weekStart = startOfWeek(addWeeks(now, paymentRange), { weekStartsOn: 1 });
-            const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-
-            const mockPayments: PaymentItem[] = students
-                .filter(s => (s as any).billing_day)
-                .map(s => {
-                   const dueDate = new Date(now.getFullYear(), now.getMonth(), (s as any).billing_day);
-                   return {
-                     studentName: s.name,
-                     amount: ((s as any).hourlyRate || s.hourly_rate || 0) * 4, // Exemplo
-                     dueDate: dueDate,
-                     type: (s as any).billing_period || 'MONTHLY'
-                   };
-                })
-                .filter(p => p.dueDate >= weekStart && p.dueDate <= weekEnd);
-            
-            setUpcomingPayments(mockPayments);
+                const mockPayments: PaymentItem[] = students
+                    .filter(s => (s as any).billing_day)
+                    .map(s => {
+                       const dueDate = new Date(now.getFullYear(), now.getMonth(), (s as any).billing_day);
+                       return {
+                         studentName: s.name,
+                         amount: (((s as any).hourlyRate || (s as any).hourly_rate || 0) as number) * 4,
+                         dueDate: dueDate,
+                         type: (s as any).billing_period || 'MONTHLY'
+                       };
+                    })
+                    .filter(p => p.dueDate >= weekStart && p.dueDate <= weekEnd);
+                setUpcomingPayments(mockPayments);
+            } else {
+                // OVERDUE
+                const overduePayments: PaymentItem[] = students
+                    .filter(s => (s as any).billing_day)
+                    .map(s => {
+                       const dueDate = new Date(now.getFullYear(), now.getMonth(), (s as any).billing_day);
+                       return {
+                         studentName: s.name,
+                         amount: (((s as any).hourlyRate || (s as any).hourly_rate || 0) as number) * 4,
+                         dueDate: dueDate,
+                         type: (s as any).billing_period || 'MONTHLY'
+                       };
+                    })
+                    .filter(p => p.dueDate < now); // Simplificado para demonstração
+                setUpcomingPayments(overduePayments);
+            }
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
@@ -130,14 +146,19 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     };
 
 
+    const handleConfirmPayment = (payment: PaymentItem) => {
+        // Lógica de confirmação aqui
+        alert(`Pagamento de ${payment.studentName} confirmado!`);
+    };
+
     if (loading) return <div className="text-white p-6 animate-pulse">Carregando painel de controle...</div>;
 
     return (
         <div className="max-w-[1600px] mx-auto space-y-6 pb-10">
             <div className="flex justify-between items-end">
                 <div>
-                    <h2 className="text-3xl font-black text-white">Olá, Professor</h2>
-                    <p className="text-gray-400 text-sm mt-1">Aqui está o resumo das suas atividades e faturamento.</p>
+                    <h2 className="text-3xl font-black text-white">Olá, Professor Jonas</h2>
+                    <p className="text-gray-400 text-sm mt-1">Bem-vindo ao seu painel administrativo centralizado.</p>
                 </div>
             </div>
 
@@ -181,10 +202,30 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 {/* Revenue Chart */}
                 <div className="lg:col-span-2 bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl">
                     <div className="flex justify-between items-center mb-8">
-                        <h3 className="font-bold text-white flex items-center gap-2">
-                            <TrendingUp size={20} className="text-emerald-500" />
-                            Evolução Mensal - Faturamento (R$)
-                        </h3>
+                        <div>
+                            <h3 className="font-bold text-white flex items-center gap-2">
+                                <TrendingUp size={20} className="text-emerald-500" />
+                                Evolução Mensal - Faturamento (R$)
+                            </h3>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Passe o mouse para ver os valores</p>
+                        </div>
+                        <div className="flex items-center gap-4 bg-[#0f172a] p-1.5 rounded-xl border border-gray-700">
+                             <button 
+                                onClick={() => setBaseDate(prev => addDays(startOfMonth(prev), -1))}
+                                className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
+                             >
+                                <ChevronLeft size={18} />
+                             </button>
+                             <span className="text-xs font-black text-white min-w-[120px] text-center uppercase tracking-widest">
+                                {format(baseDate, 'MMMM yyyy', { locale: ptBR })}
+                             </span>
+                             <button 
+                                onClick={() => setBaseDate(prev => addDays(endOfMonth(prev), 1))}
+                                className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
+                             >
+                                <ChevronRight size={18} />
+                             </button>
+                        </div>
                     </div>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -194,21 +235,17 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                 <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} hide />
                                 <Tooltip 
                                     cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }}
+                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)' }}
                                     itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
-                                    formatter={(value: any) => [`R$ ${value}`, 'Faturamento']}
+                                    labelStyle={{ color: '#64748b', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}
+                                    formatter={(value: any) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Faturamento']}
+                                    labelFormatter={(label, items) => items[0]?.payload?.fullDate || label}
                                 />
                                 <Bar 
                                   dataKey="valor" 
                                   fill="#10b981" 
                                   radius={[6, 6, 0, 0]} 
-                                  label={{ 
-                                    position: 'top', 
-                                    fill: '#10b981', 
-                                    fontSize: 10, 
-                                    fontWeight: 'bold',
-                                    formatter: (val: any) => val > 0 ? `R$${val}` : ''
-                                  }} 
+                                  animationDuration={1500}
                                 />
                             </BarChart>
                         </ResponsiveContainer>
@@ -242,49 +279,82 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                       </div>
                   </div>
 
-                  {/* Próximos Vencimentos */}
+                  {/* Vencimentos & Filtros */}
                   <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl">
                       <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-white flex items-center gap-2">
-                            <DollarSign size={20} className="text-amber-500" />
-                            Vencimentos
-                        </h3>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => setPaymentRange(prev => prev - 1)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <button 
-                            onClick={() => setPaymentRange(prev => prev + 1)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                          >
-                            <ChevronRight size={16} />
-                          </button>
+                        <div>
+                            <h3 className="font-bold text-white flex items-center gap-2">
+                                <DollarSign size={20} className="text-amber-500" />
+                                Vencimentos
+                            </h3>
+                            <div className="flex gap-2 mt-3">
+                                <button 
+                                    onClick={() => setPaymentFilter('WEEKLY')}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'WEEKLY' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-slate-800 text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    Semana
+                                </button>
+                                <button 
+                                    onClick={() => setPaymentFilter('OVERDUE')}
+                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'OVERDUE' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-gray-500 hover:text-gray-300'}`}
+                                >
+                                    Em Atraso
+                                </button>
+                            </div>
                         </div>
+                        {paymentFilter === 'WEEKLY' && (
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setPaymentRange(prev => prev - 1)}
+                                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <button 
+                                    onClick={() => setPaymentRange(prev => prev + 1)}
+                                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        )}
                       </div>
-                      <div className="space-y-4">
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                           {upcomingPayments.map((p, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
-                                  <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500">
-                                      <CalendarIcon size={16} />
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-bold text-white">{p.studentName}</p>
-                                      <p className="text-[10px] text-amber-500/60 font-black uppercase tracking-widest">
-                                        Vence {format(p.dueDate, 'dd/MM')} • {p.type === 'MONTHLY' ? 'Mensal' : p.type === 'BIWEEKLY' ? 'Quinzenal' : 'Semanal'}
-                                      </p>
-                                    </div>
+                              <div key={idx} className={`p-4 rounded-xl border transition-all hover:scale-[1.02] ${paymentFilter === 'OVERDUE' ? 'bg-red-500/5 border-red-500/20' : 'bg-[#0f172a] border-gray-800'}`}>
+                                  <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                          <div className={`p-2 rounded-lg ${paymentFilter === 'OVERDUE' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                                              <CalendarIcon size={16} />
+                                          </div>
+                                          <div>
+                                              <p className="text-sm font-bold text-white">{p.studentName}</p>
+                                              <p className={`text-[10px] font-black uppercase tracking-widest ${paymentFilter === 'OVERDUE' ? 'text-red-400' : 'text-amber-500/60'}`}>
+                                                  Vence {format(p.dueDate, 'dd/MM')}
+                                              </p>
+                                          </div>
+                                      </div>
+                                      <div className="text-right">
+                                          <p className="text-sm font-black text-white">R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                      </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="text-sm font-black text-white">R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                  </div>
+                                  
+                                  <button 
+                                    onClick={() => handleConfirmPayment(p)}
+                                    className={`w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${paymentFilter === 'OVERDUE' ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20'}`}
+                                  >
+                                      <Check size={14} />
+                                      Confirmar Recebimento
+                                  </button>
                               </div>
                           ))}
                           {upcomingPayments.length === 0 && (
-                              <p className="text-center text-gray-500 py-5 italic text-sm">Nenhum vencimento para este período</p>
+                              <div className="text-center py-10">
+                                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-600">
+                                      <TrendingUp size={20} />
+                                  </div>
+                                  <p className="text-gray-500 italic text-sm">Nenhum pagamento encontrado</p>
+                              </div>
                           )}
                       </div>
                   </div>

@@ -11,7 +11,7 @@ interface AdminPanelProps {
 }
 
 type MainTabType = 'REGISTRATIONS' | 'CONFIG' | 'FINANCIAL';
-type SubTabType = 'STUDENTS' | 'STAFF' | 'CLASSES' | 'DISCIPLINES' | 'LOGO' | 'ACCOUNTS' | 'SUMMARY';
+type SubTabType = 'STUDENTS' | 'PARENTS' | 'STAFF' | 'CLASSES' | 'DISCIPLINES' | 'LOGO' | 'ACCOUNTS' | 'SUMMARY';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, userRole }) => {
     const [activeMainTab, setActiveMainTab] = useState<MainTabType>('REGISTRATIONS');
@@ -20,6 +20,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
 
     // Data State
     const [students, setStudents] = useState<Student[]>([]);
+    const [parents, setParents] = useState<import('./types').User[]>([]);
     const [staff, setStaff] = useState<Teacher[]>([]);
     const [classes, setClasses] = useState<ClassRoom[]>([]);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -67,8 +68,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
     // Form State
     const [studentForm, setStudentForm] = useState({ 
         name: '', 
+        parentId: '',
         parentEmail: '', 
         parentName: '', 
+        billing_day: 1,
+        billing_period: 'MONTHLY' as 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY' | 'PER_CLASS',
         hourlyRate: 0, 
         phone: '', 
         className: '', 
@@ -138,14 +142,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
     const loadData = async () => {
         setLoading(true);
         try {
-            const [fetchedStudents, fetchedTeachers, fetchedClasses, fetchedDisciplines, fetchedBankAccounts] = await Promise.all([
+            const [fetchedStudents, fetchedParents, fetchedTeachers, fetchedClasses, fetchedDisciplines, fetchedBankAccounts] = await Promise.all([
                 SupabaseService.getStudents(true),
+                SupabaseService.getParents(),
                 SupabaseService.getTeachers(),
                 SupabaseService.getClasses(),
                 SupabaseService.getDisciplines(),
                 SupabaseService.getBankAccounts()
             ]);
             setStudents(fetchedStudents);
+            setParents(fetchedParents);
             setStaff(fetchedTeachers);
             setClasses(fetchedClasses);
             setDisciplines(fetchedDisciplines);
@@ -183,8 +189,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
             success = await SupabaseService.updateStudent({
                 id: editingStudentId,
                 name: studentForm.name,
+                parentId: studentForm.parentId,
                 parentEmail: studentForm.parentEmail,
                 parentName: studentForm.parentName,
+                billing_day: studentForm.billing_day,
+                billing_period: studentForm.billing_period,
                 hourlyRate: studentForm.hourlyRate,
                 phone: studentForm.phone,
                 className: studentForm.className,
@@ -196,8 +205,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
         } else {
             success = await SupabaseService.createStudent({
                 name: studentForm.name,
+                parentId: studentForm.parentId,
                 parentEmail: studentForm.parentEmail,
                 parentName: studentForm.parentName,
+                billing_day: studentForm.billing_day,
+                billing_period: studentForm.billing_period,
                 hourlyRate: studentForm.hourlyRate,
                 phone: studentForm.phone,
                 className: studentForm.className,
@@ -214,8 +226,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
             setEditingStudentId(null);
             setStudentForm({ 
                 name: '', 
+                parentId: '',
                 parentEmail: '', 
                 parentName: '', 
+                billing_day: 1,
+                billing_period: 'MONTHLY',
                 hourlyRate: 0, 
                 phone: '', 
                 className: '', 
@@ -236,8 +251,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
         setOriginalClassName(student.className);
         setStudentForm({
             name: student.name,
+            parentId: student.parentId || '',
             parentEmail: student.parentEmail,
             parentName: student.parentName || '',
+            billing_day: student.billing_day || 1,
+            billing_period: student.billing_period || 'MONTHLY',
             hourlyRate: student.hourlyRate || 0,
             phone: student.phone || '',
             className: student.className,
@@ -799,6 +817,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                             Alunos
                         </button>
                         <button
+                            onClick={() => setActiveSubTab('PARENTS')}
+                            className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'PARENTS'
+                                ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <Users size={18} />
+                            Responsáveis
+                        </button>
+                        <button
                             onClick={() => setActiveSubTab('STAFF')}
                             className={`flex items-center gap-2 px-4 py-2 font-bold transition-all ${activeSubTab === 'STAFF'
                                 ? 'text-emerald-500 border-b-2 border-emerald-500'
@@ -974,6 +1002,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                     <div className="flex items-center gap-2 text-[10px] text-gray-500">
                                         <DollarSign size={12} className="text-emerald-500" />
                                         <span className="font-bold text-emerald-500/80">R$ {student.hourlyRate?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / hora</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Parents Sub-Tab */}
+                        {activeSubTab === 'PARENTS' && parents.map(parent => (
+                            <div key={parent.id} className="bg-[#0f172a] border border-gray-800 rounded-xl p-4 hover:border-emerald-500/50 transition-all group relative">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                        <Users size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-white font-bold text-sm uppercase truncate max-w-[150px]">{parent.name}</h3>
+                                        <p className="text-xs text-gray-400 font-medium truncate max-w-[150px]">{parent.email}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-800">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-gray-500 font-bold uppercase">Filhos Vinculados:</span>
+                                        <span className="text-[10px] text-emerald-500 font-bold">{students.filter(s => s.parentId === parent.id || s.parentEmail === parent.email).length}</span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {students.filter(s => s.parentId === parent.id || s.parentEmail === parent.email).map(s => (
+                                            <span key={s.id} className="px-2 py-0.5 bg-gray-800 rounded text-[9px] text-gray-300">{s.name}</span>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -1549,7 +1603,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                     <div className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 max-w-md w-full">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-white">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Aluno'}</h2>
-                            <button onClick={() => { setShowStudentModal(false); setEditingStudentId(null); setStudentForm({ name: '', parentEmail: '', parentName: '', hourlyRate: 0, phone: '', className: '', photoUrl: '', status: 'ACTIVE', inactiveReason: '', inactiveDate: '' }); }} className="text-gray-400 hover:text-white">
+                            <button onClick={() => { setShowStudentModal(false); setEditingStudentId(null); setStudentForm({ name: '', parentId: '', parentEmail: '', parentName: '', billing_day: 1, billing_period: 'MONTHLY', hourlyRate: 0, phone: '', className: '', photoUrl: '', status: 'ACTIVE', inactiveReason: '', inactiveDate: '' }); }} className="text-gray-400 hover:text-white">
                                 <X size={24} />
                             </button>
                         </div>
@@ -1594,7 +1648,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                                <div className="col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Responsável Registrado (Opcional)</label>
+                                    <select
+                                        value={studentForm.parentId}
+                                        onChange={(e) => {
+                                            const p = parents.find(x => x.id === e.target.value);
+                                            setStudentForm({ 
+                                                ...studentForm, 
+                                                parentId: e.target.value,
+                                                parentName: p ? p.name : studentForm.parentName,
+                                                parentEmail: p ? p.email : studentForm.parentEmail
+                                            });
+                                        }}
+                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
+                                    >
+                                        <option value="">-- Vincular Responsável Exitente --</option>
+                                        {parents.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[10px] text-gray-500 mt-1 italic">Se não selecionar, um novo acesso será criado com os dados abaixo.</p>
+                                </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Nome do Responsável</label>
                                     <input
@@ -1602,6 +1678,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         value={studentForm.parentName}
                                         onChange={(e) => setStudentForm({ ...studentForm, parentName: e.target.value })}
                                         className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
+                                        placeholder="Nome para exibição"
                                     />
                                 </div>
                                 <div>
@@ -1613,19 +1690,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
                                     />
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
+                                <div className="col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Email do Responsável</label>
                                     <input
                                         type="email"
                                         value={studentForm.parentEmail}
                                         onChange={(e) => setStudentForm({ ...studentForm, parentEmail: e.target.value })}
                                         className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
+                                        placeholder="email@exemplo.com"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                                <div className="col-span-2">
+                                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <DollarSign size={12} /> Configurações Financeiras
+                                    </h4>
+                                </div>
                                 <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Período de Faturamento</label>
+                                    <select
+                                        value={studentForm.billing_period}
+                                        onChange={(e) => setStudentForm({ ...studentForm, billing_period: e.target.value as any })}
+                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
+                                    >
+                                        <option value="MONTHLY">Mensal</option>
+                                        <option value="BIWEEKLY">Quinzenal</option>
+                                        <option value="WEEKLY">Semanal</option>
+                                        <option value="PER_CLASS">Por Aula</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Dia do Vencimento</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="31"
+                                        value={studentForm.billing_day}
+                                        onChange={(e) => setStudentForm({ ...studentForm, billing_day: parseInt(e.target.value) })}
+                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div className="col-span-2">
                                     <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Valor Hora/Aula (R$)</label>
                                     <input
                                         type="number"
