@@ -7,7 +7,7 @@ import { ScheduledClass } from '../types';
 interface ModernCalendarProps {
   classes: ScheduledClass[];
   onSelectClass?: (item: ScheduledClass) => void;
-  onRescheduleClass?: (classId: string, newDate: string) => void;
+  onRescheduleClass?: (classId: string, newDate: string, isCopy?: boolean) => void;
 }
 
 export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelectClass, onRescheduleClass }) => {
@@ -29,9 +29,10 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
   const handleDrop = (e: React.DragEvent, day: Date) => {
     e.preventDefault();
     const classId = e.dataTransfer.getData('classId');
+    const isCopy = e.ctrlKey;
     if (classId && onRescheduleClass) {
       const newDate = format(day, 'yyyy-MM-dd');
-      onRescheduleClass(classId, newDate);
+      onRescheduleClass(classId, newDate, isCopy);
     }
   };
 

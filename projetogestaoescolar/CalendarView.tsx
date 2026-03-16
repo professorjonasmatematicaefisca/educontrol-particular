@@ -272,12 +272,35 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     }
   };
 
-  const handleDragReschedule = async (classId: string, newDate: string) => {
+  const handleDragReschedule = async (classId: string, newDate: string, isCopy?: boolean) => {
     const item = classes.find(c => c.id === classId);
     if (!item) return;
 
-    if (isConflict(newDate, item.startTime, item.endTime, item.id)) {
+    if (isConflict(newDate, item.startTime, item.endTime, isCopy ? undefined : item.id)) {
       onShowToast('Este horário já está ocupado por outra aula');
+      return;
+    }
+
+    if (isCopy) {
+      try {
+        const success = await SupabaseService.createScheduledClass({
+          studentId: item.studentId,
+          classDate: newDate,
+          startTime: item.startTime,
+          endTime: item.endTime,
+          status: 'SCHEDULED',
+          hourlyRate: item.hourlyRate || 0
+        });
+
+        if (success) {
+          onShowToast('Aula duplicada com sucesso');
+          fetchData();
+        } else {
+          onShowToast('Erro ao duplicar aula');
+        }
+      } catch (error) {
+        onShowToast('Erro na operação de duplicação');
+      }
       return;
     }
 
