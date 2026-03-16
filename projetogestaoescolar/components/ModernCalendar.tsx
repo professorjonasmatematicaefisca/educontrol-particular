@@ -7,9 +7,10 @@ import { ScheduledClass } from '../types';
 interface ModernCalendarProps {
   classes: ScheduledClass[];
   onSelectClass?: (item: ScheduledClass) => void;
+  onRescheduleClass?: (classId: string, newDate: string) => void;
 }
 
-export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelectClass }) => {
+export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelectClass, onRescheduleClass }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const days = eachDayOfInterval({
@@ -19,6 +20,23 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
 
   const getClassesForDay = (day: Date) => {
     return classes.filter(c => isSameDay(new Date(c.classDate + 'T00:00:00'), day));
+  };
+
+  const handleDragStart = (e: React.DragEvent, classId: string) => {
+    e.dataTransfer.setData('classId', classId);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    const classId = e.dataTransfer.getData('classId');
+    if (classId && onRescheduleClass) {
+      const newDate = format(day, 'yyyy-MM-dd');
+      onRescheduleClass(classId, newDate);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
   return (
@@ -58,7 +76,9 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
           return (
             <div 
               key={day.toString()} 
-              className={`min-h-[120px] p-2 border-r border-b border-slate-800/50 transition-all ${!isSelectedMonth ? 'opacity-20' : ''} ${isToday ? 'bg-emerald-500/5' : ''}`}
+              onDrop={(e) => handleDrop(e, day)}
+              onDragOver={handleDragOver}
+              className={`min-h-[120px] p-2 border-r border-b border-slate-800/50 transition-all ${!isSelectedMonth ? 'opacity-20' : ''} ${isToday ? 'bg-emerald-500/5' : ''} hover:bg-white/5 transition-colors`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className={`text-xs font-bold ${isToday ? 'bg-emerald-500 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-500'}`}>
@@ -69,8 +89,10 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
                 {dayClasses.map(c => (
                   <button
                     key={c.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, c.id)}
                     onClick={() => onSelectClass?.(c)}
-                    className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border ${
+                    className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border cursor-grab active:cursor-grabbing ${
                       c.status === 'COMPLETED' 
                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
                         : 'bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20'

@@ -227,6 +227,33 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     }
   };
 
+  const handleDragReschedule = async (classId: string, newDate: string) => {
+    const item = classes.find(c => c.id === classId);
+    if (!item) return;
+
+    try {
+      // Automatic reschedule without modal/confirmation as requested
+      const success = await SupabaseService.rescheduleClass(
+        item.id,
+        item.classDate,
+        item.startTime,
+        newDate,
+        item.startTime, // Keeping the same time
+        item.endTime,   // Keeping the same time
+        userEmail
+      );
+
+      if (success) {
+        onShowToast('Aula remanejada com sucesso');
+        fetchData();
+      } else {
+        onShowToast('Erro ao remanejar aula');
+      }
+    } catch (error) {
+      onShowToast('Erro na operação de remanejamento');
+    }
+  };
+
   const handleUpdateStatus = async (id: string, status: ScheduledClass['status'], hourlyRate: number = 0) => {
     if (status === 'COMPLETED') {
       const item = classes.find(c => c.id === id);
@@ -631,7 +658,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
               {viewMode === 'calendar' ? (
                 <div className="p-8">
-                  <ModernCalendar classes={classes} onSelectClass={userRole !== UserRole.STUDENT ? openCompletionModal : undefined} />
+                  <ModernCalendar 
+                    classes={classes} 
+                    onSelectClass={userRole !== UserRole.STUDENT ? openCompletionModal : undefined}
+                    onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined}
+                  />
                 </div>
               ) : (
                 <div className="overflow-x-auto">
