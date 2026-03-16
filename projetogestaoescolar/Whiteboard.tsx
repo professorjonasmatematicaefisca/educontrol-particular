@@ -261,7 +261,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
             
             const pdfUrl = await SupabaseService.uploadPDF(file);
             if (pdfUrl) {
-                const success = await SupabaseService.updateScheduledClassStatus(activeClassId, 'COMPLETED', { pdfUrl });
+                const success = await SupabaseService.updateScheduledClassStatus(activeClassId, 'COMPLETED', { 
+                    pdfUrl,
+                    paymentStatus: 'PENDING'
+                });
                 if (success) {
                     onShowToast('Aula salva e concluída com sucesso!');
                     return true;

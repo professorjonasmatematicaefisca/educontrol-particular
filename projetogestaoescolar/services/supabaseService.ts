@@ -1855,7 +1855,7 @@ export const SupabaseService = {
 
     async uploadPDF(file: File): Promise<string | null> {
         const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
-        const filePath = `materials/${fileName}`;
+        const filePath = fileName;
 
         const { error: uploadError } = await supabase.storage
             .from('materials')
