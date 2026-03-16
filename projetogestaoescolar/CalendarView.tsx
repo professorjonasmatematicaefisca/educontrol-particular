@@ -714,12 +714,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                             </button>
                           </div>
                         ) : (
-                          <button 
-                            onClick={() => openCompletionModal(c)}
-                            className="w-full py-3 bg-white text-orange-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-lg"
-                          >
-                            <CheckCircle size={16} /> Concluir Aula
-                          </button>
+                          <div className="flex flex-col gap-2">
+                            <button 
+                              onClick={() => onViewChange?.('WHITEBOARD', { classId: c.id, disciplineId: c.disciplineId || '' })}
+                              className="w-full py-3 bg-white/20 text-white font-black rounded-xl text-xs uppercase tracking-widest hover:bg-white/30 transition-all flex items-center justify-center gap-2 backdrop-blur-sm shadow-inner"
+                            >
+                              <FileText size={16} /> Abrir Lousa Digital
+                            </button>
+                            <button 
+                              onClick={() => openCompletionModal(c)}
+                              className="w-full py-3 bg-white text-orange-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-lg"
+                            >
+                              <CheckCircle size={16} /> Concluir Aula
+                            </button>
+                          </div>
                         )
                       )}
                     </div>

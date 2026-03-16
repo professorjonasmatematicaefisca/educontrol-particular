@@ -232,8 +232,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
                 // 1. Draw Background
                 if (selectedDiscipline?.whiteboardBackgroundUrl) {
                     try {
+                        const url = `${selectedDiscipline.whiteboardBackgroundUrl}${selectedDiscipline.whiteboardBackgroundUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
                         const loadingTask = pdfjs.getDocument({
-                            url: selectedDiscipline.whiteboardBackgroundUrl,
+                            url: url,
                             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.6.172/cmaps/',
                             cMapPacked: true,
                         });
@@ -249,11 +250,16 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
                 }
 
                 // 2. Draw elements for this page
+                const dpr = window.devicePixelRatio || 1;
+                tCtx.save();
+                tCtx.scale(dpr, dpr);
                 pages[i].forEach(el => drawElement(tCtx, el));
+                tCtx.restore();
 
                 // 3. Add to PDF
-                const imgData = tempCanvas.toDataURL('image/jpeg', 0.85);
+                const imgData = tempCanvas.toDataURL('image/jpeg', 0.92);
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                console.log(`Página ${i+1} renderizada no PDF`);
             }
 
             const pdfBlob = pdf.output('blob');
@@ -354,9 +360,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
         
         if (selectedDiscipline?.whiteboardBackgroundUrl) {
             try {
-                // Improved PDF loading
+                // Improved PDF loading with cache buster
+                const url = `${selectedDiscipline.whiteboardBackgroundUrl}${selectedDiscipline.whiteboardBackgroundUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
                 const loadingTask = pdfjs.getDocument({
-                    url: selectedDiscipline.whiteboardBackgroundUrl,
+                    url: url,
                     cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.6.172/cmaps/',
                     cMapPacked: true,
                 });
