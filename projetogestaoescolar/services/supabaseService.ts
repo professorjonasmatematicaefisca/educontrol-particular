@@ -1854,7 +1854,13 @@ export const SupabaseService = {
     },
 
     async uploadPDF(file: File): Promise<string | null> {
-        const fileName = `${Math.random().toString(36).substring(2)}_${file.name}`;
+        // Sanitize filename: remove spaces, special chars, and accents
+        const cleanName = file.name
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // remove accents
+            .replace(/[^a-zA-Z0-9.-]/g, "_"); // replace special chars with underscore
+        
+        const fileName = `${Math.random().toString(36).substring(2)}_${cleanName}`;
         const filePath = fileName;
 
         const { error: uploadError } = await supabase.storage
