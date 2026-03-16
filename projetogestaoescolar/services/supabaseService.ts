@@ -1844,11 +1844,11 @@ export const SupabaseService = {
         return !error;
     },
 
-    async confirmPayment(classId: string, accountId: string): Promise<boolean> {
+    async confirmPayment(classId: string, accountId: string, paidAt?: string): Promise<boolean> {
         const { error } = await supabase.from('scheduled_classes').update({
             payment_status: 'PAID',
             payment_account_id: accountId,
-            paid_at: new Date().toISOString()
+            paid_at: paidAt || new Date().toISOString()
         }).eq('id', classId);
         return !error;
     },

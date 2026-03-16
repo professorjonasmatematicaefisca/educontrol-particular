@@ -29,6 +29,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ScheduledClass | null>(null);
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchData();
@@ -64,7 +65,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   const handleConfirmPayment = async (accountId: string) => {
     if (!selectedClass) return;
     try {
-      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId);
+      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId, paymentDate);
       if (success) {
         onShowToast('Pagamento confirmado com sucesso');
         setShowPaymentModal(false);
@@ -80,7 +81,18 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
       <div className="bg-[#0f172a] w-full max-w-md rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         <div className="p-8 border-b border-slate-800">
           <h3 className="text-xl font-black text-white mb-1">Confirmar Recebimento</h3>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Selecione a conta de destino</p>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Selecione a data e a conta de destino</p>
+        </div>
+        <div className="p-8 pb-0 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Data de Recebimento</label>
+            <input 
+              type="date" 
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 text-white text-sm font-bold focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none"
+            />
+          </div>
         </div>
         <div className="p-8 space-y-4">
           {bankAccounts.length > 0 ? (

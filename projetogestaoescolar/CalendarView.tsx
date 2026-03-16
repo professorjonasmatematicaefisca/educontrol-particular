@@ -384,10 +384,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     }
   };
 
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+
   const handleConfirmPayment = async (accountId: string) => {
     if (!selectedClass) return;
     try {
-      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId);
+      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId, paymentDate);
       if (success) {
         onShowToast('Pagamento confirmado com sucesso');
         setShowPaymentModal(false);
@@ -477,7 +479,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       <div className="bg-[#0f172a] w-full max-w-md rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         <div className="p-8 border-b border-slate-800">
           <h3 className="text-xl font-black text-white mb-1">Confirmar Recebimento</h3>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Selecione o destino do valor</p>
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Selecione a data e a conta de destino</p>
+        </div>
+        <div className="p-8 pb-0 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Data de Recebimento</label>
+            <input 
+              type="date" 
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 text-white text-sm font-bold focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none"
+            />
+          </div>
         </div>
         <div className="p-8 space-y-4">
           {bankAccounts.length > 0 ? (
@@ -653,12 +666,18 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           <div className="lg:col-span-4 space-y-8">
             {/* Aula em Andamento (Destaque) */}
             {classes.some(c => isLive(c) || c.status === 'IN_PROGRESS') && (
-              <div className="relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-700 p-6 rounded-[2rem] shadow-2xl shadow-emerald-900/40 animate-pulse-slow">
+              <div className={`relative overflow-hidden p-6 rounded-[2rem] shadow-2xl animate-pulse-slow ${
+                classes.some(c => c.status === 'IN_PROGRESS') 
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-orange-900/40' 
+                  : 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-emerald-900/40'
+              }`}>
                 <div className="absolute top-0 right-0 p-4 opacity-20"><Target size={80} /></div>
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-4 bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-sm">
                     <div className="w-2 h-2 rounded-full bg-white animate-ping"></div>
-                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Aula {classes.some(c => c.status === 'IN_PROGRESS') ? 'em Andamento' : 'Iniciando'}</span>
+                    <span className="text-[10px] font-black uppercase text-white tracking-widest">
+                      {classes.some(c => c.status === 'IN_PROGRESS') ? 'Aula em Andamento' : 'Iniciando'}
+                    </span>
                   </div>
                   {classes.filter(c => isLive(c) || c.status === 'IN_PROGRESS').map(c => (
                     <div key={c.id}>
@@ -697,9 +716,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         ) : (
                           <button 
                             onClick={() => openCompletionModal(c)}
-                            className="w-full py-3 bg-emerald-400 text-emerald-900 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-white text-orange-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-orange-50 transition-all flex items-center justify-center gap-2 shadow-lg"
                           >
-                            <CheckCircle size={16} /> Encerrar e Registrar
+                            <CheckCircle size={16} /> Concluir Aula
                           </button>
                         )
                       )}
