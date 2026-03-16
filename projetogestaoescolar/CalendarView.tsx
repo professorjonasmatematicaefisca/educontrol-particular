@@ -31,7 +31,10 @@ import {
   eachDayOfInterval, 
   isSameMonth, 
   isValid,
-  parseISO
+  parseISO,
+  addDays,
+  subDays,
+  isToday
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { UserRole, ScheduledClass, Student, Discipline, BankAccount } from './types';
@@ -68,6 +71,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [registerHistory, setRegisterHistory] = useState(false);
+  const [agendaDate, setAgendaDate] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -732,13 +736,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
             {/* Agenda de Hoje */}
             <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
-              <h3 className="text-lg font-black text-white flex items-center gap-3 mb-6">
-                <Clock size={20} className="text-emerald-500" />
-                Agenda de Hoje
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-black text-white flex items-center gap-3">
+                  <Clock size={20} className="text-emerald-500" />
+                  {isToday(agendaDate) ? 'Agenda de Hoje' : `Agenda - ${format(agendaDate, 'dd/MM', { locale: ptBR })}`}
+                </h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setAgendaDate(prev => subDays(prev, 1))}
+                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button 
+                    onClick={() => setAgendaDate(prev => addDays(prev, 1))}
+                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
               <div className="space-y-4">
                 {classes
-                  .filter(c => c.status === 'SCHEDULED' && c.classDate === (new Date().toISOString().split('T')[0]) && !isLive(c))
+                  .filter(c => c.status === 'SCHEDULED' && c.classDate === format(agendaDate, 'yyyy-MM-dd') && !isLive(c))
                   .sort((a,b) => a.startTime.localeCompare(b.startTime))
                   .map(c => (
                     <div key={c.id} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 transition-all group relative overflow-hidden">
