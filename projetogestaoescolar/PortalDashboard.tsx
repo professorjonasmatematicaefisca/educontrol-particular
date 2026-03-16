@@ -294,7 +294,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                         ) : (
                             <p className="text-[10px] text-gray-500 font-bold italic uppercase">Sem atividades recentes.</p>
                         )}
-                        <button onClick={() => onNavigate('SIMULADOS')} className="w-full mt-6 py-2.5 text-[10px] font-black text-white uppercase border border-slate-700 hover:bg-slate-800 rounded-xl transition-all tracking-widest">
+                        <button className="w-full mt-6 py-2.5 text-[10px] font-black text-white/50 uppercase border border-slate-700/50 cursor-default rounded-xl transition-all tracking-widest">
                             Ver Todas Atividades
                         </button>
                     </div>

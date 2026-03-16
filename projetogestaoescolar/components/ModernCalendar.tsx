@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Clock, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ScheduledClass } from '../types';
+import { ScheduledClass, UserRole } from '../types';
 
 interface ModernCalendarProps {
   classes: ScheduledClass[];
   onSelectClass?: (item: ScheduledClass) => void;
   onRescheduleClass?: (classId: string, newDate: string, isCopy?: boolean) => void;
+  userRole?: UserRole;
 }
 
-export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelectClass, onRescheduleClass }) => {
+export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelectClass, onRescheduleClass, userRole }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const days = eachDayOfInterval({
@@ -30,7 +31,7 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
     e.preventDefault();
     const classId = e.dataTransfer.getData('classId');
     const isCopy = e.ctrlKey;
-    if (classId && onRescheduleClass) {
+    if (classId && onRescheduleClass && userRole !== UserRole.STUDENT) {
       const newDate = format(day, 'yyyy-MM-dd');
       onRescheduleClass(classId, newDate, isCopy);
     }
@@ -110,10 +111,10 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
                   return (
                     <button
                       key={c.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, c.id)}
+                      draggable={userRole !== UserRole.STUDENT}
+                      onDragStart={(e) => userRole !== UserRole.STUDENT ? handleDragStart(e, c.id) : null}
                       onClick={() => onSelectClass?.(c)}
-                      className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border cursor-grab active:cursor-grabbing ${studentColor.bg} ${studentColor.border} ${studentColor.text} ${studentColor.hover} ${
+                      className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border ${userRole !== UserRole.STUDENT ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${studentColor.bg} ${studentColor.border} ${studentColor.text} ${studentColor.hover} ${
                         c.status === 'COMPLETED' ? 'opacity-60 grayscale-[0.3]' : ''
                       }`}
                     >

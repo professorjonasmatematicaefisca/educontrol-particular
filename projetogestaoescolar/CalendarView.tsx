@@ -617,60 +617,64 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24 px-4 sm:px-6 lg:px-8">
-      {/* Header Premium */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="group">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500/20 transition-all">
-              <CalendarIcon className="text-emerald-500" size={20} />
+      {/* Header Premium - Fixo no topo */}
+      <div className="sticky top-0 z-[100] bg-slate-950/80 backdrop-blur-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-8 border-b border-slate-800/50">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="group">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 bg-emerald-500/10 rounded-lg group-hover:bg-emerald-500/20 transition-all">
+                <CalendarIcon className="text-emerald-500" size={20} />
+              </div>
+              <h1 className="text-2xl font-black text-white tracking-tight">EduControl <span className="text-emerald-500">PRO</span></h1>
             </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">EduControl <span className="text-emerald-500">PRO</span></h1>
+            <p className="text-xs text-gray-400 font-bold ml-10">Gestão Inteligente de Aulas Particulares</p>
           </div>
-          <p className="text-xs text-gray-400 font-bold ml-10">Gestão Inteligente de Aulas Particulares</p>
-        </div>
-        
-        <div className="flex items-center gap-4 bg-slate-900/50 p-1 rounded-xl border border-slate-800 backdrop-blur-md">
-          <button 
-            onClick={() => setActiveTab('agenda')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'agenda' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
-          >
-            <Layout size={16} /> Agenda
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'history' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
-          >
-            <History size={16} /> {userRole === UserRole.STUDENT ? 'Aulas Concluídas' : 'Histórico'}
-          </button>
+          
+          <div className="flex items-center gap-4 bg-slate-900/50 p-1 rounded-xl border border-slate-800 backdrop-blur-md">
+            <button 
+              onClick={() => setActiveTab('agenda')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'agenda' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Layout size={16} /> Agenda
+            </button>
+            <button 
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'history' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+            >
+              <History size={16} /> {userRole === UserRole.STUDENT ? 'Aulas Concluídas' : 'Histórico'}
+            </button>
+            {userRole !== UserRole.STUDENT && (
+              <button 
+                onClick={() => setActiveTab('finance')}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'finance' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+              >
+                <DollarSign size={16} /> Financeiro
+              </button>
+            )}
+          </div>
+  
           {userRole !== UserRole.STUDENT && (
             <button 
-              onClick={() => setActiveTab('finance')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'finance' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+              onClick={() => {
+                setNewClass({
+                  ...newClass,
+                  classDate: new Date().toISOString().split('T')[0],
+                  startTime: '08:00',
+                  endTime: '09:00',
+                  studentId: ''
+                });
+                setShowModal(true);
+              }}
+              className="group relative flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
             >
-              <DollarSign size={16} /> Financeiro
+              <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+              Novo Agendamento
             </button>
           )}
         </div>
-
-        {userRole !== UserRole.STUDENT && (
-          <button 
-            onClick={() => {
-              setNewClass({
-                ...newClass,
-                classDate: new Date().toISOString().split('T')[0],
-                startTime: '08:00',
-                endTime: '09:00',
-                studentId: ''
-              });
-              setShowModal(true);
-            }}
-            className="group relative flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
-          >
-            <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-            Novo Agendamento
-          </button>
-        )}
       </div>
+  
+      <div className="max-w-7xl mx-auto space-y-8">
 
       {activeTab === 'agenda' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -826,10 +830,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <select 
                           value={filterDiscipline} 
                           onChange={(e) => setFilterDiscipline(e.target.value)}
-                          className="bg-transparent border-none text-white text-xs font-bold pl-10 pr-4 py-2 focus:ring-0 w-40"
+                          className="bg-[#0f172a] border-none text-white text-[10px] font-black uppercase pl-10 pr-4 py-2 focus:ring-0 w-44 rounded-xl cursor-pointer"
                         >
-                          <option value="">Todas Disciplinas</option>
-                          {disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
+                          {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
                         </select>
                       </div>
                     </div>
@@ -851,7 +855,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 <div className="p-8">
                   <ModernCalendar 
                     classes={classes} 
-                    onSelectClass={userRole !== UserRole.STUDENT ? openCompletionModal : undefined}
+                    userRole={userRole}
+                    onSelectClass={setSelectedClass}
                     onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined}
                   />
                 </div>
@@ -1019,29 +1024,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
-                <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                    <select 
-                      value={filterStudent}
-                      onChange={(e) => setFilterStudent(e.target.value)}
-                      className="bg-transparent border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48"
-                    >
-                      <option value="">Todos os Alunos</option>
-                      {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                {userRole !== UserRole.STUDENT && (
+                  <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
+                    <div className="relative">
+                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                      <select 
+                        value={filterStudent}
+                        onChange={(e) => setFilterStudent(e.target.value)}
+                        className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer"
+                      >
+                        <option value="">Todos os Alunos</option>
+                        {students.map(s => <option key={s.id} value={s.id} className="bg-[#0f172a]">{s.name}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
                   <div className="relative">
                     <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
                     <select 
                       value={filterDiscipline}
                       onChange={(e) => setFilterDiscipline(e.target.value)}
-                      className="bg-transparent border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48"
+                      className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer shadow-inner"
                     >
-                      <option value="">Todas Disciplinas</option>
-                      {disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
+                      {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
                     </select>
                   </div>
                   </div>
@@ -1333,5 +1340,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         </div>
       )}
       </div>
+    </div>
   );
 };
