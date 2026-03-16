@@ -67,6 +67,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [filterStudent, setFilterStudent] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [registerHistory, setRegisterHistory] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -231,6 +232,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       startTime: item.startTime,
       endTime: item.endTime
     });
+    setRegisterHistory(false);
     setShowRescheduleModal(true);
   };
 
@@ -245,11 +247,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
 
-    const saveHistory = window.confirm('Deseja registrar esta remarcação no histórico?');
-
     try {
       let success;
-      if (saveHistory) {
+      if (registerHistory) {
         success = await SupabaseService.rescheduleClass(
           selectedClass.id,
           selectedClass.classDate,
@@ -269,11 +269,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       }
 
       if (success) {
-        onShowToast('Aula remarcada com sucesso');
+        onShowToast('Horário alterado com sucesso');
         setShowRescheduleModal(false);
         fetchData();
       } else {
-        onShowToast('Erro ao remarcar aula');
+        onShowToast('Erro ao alterar horário');
       }
     } catch (error) {
       onShowToast('Erro na operação');
@@ -312,7 +312,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
 
-    const saveHistory = window.confirm('Mover aula? Deseja registrar esta remarcação no histórico?');
+    const saveHistory = registerHistory || window.confirm('Mover aula? Deseja registrar esta remarcação no histórico?');
 
     try {
       let success;
@@ -710,7 +710,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                               onClick={() => openRescheduleModal(c)}
                               className="w-full py-2 bg-white/10 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2"
                             >
-                              <History size={14} /> Remarcar Aula
+                              <History size={14} /> Alterar Horário
                             </button>
                           </div>
                         ) : (
@@ -1278,14 +1278,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                     }} 
                   />
                 </div>
+
+                <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
+                  <input 
+                    type="checkbox" 
+                    id="registerHistory"
+                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-emerald-500/50"
+                    checked={registerHistory}
+                    onChange={(e) => setRegisterHistory(e.target.checked)}
+                  />
+                  <label htmlFor="registerHistory" className="text-xs font-bold text-gray-300 cursor-pointer select-none">
+                    Registrar no histórico de remarcação?
+                  </label>
+                </div>
               </div>
 
-              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
-                <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500"><Clock size={16} /></div>
-                <p className="text-[11px] text-amber-500 font-bold italic leading-tight">
-                  Esta alteração registrará que você reagendou de <strong>{selectedClass.startTime}</strong> para o novo horário.
-                </p>
-              </div>
+              {registerHistory && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500"><Clock size={16} /></div>
+                  <p className="text-[11px] text-amber-500 font-bold italic leading-tight">
+                    Esta alteração registrará que você reagendou de <strong>{selectedClass.startTime}</strong> para o novo horário.
+                  </p>
+                </div>
+              )}
 
               <button 
                 onClick={handleConfirmReschedule} 
