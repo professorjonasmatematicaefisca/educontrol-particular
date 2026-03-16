@@ -189,8 +189,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     try {
       let pdfUrl = selectedClass.pdfUrl || '';
       if (completionData.pdfFile) {
+        console.log('Uploading PDF:', completionData.pdfFile.name);
         const uploaded = await SupabaseService.uploadPDF(completionData.pdfFile);
-        if (uploaded) pdfUrl = uploaded;
+        if (uploaded) {
+          pdfUrl = uploaded;
+          console.log('PDF uploaded successfully:', pdfUrl);
+        } else {
+          console.error('PDF upload failed');
+        }
       }
 
       const success = await SupabaseService.updateScheduledClassStatus(selectedClass.id, 'COMPLETED', {
@@ -692,15 +698,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                           <div className="flex flex-col gap-2">
                             <button 
                               onClick={() => {
-                                // If class has disciplineId already, start immediately
-                                if (c.disciplineId) {
-                                  handleUpdateStatus(c.id, 'IN_PROGRESS');
-                                  onViewChange?.('WHITEBOARD', { classId: c.id, disciplineId: c.disciplineId });
-                                } else {
-                                  // Otherwise open completion/selection modal
-                                  setSelectedClass(c);
-                                  setShowCompletionModal(true);
-                                }
+                                handleUpdateStatus(c.id, 'IN_PROGRESS');
                               }}
                               className="w-full py-3 bg-white text-emerald-600 font-black rounded-xl text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
                             >
