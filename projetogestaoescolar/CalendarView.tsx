@@ -14,11 +14,14 @@ import {
   Search,
   Target,
   Layout,
-  History,
+  History as HistoryIcon,
   FileText,
   ArrowRight,
   DollarSign,
-  Filter
+  Filter,
+  Play,
+  ArrowLeft,
+  Check
 } from 'lucide-react';
 import { 
   format, 
@@ -61,7 +64,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   
   const [selectedClass, setSelectedClass] = useState<ScheduledClass | null>(null);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState<'agenda' | 'history' | 'finance'>('agenda');
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>(userRole === UserRole.STUDENT ? 'calendar' : 'table');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -73,6 +76,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [registerHistory, setRegisterHistory] = useState(false);
   const [agendaDate, setAgendaDate] = useState(new Date());
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+  const [agendaPage, setAgendaPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -362,11 +368,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       const success = await SupabaseService.updateScheduledClassStatus(id, status);
       if (success) {
         if (status === 'IN_PROGRESS') {
-          const cls = classes.find(c => c.id === id);
-          onShowToast('Aula iniciada!');
-          if (onViewChange && cls) {
-            onViewChange('WHITEBOARD', { classId: cls.id, disciplineId: cls.disciplineId || '' });
-          }
+          onShowToast('Aula iniciada! Status atualizado.');
+          // Removido abertura automática da lousa conforme pedido
         } else {
           onShowToast(`Aula marcada como ${status === 'CANCELLED' ? 'Cancelada' : 'Faltosa'}`);
         }
@@ -616,6 +619,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     </div>
   );
 
+  const UserAvatar = ({ name, photoUrl, size = 'sm' }: { name: string; photoUrl?: string | null; size?: 'sm' | 'md' | 'lg' }) => {
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    const sizeClasses = {
+      sm: 'w-8 h-8 text-[10px]',
+      md: 'w-10 h-10 text-xs',
+      lg: 'w-12 h-12 text-sm'
+    };
+
+    return (
+      <div className={`${sizeClasses[size]} rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
+        {photoUrl ? (
+          <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="font-black text-emerald-500">{initials}</span>
+        )}
+      </div>
+    );
+  };
+
   const AlphabetFilter = ({ selected, onSelect }: { selected: string | null; onSelect: (letter: string | null) => void }) => (
     <div className="flex flex-wrap gap-1 mb-6 p-2 bg-slate-900/40 border border-slate-800 rounded-2xl backdrop-blur-md">
       <button
@@ -633,6 +655,146 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           {l}
         </button>
       ))}
+    </div>
+  );
+
+  const Pagination = ({ current, total, onPageChange }: { current: number; total: number; onPageChange: (p: number) => void }) => {
+    const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-center gap-4 mt-6">
+        <button
+          disabled={current === 1}
+          onClick={() => onPageChange(current - 1)}
+          className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-gray-400 hover:text-white rounded-xl transition-all"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span className="text-xs font-black text-gray-500 uppercase tracking-widest">
+          Página <span className="text-white">{current}</span> de {totalPages}
+        </span>
+        <button
+          disabled={current === totalPages}
+          onClick={() => onPageChange(current + 1)}
+          className="p-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-20 text-gray-400 hover:text-white rounded-xl transition-all"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+    );
+  };
+
+  const AgendaCard = ({ c }: { c: ScheduledClass }) => (
+    <div key={c.id} className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] hover:border-emerald-500/30 transition-all group">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-3">
+          <UserAvatar name={c.studentName || ''} photoUrl={c.studentPhoto} size="md" />
+          <div>
+            <h4 className="text-white font-black uppercase tracking-tight text-sm">
+              {c.studentName}
+            </h4>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{c.className}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end">
+          <div className="flex items-center gap-1 text-[10px] font-black text-sky-400 bg-sky-500/10 px-2 py-1 rounded-lg border border-sky-500/20 uppercase">
+            <Clock size={10} /> {c.startTime}
+          </div>
+          {c.status !== 'SCHEDULED' && (
+            <div className="mt-2">{getStatusIcon(c.status)}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center gap-2 text-xs font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
+          <BookOpen size={14} className="text-emerald-500" />
+          <span className="truncate">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
+        </div>
+        {c.rescheduledBy && (
+          <div className="flex items-center gap-2 text-[10px] font-black text-amber-500/80 bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 italic">
+            <HistoryIcon size={12} /> Reagendada
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {c.status === 'SCHEDULED' && isToday(new Date(c.classDate + 'T12:00:00')) && (
+          <button 
+            onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
+            className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
+          >
+            <Play size={14} /> Iniciar Aula
+          </button>
+        )}
+        
+        {c.status === 'IN_PROGRESS' && (
+          <button 
+            onClick={() => openCompletionModal(c)} 
+            className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+          >
+            <CheckCircle size={14} /> Concluir Aula
+          </button>
+        )}
+
+        {c.status === 'SCHEDULED' && (
+          <button 
+            onClick={() => openRescheduleModal(c)}
+            className="p-3 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-95"
+            title="Alterar Horário"
+          >
+            <Edit2 size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const HistoryCard = ({ c }: { c: ScheduledClass }) => (
+    <div key={c.id} className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all group">
+      <div className="flex justify-between items-start mb-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-white font-black text-xs">
+            <CalendarIcon size={12} className="text-emerald-500" />
+            {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+          </div>
+          <div className="text-gray-500 font-bold text-[10px] uppercase">{c.startTime}</div>
+        </div>
+        {c.status === 'COMPLETED' ? (
+          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase rounded border border-emerald-500/20">Concluída</span>
+        ) : c.status === 'IN_PROGRESS' ? (
+          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-black uppercase rounded border border-amber-500/20 animate-pulse">Em Aula</span>
+        ) : (
+          <span className="px-2 py-0.5 bg-sky-500/10 text-sky-400 text-[9px] font-black uppercase rounded border border-sky-500/20">Agendada</span>
+        )}
+      </div>
+      
+      <div className="mb-4">
+        <p className="text-white font-black text-sm uppercase tracking-tight group-hover:text-emerald-400 transition-all">{c.studentName}</p>
+        <p className="text-slate-500 font-bold text-[10px] uppercase">
+          {userRole === UserRole.STUDENT ? `Prof. ${c.teacherName}` : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Disciplina')}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
+        {c.pdfUrl ? (
+          <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
+            <FileText size={12} /> PDF Aula
+          </a>
+        ) : (
+          <span className="text-[9px] text-slate-600 font-bold uppercase ring-1 ring-slate-800 px-2 py-1 rounded">Sem Material</span>
+        )}
+        
+        {userRole !== UserRole.STUDENT && (c.status === 'SCHEDULED' || c.status === 'IN_PROGRESS') && (
+          <button 
+            onClick={() => c.status === 'SCHEDULED' ? handleUpdateStatus(c.id, 'IN_PROGRESS') : openCompletionModal(c)}
+            className="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-lg"
+          >
+            {c.status === 'SCHEDULED' ? <ArrowRight size={16} /> : <CheckCircle size={16} />}
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -662,13 +824,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               onClick={() => setActiveTab('history')}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'history' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
             >
-              <History size={16} /> {userRole === UserRole.STUDENT ? 'Aulas Concluídas' : 'Histórico'}
+              <HistoryIcon size={16} /> {userRole === UserRole.STUDENT ? 'Aulas Concluídas' : 'Histórico'}
             </button>
             {userRole !== UserRole.STUDENT && (
               <button 
                 onClick={() => setActiveTab('finance')}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'finance' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
-              >
+            >
                 <DollarSign size={16} /> Financeiro
               </button>
             )}
@@ -739,7 +901,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                               onClick={() => openRescheduleModal(c)}
                               className="w-full py-2 bg-white/10 text-white font-bold rounded-xl text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2"
                             >
-                              <History size={14} /> Alterar Horário
+                              <HistoryIcon size={14} /> Alterar Horário
                             </button>
                           </div>
                         ) : (
@@ -759,7 +921,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </div>
             )}
 
-            {/* Agenda de Hoje */}
             <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black text-white flex items-center gap-3">
@@ -768,61 +929,53 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </h3>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => setAgendaDate(prev => subDays(prev, 1))}
+                    onClick={() => { setAgendaDate(prev => subDays(prev, 1)); setAgendaPage(1); }}
                     className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button 
-                    onClick={() => setAgendaDate(prev => addDays(prev, 1))}
+                    onClick={() => { setAgendaDate(prev => addDays(prev, 1)); setAgendaPage(1); }}
                     className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
                   >
                     <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
-              <AlphabetFilter selected={selectedLetter} onSelect={setSelectedLetter} />
-              <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
-                {classes
-                  .filter(c => 
-                    c.status === 'SCHEDULED' && 
-                    c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
-                    !isLive(c) &&
-                    (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
-                  )
-                  .sort((a,b) => a.startTime.localeCompare(b.startTime))
-                  .map(c => (
-                    <div key={c.id} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 transition-all group relative overflow-hidden">
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="text-xs font-black text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-lg border border-emerald-400/20">
-                          {c.startTime}
-                        </span>
-                        {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
-                          <div className="flex gap-1">
-                            <button onClick={() => openRescheduleModal(c)} className="p-2 hover:bg-sky-500/20 text-sky-400 rounded-lg transition-all" title="Remarcar"><Edit2 size={16} /></button>
-                            <button onClick={() => handleUpdateStatus(c.id, 'CANCELLED')} className="p-2 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-all" title="Cancelar"><XCircle size={16} /></button>
-                          </div>
-                        )}
+
+              <div className="space-y-4">
+                {(() => {
+                  const filtered = classes
+                    .filter(c => 
+                      c.status === 'SCHEDULED' && 
+                      c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
+                      !isLive(c)
+                    )
+                    .sort((a,b) => a.startTime.localeCompare(b.startTime));
+                  
+                  const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
+
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 gap-4">
+                        {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
                       </div>
-                      <p className="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors uppercase">{c.studentName}</p>
-                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">Resp: {c.parentName || '-'}</p>
-                      <div className="flex items-center gap-3 text-gray-500 text-xs font-bold">
-                        <span className="flex items-center gap-1"><UserIcon size={12} /> {c.className || 'Geral'}</span>
-                        <span className="flex items-center gap-1"><Target size={12} /> 60 mim</span>
-                      </div>
-                    </div>
-                  ))}
-                {classes.filter(c => 
-                  c.status === 'SCHEDULED' && 
-                  c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
-                  !isLive(c) &&
-                  (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
-                ).length === 0 && (
-                  <div className="text-center py-10 opacity-30 select-none">
-                    <CalendarIcon size={48} className="mx-auto mb-2" />
-                    <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
-                  </div>
-                )}
+                      
+                      {filtered.length === 0 && (
+                        <div className="text-center py-10 opacity-30 select-none">
+                          <CalendarIcon size={48} className="mx-auto mb-2" />
+                          <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
+                        </div>
+                      )}
+
+                      <Pagination 
+                        current={agendaPage} 
+                        total={filtered.length} 
+                        onPageChange={setAgendaPage} 
+                      />
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -893,121 +1046,39 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
-                        <th className="p-6">Data & Hora</th>
-                        <th className="p-6">{userRole === UserRole.STUDENT ? 'Disciplina/Professor' : 'Aluno'}</th>
-                        <th className="p-6">Conteúdo / Material</th>
-                        <th className="p-6 text-right">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                      {classes
-                        .filter(c => 
-                          (userRole === UserRole.STUDENT 
-                            ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                            : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
-                          ) &&
-                          (!filterDiscipline || c.disciplineId === filterDiscipline)
-                        )
-                        .map(c => (
-                        <tr key={c.id} className="hover:bg-slate-800/30 transition-all group">
-                          <td className="p-6">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 text-white font-black text-sm">
-                                <CalendarIcon size={14} className="text-emerald-500" />
-                                {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </div>
-                              <div className="flex items-center gap-2 text-gray-400 font-bold text-[10px] uppercase">
-                                <Clock size={12} /> {c.startTime}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            <div className="flex items-center gap-3">
-                              {userRole === UserRole.STUDENT ? (
-                                  <div>
-                                      <span className="text-white font-bold text-sm block uppercase tracking-tight">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
-                                      <span className="text-gray-500 font-bold text-[10px] block uppercase">Prof. {c.teacherName}</span>
-                                  </div>
-                              ) : (
-                                  <>
-                                      <div className="relative">
-                                      {c.studentPhoto ? (
-                                          <img src={c.studentPhoto} className="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-800 group-hover:ring-emerald-500/50 transition-all" alt="" />
-                                      ) : (
-                                          <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-sm font-black text-slate-500">
-                                          {c.studentName?.[0]}
-                                          </div>
-                                      )}
-                                      </div>
-                                      <div>
-                                      <span className="text-white font-bold text-sm block uppercase tracking-tight group-hover:text-emerald-400 transition-colors">{c.studentName}</span>
-                                      <span className="text-gray-500 font-bold text-[9px] block uppercase">{c.className || 'Não definida'}</span>
-                                      </div>
-                                  </>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            <div className="max-w-xs space-y-2">
-                              <p className="text-[11px] text-gray-400 font-medium italic line-clamp-1">{c.subjectNotes || 'Nenhum registro de conteúdo'}</p>
-                              {c.pdfUrl && (
-                                  <a 
-                                      href={c.pdfUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border border-red-500/20"
-                                  >
-                                      <FileText size={12} /> PDF Aula
-                                  </a>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-6 text-right">
-                            <div className="flex justify-end gap-2">
-                              {userRole === UserRole.STUDENT ? (
-                                  <div className="flex justify-end gap-2">
-                                      {c.status === 'COMPLETED' ? (
-                                          <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase rounded-lg border border-emerald-500/20">Concluída</span>
-                                      ) : c.status === 'IN_PROGRESS' ? (
-                                          <span className="px-3 py-1 bg-amber-500/10 text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-500/20 animate-pulse">Em Aula</span>
-                                      ) : (
-                                          <span className="px-3 py-1 bg-sky-500/10 text-sky-400 text-[10px] font-black uppercase rounded-lg border border-sky-500/20">Agendada</span>
-                                      )}
-                                  </div>
-                              ) : (
-                                  <>
-                                      {(c.status === 'SCHEDULED' || c.status === 'IN_PROGRESS') && (
-                                          <button 
-                                              onClick={() => c.status === 'SCHEDULED' ? handleUpdateStatus(c.id, 'IN_PROGRESS') : openCompletionModal(c)}
-                                              className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-lg ${
-                                                  c.status === 'SCHEDULED' 
-                                                  ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white shadow-emerald-500/10' 
-                                                  : 'bg-amber-500/20 text-amber-500 hover:bg-amber-500 hover:text-white shadow-amber-500/10'
-                                              }`}
-                                              title={c.status === 'SCHEDULED' ? 'Iniciar Aula' : 'Encerrar Aula'}
-                                          >
-                                              {c.status === 'SCHEDULED' ? <ArrowRight size={20} /> : <CheckCircle size={20} />}
-                                          </button>
-                                      )}
-                                      <button 
-                                          onClick={() => openCompletionModal(c)}
-                                          className="w-10 h-10 flex items-center justify-center bg-slate-800/50 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-500 rounded-xl transition-all"
-                                          title="Editar Registro"
-                                      >
-                                          <Plus size={20} />
-                                      </button>
-                                  </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="p-8">
+                  {(() => {
+                    const filtered = classes.filter(c => 
+                      (userRole === UserRole.STUDENT 
+                        ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
+                        : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
+                      ) &&
+                      (!filterDiscipline || c.disciplineId === filterDiscipline)
+                    );
+                    
+                    const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
+                        </div>
+                        
+                        {filtered.length === 0 && (
+                          <div className="text-center py-20 opacity-30 select-none">
+                            <Search size={64} className="mx-auto mb-4" />
+                            <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum registro encontrado</p>
+                          </div>
+                        )}
+
+                        <Pagination 
+                          current={historyPage} 
+                          total={filtered.length} 
+                          onPageChange={setHistoryPage} 
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1056,6 +1127,34 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                     </p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      const prev = subDays(new Date(currentDate + 'T12:00:00'), 1);
+                      setCurrentDate(format(prev, 'yyyy-MM-dd'));
+                    }}
+                    className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="flex flex-col items-center min-w-[120px]">
+                    <h3 className="text-lg font-black text-white uppercase tracking-tighter">
+                      {isToday(new Date(currentDate + 'T12:00:00')) ? 'Hoje' : format(new Date(currentDate + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })}
+                    </h3>
+                    <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                      {format(new Date(currentDate + 'T12:00:00'), 'EEEE', { locale: ptBR })}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const next = addDays(new Date(currentDate + 'T12:00:00'), 1);
+                      setCurrentDate(format(next, 'yyyy-MM-dd'));
+                    }}
+                    className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-3">
                   {userRole !== UserRole.STUDENT && (
                     <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
@@ -1091,89 +1190,42 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               <AlphabetFilter selected={selectedLetter} onSelect={setSelectedLetter} />
             </div>
 
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full text-left">
-                <thead className="sticky top-0 z-10">
-                  <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/95 backdrop-blur-sm">
-                    <th className="p-6">Informações da Aula</th>
-                    <th className="p-6">Conteúdo / Observação</th>
-                    <th className="p-6">Auditoria</th>
-                    <th className="p-6 text-right">Status Final</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {classes
-                    .filter(c => 
-                      (!filterStudent || c.studentId === filterStudent) && 
-                      (!filterDiscipline || c.disciplineId === filterDiscipline) &&
-                      (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
-                    )
-                    .map(c => (
-                    <tr key={c.id} className="hover:bg-slate-800/30 transition-all border-l-4 border-transparent hover:border-emerald-500/50">
-                      <td className="p-6">
-                        <div className="space-y-1">
-                          <span className="text-white font-bold block text-sm uppercase tracking-tight">{c.studentName}</span>
-                          <span className="text-slate-500 font-bold text-xs flex items-center gap-1">
-                            <CalendarIcon size={12} /> {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')} às {c.startTime}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        <div className="max-w-xs">
-                          {c.disciplineId ? (
-                            <div className="space-y-2">
-                              <span className="inline-block px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase rounded border border-emerald-500/20">
-                                {disciplines.find(d => d.id === c.disciplineId)?.name || 'Disciplina'}
-                              </span>
-                              <p className="text-slate-400 text-xs font-medium line-clamp-2 italic">{c.subjectNotes || 'Sem observações'}</p>
-                              {c.pdfUrl && (
-                                <a 
-                                  href={c.pdfUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline mt-1"
-                                >
-                                  <FileText size={10} /> Ver Material (PDF)
-                                </a>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-slate-600 text-[10px] font-bold uppercase tracking-widest italic">Dados indisponíveis</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        {c.rescheduledBy ? (
-                          <div className="bg-amber-500/5 border border-amber-500/10 p-3 rounded-2xl space-y-2">
-                            <span className="flex items-center gap-1.5 text-amber-500 text-[10px] font-black uppercase tracking-wider">
-                              <Clock size={12} /> Aula Remarcada
-                            </span>
-                            <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold">
-                              <span>De: {c.previousStartTime || '--:--'}</span>
-                              <ArrowRight size={10} />
-                              <span className="text-white">Para: {c.startTime}</span>
-                            </div>
-                            <span className="block text-[9px] text-slate-600 font-bold mt-1">Por: {c.rescheduledBy}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-700 font-black text-[10px] uppercase">Agendamento Original</span>
-                        )}
-                      </td>
-                      <td className="p-6 text-right">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-black tracking-widest ${
-                          c.status === 'COMPLETED' ? 'text-emerald-500' : 'text-slate-500'
-                        }`}>
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-8">
+              {(() => {
+                const filtered = classes.filter(c => 
+                  (!filterStudent || c.studentId === filterStudent) && 
+                  (!filterDiscipline || c.disciplineId === filterDiscipline) &&
+                  (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
+                );
+                
+                const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
+                    </div>
+                    
+                    {filtered.length === 0 && (
+                      <div className="text-center py-20 opacity-30 select-none">
+                        <FileText size={64} className="mx-auto mb-4" />
+                        <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum histórico encontrado</p>
+                      </div>
+                    )}
+
+                    <Pagination 
+                      current={historyPage} 
+                      total={filtered.length} 
+                      onPageChange={setHistoryPage} 
+                    />
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
       )}
+    </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -1413,7 +1465,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 };
