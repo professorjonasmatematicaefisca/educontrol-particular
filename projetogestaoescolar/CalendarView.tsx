@@ -72,6 +72,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [currentTime, setCurrentTime] = useState(new Date());
   const [registerHistory, setRegisterHistory] = useState(false);
   const [agendaDate, setAgendaDate] = useState(new Date());
+  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -594,7 +595,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     );
   };
 
-  const TimeGrid: React.FC<{ selected: string; onSelect: (time: string) => void }> = ({ selected, onSelect }) => (
+  const TimeGrid = ({ selected, onSelect }: { selected: string; onSelect: (time: string) => void }) => (
     <div className="grid grid-cols-4 gap-2">
       {Array.from({ length: 15 }, (_, i) => i + 7).map(h => {
         const time = `${h.toString().padStart(2, '0')}:00`;
@@ -612,6 +613,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </button>
         );
       })}
+    </div>
+  );
+
+  const AlphabetFilter = ({ selected, onSelect }: { selected: string | null; onSelect: (letter: string | null) => void }) => (
+    <div className="flex flex-wrap gap-1 mb-6 p-2 bg-slate-900/40 border border-slate-800 rounded-2xl backdrop-blur-md">
+      <button
+        onClick={() => onSelect(null)}
+        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${!selected ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+      >
+        Tudo
+      </button>
+      {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => (
+        <button
+          key={l}
+          onClick={() => onSelect(l === selected ? null : l)}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg text-[11px] font-black transition-all ${selected === l ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+        >
+          {l}
+        </button>
+      ))}
     </div>
   );
 
@@ -760,9 +781,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </button>
                 </div>
               </div>
-              <div className="space-y-4">
+              <AlphabetFilter selected={selectedLetter} onSelect={setSelectedLetter} />
+              <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
                 {classes
-                  .filter(c => c.status === 'SCHEDULED' && c.classDate === format(agendaDate, 'yyyy-MM-dd') && !isLive(c))
+                  .filter(c => 
+                    c.status === 'SCHEDULED' && 
+                    c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
+                    !isLive(c) &&
+                    (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
+                  )
                   .sort((a,b) => a.startTime.localeCompare(b.startTime))
                   .map(c => (
                     <div key={c.id} className="bg-slate-800/40 p-5 rounded-2xl border border-slate-700/50 hover:border-emerald-500/50 transition-all group relative overflow-hidden">
@@ -785,10 +812,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       </div>
                     </div>
                   ))}
-                {classes.filter(c => c.status === 'SCHEDULED' && c.classDate === (new Date().toISOString().split('T')[0]) && !isLive(c)).length === 0 && (
+                {classes.filter(c => 
+                  c.status === 'SCHEDULED' && 
+                  c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
+                  !isLive(c) &&
+                  (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
+                ).length === 0 && (
                   <div className="text-center py-10 opacity-30 select-none">
                     <CalendarIcon size={48} className="mx-auto mb-2" />
-                    <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes hoje</p>
+                    <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
                   </div>
                 )}
               </div>
@@ -1009,56 +1041,60 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </div>
 
           <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
-            <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                  <FileText size={20} />
+            <div className="p-8 border-b border-slate-800 bg-slate-900/80">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white mb-1">
+                      {userRole === UserRole.STUDENT ? 'Meus Materiais e Aulas' : 'Histórico Completo'}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                      {userRole === UserRole.STUDENT ? 'Baixe os PDFs das suas aulas' : 'Filtros e Auditoria'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-white mb-1">
-                    {userRole === UserRole.STUDENT ? 'Meus Materiais e Aulas' : 'Histórico Completo'}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                    {userRole === UserRole.STUDENT ? 'Baixe os PDFs das suas aulas' : 'Filtros e Auditoria'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {userRole !== UserRole.STUDENT && (
-                  <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
+                <div className="flex flex-wrap gap-3">
+                  {userRole !== UserRole.STUDENT && (
+                    <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
+                      <div className="relative">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                        <select 
+                          value={filterStudent}
+                          onChange={(e) => setFilterStudent(e.target.value)}
+                          className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer"
+                        >
+                          <option value="">Todos os Alunos</option>
+                          {students.map(s => <option key={s.id} value={s.id} className="bg-[#0f172a]">{s.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
                     <div className="relative">
-                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                      <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
                       <select 
-                        value={filterStudent}
-                        onChange={(e) => setFilterStudent(e.target.value)}
-                        className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer"
+                        value={filterDiscipline}
+                        onChange={(e) => setFilterDiscipline(e.target.value)}
+                        className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer shadow-inner"
                       >
-                        <option value="">Todos os Alunos</option>
-                        {students.map(s => <option key={s.id} value={s.id} className="bg-[#0f172a]">{s.name}</option>)}
+                        <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
+                        {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
                       </select>
                     </div>
                   </div>
-                )}
-                <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                  <div className="relative">
-                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                    <select 
-                      value={filterDiscipline}
-                      onChange={(e) => setFilterDiscipline(e.target.value)}
-                      className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer shadow-inner"
-                    >
-                      <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
-                      {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
-                    </select>
-                  </div>
-                  </div>
+                </div>
               </div>
+
+              <AlphabetFilter selected={selectedLetter} onSelect={setSelectedLetter} />
             </div>
 
-              <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/95 backdrop-blur-sm">
                     <th className="p-6">Informações da Aula</th>
                     <th className="p-6">Conteúdo / Observação</th>
                     <th className="p-6">Auditoria</th>
@@ -1067,7 +1103,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {classes
-                    .filter(c => (!filterStudent || c.studentId === filterStudent) && (!filterDiscipline || c.disciplineId === filterDiscipline))
+                    .filter(c => 
+                      (!filterStudent || c.studentId === filterStudent) && 
+                      (!filterDiscipline || c.disciplineId === filterDiscipline) &&
+                      (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
+                    )
                     .map(c => (
                     <tr key={c.id} className="hover:bg-slate-800/30 transition-all border-l-4 border-transparent hover:border-emerald-500/50">
                       <td className="p-6">
@@ -1135,56 +1175,90 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         </div>
       )}
 
-      {/* Modal de Agendamento (Simplificado) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl">
-            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus className="text-emerald-500" /> Novo Agendamento
-              </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white"><XCircle size={24} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Aluno</label>
-                <select 
-                  className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white outline-none"
-                  value={newClass.studentId || ''}
-                  onChange={(e) => setNewClass({ ...newClass, studentId: e.target.value })}
-                >
-                  <option value="">Selecione um aluno</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Selecione o Dia</label>
-                    <ModernDatePicker value={newClass.classDate || ''} onChange={(date) => setNewClass({ ...newClass, classDate: date })} />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Selecione o Horário</label>
-                    <TimeGrid 
-                      selected={newClass.startTime || ''} 
-                      onSelect={(time) => {
-                        const h = parseInt(time.split(':')[0]);
-                        setNewClass({ 
-                          ...newClass, 
-                          startTime: time, 
-                          endTime: `${(h + 1).toString().padStart(2, '0')}:00` 
-                        });
-                      }} 
-                    />
-                  </div>
+          <div className="bg-[#1e293b] w-full max-w-4xl rounded-3xl border border-gray-700 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 border-b border-gray-700 flex justify-between items-center bg-[#0f172a]/50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+                  <Plus size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white">Novo Agendamento</h2>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Planejamento Acadêmico</p>
                 </div>
               </div>
               <button 
-                onClick={handleCreateClass} 
-                className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl mt-4 active:scale-95 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                onClick={() => setShowModal(false)} 
+                className="p-3 hover:bg-white/5 text-gray-400 hover:text-white rounded-2xl transition-all"
               >
-                Salvar Agendamento
+                <XCircle size={28} />
               </button>
+            </div>
+            
+            <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-10">
+              {/* Coluna 1: Aluno e Data */}
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">1. Selecione o Aluno</label>
+                  <div className="relative group">
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <select 
+                      className="w-full bg-[#0f172a] border border-gray-700 hover:border-emerald-500/50 rounded-2xl p-4 pl-12 text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none cursor-pointer"
+                      value={newClass.studentId || ''}
+                      onChange={(e) => setNewClass({ ...newClass, studentId: e.target.value })}
+                    >
+                      <option value="">Selecione um aluno na lista...</option>
+                      {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">2. Selecione o Dia</label>
+                  <ModernDatePicker value={newClass.classDate || ''} onChange={(date) => setNewClass({ ...newClass, classDate: date })} />
+                </div>
+              </div>
+
+              {/* Coluna 2: Horário e Ação */}
+              <div className="space-y-8 flex flex-col">
+                <div className="flex-1">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">3. Selecione o Horário</label>
+                  <TimeGrid 
+                    selected={newClass.startTime || ''} 
+                    onSelect={(time) => {
+                      const h = parseInt(time.split(':')[0]);
+                      setNewClass({ 
+                        ...newClass, 
+                        startTime: time, 
+                        endTime: `${(h + 1).toString().padStart(2, '0')}:00` 
+                      });
+                    }} 
+                  />
+                </div>
+
+                <div className="pt-8 border-t border-gray-700/50">
+                  <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-6 mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Resumo do Agendamento</span>
+                      <CheckCircle size={14} className="text-emerald-500" />
+                    </div>
+                    <p className="text-white font-bold flex items-center gap-2">
+                       {newClass.classDate ? format(parseISO(newClass.classDate), 'dd/MM/yyyy') : '---'} 
+                       <ArrowRight size={14} className="text-slate-600" />
+                       {newClass.startTime || '---'}
+                    </p>
+                  </div>
+                  
+                  <button 
+                    onClick={handleCreateClass} 
+                    disabled={!newClass.studentId || !newClass.classDate || !newClass.startTime}
+                    className="w-full py-5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-30 disabled:hover:bg-emerald-500 text-white font-black text-lg rounded-2xl active:scale-[0.98] transition-all shadow-[0_20px_40px_rgba(16,185,129,0.2)] flex items-center justify-center gap-3"
+                  >
+                    <Plus size={24} /> Confirmar Agendamento
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
