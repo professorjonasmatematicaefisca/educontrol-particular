@@ -60,6 +60,77 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
   });
 
   const [isPreview, setIsPreview] = useState(false);
+  const [smartInput, setSmartInput] = useState('');
+  const [showSmartParser, setShowSmartParser] = useState(false);
+
+  const parseSmartInput = () => {
+    if (!smartInput.trim()) return;
+
+    // Regex para capturar texto da questão, alternativas e alternativa correta
+    const lines = smartInput.split('\n').map(l => l.trim()).filter(l => l);
+    let questionTextLines: string[] = [];
+    let options: { id: string; text: string; isCorrect: boolean }[] = [];
+    let correctId = '';
+
+    const optionRegex = /^([A-E])\)[\s:]*(.*)/i;
+    const correctRegex = /(?:Alternativa correta|Gabarito|Resposta|CORRETA)[\s:]*([A-E])/i;
+
+    lines.forEach(line => {
+      const optMatch = line.match(optionRegex);
+      const correctMatch = line.match(correctRegex);
+
+      if (optMatch) {
+        options.push({
+          id: optMatch[1].toUpperCase(),
+          text: optMatch[2].trim(),
+          isCorrect: false
+        });
+      } else if (correctMatch) {
+        correctId = correctMatch[1].toUpperCase();
+      } else {
+        // Se ainda não temos alternativas, é parte do texto da questão
+        if (options.length === 0) {
+          questionTextLines.push(line);
+        }
+      }
+    });
+
+    if (correctId && options.length > 0) {
+      options = options.map(opt => ({
+        ...opt,
+        isCorrect: opt.id === correctId
+      }));
+    }
+
+    // Se não encontrou corretas pelo regex específico, tenta ver se a última linha tem apenas uma letra
+    if (!correctId && lines.length > 0) {
+       const lastLine = lines[lines.length - 1];
+       if (/^[A-E]$/i.test(lastLine)) {
+          correctId = lastLine.toUpperCase();
+          options = options.map(opt => ({
+            ...opt,
+            isCorrect: opt.id === correctId
+          }));
+       }
+    }
+
+    setCurrentQuestion({
+      id: Math.random().toString(36).substring(7),
+      text: questionTextLines.join('\n'),
+      options: options.length > 0 ? options : [
+        { id: 'A', text: '', isCorrect: false },
+        { id: 'B', text: '', isCorrect: false },
+        { id: 'C', text: '', isCorrect: false },
+        { id: 'D', text: '', isCorrect: false },
+        { id: 'E', text: '', isCorrect: false },
+      ],
+      explanation: ''
+    });
+    
+    setSmartInput('');
+    setShowSmartParser(false);
+    onShowToast('Questão processada com sucesso!');
+  };
 
   const handleAddQuestion = () => {
     if (!currentQuestion.text) {
@@ -232,7 +303,15 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
               {/* Question Editor */}
               <div className="flex-1 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-black text-emerald-500 uppercase tracking-widest">Questão #{ (simulado.questions?.length || 0) + 1 }</h4>
+                  <div className="flex items-center gap-4">
+                    <h4 className="text-sm font-black text-emerald-500 uppercase tracking-widest">Questão #{ (simulado.questions?.length || 0) + 1 }</h4>
+                    <button 
+                      onClick={() => setShowSmartParser(!showSmartParser)}
+                      className="px-3 py-1.5 bg-sky-500/10 text-sky-500 rounded-lg text-[10px] font-black uppercase border border-sky-500/20 hover:bg-sky-500/20 transition-all"
+                    >
+                      Wizard Parser ⚡
+                    </button>
+                  </div>
                   <button 
                     onClick={() => setIsPreview(!isPreview)}
                     className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-white uppercase transition-all"
@@ -242,32 +321,63 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
                   </button>
                 </div>
 
-                {isPreview ? (
-                  <div className="w-full p-8 bg-slate-950/50 border border-slate-800 rounded-3xl min-h-[200px] prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkMath]} 
-                      rehypePlugins={[rehypeKatex]}
-                    >
-                      {currentQuestion.text || '_Nenhum texto inserido..._'}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
+                {showSmartParser ? (
+                  <div className="space-y-4 animate-in zoom-in-95 duration-300">
+                    <div className="p-4 bg-sky-500/5 border border-sky-500/20 rounded-2xl space-y-2">
+                       <p className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Smart Parser ⚡</p>
+                       <p className="text-[9px] text-sky-400/60 leading-relaxed italic">Cole o texto completo (Enunciado + Alternativas A-E + Gabarito). O sistema tentará identificar tudo automaticamente.</p>
+                    </div>
                     <textarea 
-                      placeholder="Escreva a questão em Markdown... Use $ \frac{1}{2} $ para LaTeX"
-                      className="w-full h-48 bg-slate-950 border border-slate-800 rounded-3xl p-6 text-sm font-medium text-white focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
-                      value={currentQuestion.text}
-                      onChange={(e) => setCurrentQuestion({...currentQuestion, text: e.target.value})}
+                      placeholder="Cole aqui. Exemplo:&#10;Sabendo que a matriz A é...&#10;A) -8&#10;B) 9&#10;...&#10;Alternativa correta: C"
+                      className="w-full h-64 bg-slate-950 border border-sky-500/30 rounded-3xl p-6 text-sm font-medium text-white focus:ring-2 focus:ring-sky-500/20 transition-all resize-none shadow-[0_0_20px_rgba(14,165,233,0.1)]"
+                      value={smartInput}
+                      onChange={(e) => setSmartInput(e.target.value)}
                     />
-                    <div className="flex gap-2">
-                       <button 
-                         onClick={() => setCurrentQuestion(prev => ({...prev, text: prev.text + ' $ ... $ '}))}
-                         className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-black text-slate-300 rounded-lg transition-all"
-                       >
-                         <Sigma size={12} /> Inserir LaTeX
-                       </button>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={parseSmartInput}
+                        className="flex-1 py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                      >
+                        Processar e Preencher
+                      </button>
+                      <button 
+                        onClick={() => setShowSmartParser(false)}
+                        className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                      >
+                        Cancelar
+                      </button>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    {isPreview ? (
+                      <div className="w-full p-8 bg-slate-950/50 border border-slate-800 rounded-3xl min-h-[200px] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkMath]} 
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {currentQuestion.text || '_Nenhum texto inserido..._'}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <textarea 
+                          placeholder="Escreva a questão em Markdown... Use $ \frac{1}{2} $ para LaTeX"
+                          className="w-full h-48 bg-slate-950 border border-slate-800 rounded-3xl p-6 text-sm font-medium text-white focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
+                          value={currentQuestion.text}
+                          onChange={(e) => setCurrentQuestion({...currentQuestion, text: e.target.value})}
+                        />
+                        <div className="flex gap-2">
+                           <button 
+                             onClick={() => setCurrentQuestion(prev => ({...prev, text: prev.text + ' $ ... $ '}))}
+                             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-black text-slate-300 rounded-lg transition-all"
+                           >
+                             <Sigma size={12} /> Inserir LaTeX
+                           </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="space-y-3">
