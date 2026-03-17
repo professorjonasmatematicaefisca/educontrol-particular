@@ -518,8 +518,13 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                            {q.options.map((opt: any) => (
-                             <div key={opt.id} className={`p-4 rounded-xl text-xs font-bold border transition-all ${opt.isCorrect ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' : 'bg-slate-900/50 border-slate-800 text-slate-400'}`}>
-                                <span className="mr-3">{opt.id})</span> {opt.text}
+                             <div key={opt.id} className={`p-4 rounded-xl text-xs font-bold border transition-all flex items-start gap-3 ${opt.isCorrect ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' : 'bg-slate-900/50 border-slate-800 text-slate-400'}`}>
+                                <span className="flex-shrink-0 font-black">{opt.id})</span>
+                                <div className="prose prose-invert prose-sm max-w-none -mt-1">
+                                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                    {opt.text}
+                                  </ReactMarkdown>
+                                </div>
                              </div>
                            ))}
                         </div>

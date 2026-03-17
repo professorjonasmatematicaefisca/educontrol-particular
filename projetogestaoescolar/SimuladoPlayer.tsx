@@ -168,7 +168,13 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
                       }`}>
                          {opt.id}
                       </div>
-                      <span className="flex-1 text-sm font-bold">{opt.text}</span>
+                       <div className="flex-1">
+                          <div className="prose prose-invert prose-sm max-w-none -mt-0.5">
+                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                               {opt.text}
+                            </ReactMarkdown>
+                          </div>
+                       </div>
                    </button>
                 ))}
              </div>
