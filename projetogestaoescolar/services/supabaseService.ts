@@ -1830,10 +1830,16 @@ export const SupabaseService = {
     },
 
     async createSimulado(simulado: any): Promise<Simulado> {
-        let teacherId = null;
+        // Tentar resolver teacher_id de forma segura, mas nunca falhar silenciosamente
+        let teacherId: string | null = null;
         if (simulado.teacherEmail) {
-            const user = await this.getUserByEmail(simulado.teacherEmail);
-            if (user) teacherId = user.id;
+            try {
+                const user = await this.getUserByEmail(simulado.teacherEmail);
+                if (user?.id) teacherId = user.id;
+            } catch {
+                // Se não encontrar, teacher_id fica null — o campo é nullable
+                console.warn('Could not resolve teacher UUID from email, saving without teacher_id');
+            }
         }
 
         const { data, error } = await supabase
@@ -1843,15 +1849,18 @@ export const SupabaseService = {
                 description: simulado.description,
                 questions: simulado.questions,
                 teacher_id: teacherId,
-                teacher_email: simulado.teacherEmail,
+                teacher_email: simulado.teacherEmail || null,
                 type: simulado.type,
-                discipline_id: simulado.disciplineId,
-                content_topic: simulado.contentTopic
+                discipline_id: simulado.disciplineId || null,
+                content_topic: simulado.contentTopic || null
             }])
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('createSimulado error:', error);
+            throw error;
+        }
         return this.mapSimulado(data);
     },
 
@@ -1918,22 +1927,32 @@ export const SupabaseService = {
     },
 
     async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<boolean> {
-        let teacherId = assignment.teacherId;
+        let teacherId: string | null = assignment.teacherId || null;
         
-        // Se o teacherId for um e-mail, resolver para UUID
+        // Se o teacherId for um e-mail, resolver para UUID de forma segura
         if (teacherId && teacherId.includes('@')) {
-            const user = await this.getUserByEmail(teacherId);
-            if (user) teacherId = user.id;
+            try {
+                const user = await this.getUserByEmail(teacherId);
+                teacherId = user?.id || null;
+            } catch {
+                console.warn('Could not resolve teacher UUID from email for assignment');
+                teacherId = null;
+            }
         }
 
         const { error } = await supabase.from('simulado_assignments').insert({
             simulado_id: assignment.simuladoId,
             student_id: assignment.studentId,
             teacher_id: teacherId,
-            due_date: assignment.dueDate,
+            due_date: assignment.dueDate || null,
             status: 'PENDING'
         });
-        return !error;
+
+        if (error) {
+            console.error('assignSimulado error:', error);
+            return false;
+        }
+        return true;
     },
 
     async getSimuladoAttempts(studentId: string): Promise<SimuladoAttempt[]> {

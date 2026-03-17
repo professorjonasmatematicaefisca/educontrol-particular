@@ -36,19 +36,22 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
   const [isFinishing, setIsFinishing] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
 
+  // Timer para rastrear tempo total
+  const [startTime] = useState(() => Date.now());
+
   // Iniciar tentativa no banco
   useEffect(() => {
     const startAttempt = async () => {
-      const attempt: Partial<SimuladoAttempt> = {
-        simuladoId: simulado.id,
-        studentId: studentId,
-        assignmentId: assignmentId,
-        startedAt: new Date().toISOString()
-      };
-      
-      // Aqui precisaríamos de um método que retorne o ID criado, ou geramos um UUID
-      // Por simplicidade para o protótipo, vamos assumir que o registro foi criado
-      onShowToast('Simulado iniciado! Boa sorte.');
+      try {
+        await SupabaseService.createSimuladoAttempt({
+          simuladoId: simulado.id,
+          studentId: studentId,
+          assignmentId: assignmentId,
+          startedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Could not save attempt start:', err);
+      }
     };
     startAttempt();
   }, []);
@@ -94,19 +97,31 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
   };
 
   const handleAutoSubmit = () => {
-    onShowToast('Tempo esgotado! Enviando respostas automaticamente.');
+    console.log('Tempo esgotado! Enviando respostas automaticamente.');
     finishSimulado();
   };
 
   const finishSimulado = async () => {
     const score = calculateScore();
-    // Simular salvamento
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+    
+    try {
+      // Save the completed attempt — this also marks the assignment as COMPLETED
+      if (assignmentId) {
+        await SupabaseService.updateSimuladoAttempt(assignmentId, {
+          score,
+          answers,
+          status: 'COMPLETED',
+          completedAt: new Date().toISOString(),
+          timeSpentSeconds: timeSpent,
+          assignmentId: assignmentId
+        });
+      }
+    } catch (err) {
+      console.warn('Could not save attempt completion:', err);
+    }
+    
     onComplete(score);
-  };
-
-  const onShowToast = (msg: string) => {
-    // Implementar se necessário ou usar props
-    console.log(msg);
   };
 
   const currentQuestion = simulado.questions[currentIdx];
