@@ -1713,8 +1713,8 @@ export const SupabaseService = {
             studentId: item.student_id,
             teacherId: item.teacher_id,
             classDate: item.class_date,
-            startTime: item.start_time.slice(0, 5), // HH:mm
-            endTime: item.end_time.slice(0, 5), // HH:mm
+            startTime: item.start_time?.slice(0, 5), // Safe HH:mm
+            endTime: item.end_time?.slice(0, 5), // Safe HH:mm
             status: item.status,
             hourlyRate: item.hourly_rate,
             totalValue: item.total_value,

@@ -158,6 +158,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
+        } finally {
+            setLoading(false);
         }
     };
 

@@ -854,22 +854,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     const [colorBase, colorVia, colorTo, borderStyle, textStyle] = colorStyle.split(' ');
 
     return (
-      <div key={c.id} className={`bg-slate-900/60 p-6 rounded-[2rem] border-2 ${borderStyle} hover:scale-[1.02] transition-all group relative overflow-hidden`}>
+      <div key={c.id} className={`bg-slate-900/60 p-5 rounded-[2rem] border-2 ${borderStyle} hover:scale-[1.02] transition-all group relative overflow-hidden flex flex-col justify-between h-full`}>
         {/* Background gradient subtle */}
         <div className={`absolute inset-0 bg-gradient-to-br ${colorBase} ${colorVia} ${colorTo} opacity-40`}></div>
         
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col h-full">
           <div className="flex justify-between items-start mb-4">
             <div className="flex gap-3">
               <UserAvatar name={c.studentName || ''} photoUrl={c.studentPhoto} size="md" />
-              <div>
-                <h4 className="text-white font-black uppercase tracking-tight text-sm">
+              <div className="min-w-0">
+                <h4 className="text-white font-black uppercase tracking-tight text-sm truncate">
                   {c.studentName}
                 </h4>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{c.className}</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest truncate">{c.className}</p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <div className={`flex items-center gap-1 text-[10px] font-black ${textStyle} bg-white/5 px-2 py-1 rounded-lg border border-current/20 uppercase`}>
                 <Clock size={10} /> {c.startTime}
               </div>
@@ -877,9 +877,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             </div>
           </div>
 
-          <div className="space-y-3 mb-6">
-            <div className="flex items-center gap-2 text-xs font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
-              <BookOpen size={14} className={textStyle.split(' ')[0]} />
+          <div className="space-y-2 mb-4 flex-1">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
+              <BookOpen size={12} className={textStyle.split(' ')[0]} />
               <span className="truncate">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
             </div>
             {c.rescheduledBy && (
@@ -889,42 +889,42 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 mt-auto">
             {c.status === 'SCHEDULED' && isToday(new Date(c.classDate + 'T12:00:00')) && (
               <button 
                 onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
-                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
+                className="flex-1 min-w-[100px] py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2"
               >
-                <Play size={14} /> Iniciar
+                <Play size={14} fill="currentColor" /> INICIAR
               </button>
             )}
             
             {c.status === 'IN_PROGRESS' && (
               <button 
                 onClick={() => openCompletionModal(c)} 
-                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                className="flex-1 min-w-[100px] py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
               >
-                <CheckCircle size={14} /> Concluir
+                <CheckCircle size={14} /> CONCLUIR
               </button>
             )}
 
             {c.status === 'SCHEDULED' && (
-              <>
+              <div className="flex gap-2">
                 <button 
                   onClick={() => openRescheduleModal(c)}
-                  className="p-3 bg-slate-800/80 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-95"
+                  className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-95 border border-slate-700/50"
                   title="Alterar Horário"
                 >
                   <Edit2 size={14} />
                 </button>
                 <button 
                   onClick={() => openDeleteModal(c.id)}
-                  className="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all active:scale-95 border border-rose-500/20"
+                  className="p-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all active:scale-95 border border-rose-500/20"
                   title="Excluir Aula"
                 >
                   <Trash2 size={14} />
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -1548,24 +1548,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       {/* Modal de Reagendamento */}
       {showRescheduleModal && selectedClass && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] w-full max-w-3xl rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-blue-500/10">
-              <h2 className="text-xl font-black text-white flex items-center gap-3 text-blue-500 uppercase tracking-tight">
-                <Edit2 size={24} /> Alterar Horário
+          <div className="bg-[#1e293b] w-full max-w-2xl rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-gray-700 flex justify-between items-center bg-blue-500/10">
+              <h2 className="text-lg font-black text-white flex items-center gap-3 text-blue-500 uppercase tracking-tight">
+                <Edit2 size={20} /> Alterar Horário
               </h2>
               <button onClick={() => setShowRescheduleModal(false)} className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-xl transition-all">
-                <XCircle size={24} />
+                <XCircle size={20} />
               </button>
             </div>
             
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Nova Data</label>
-                  <ModernDatePicker value={rescheduleData.date} onChange={(date) => setRescheduleData({ ...rescheduleData, date })} />
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Nova Data</label>
+                  <div className="scale-95 origin-top-left">
+                    <ModernDatePicker value={rescheduleData.date} onChange={(date) => setRescheduleData({ ...rescheduleData, date })} />
+                  </div>
                 </div>
                 
-                <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
+                <div className="flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
                   <input 
                     type="checkbox" 
                     id="registerHistory"
@@ -1573,15 +1575,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                     checked={registerHistory}
                     onChange={(e) => setRegisterHistory(e.target.checked)}
                   />
-                  <label htmlFor="registerHistory" className="text-xs font-black text-gray-300 cursor-pointer select-none uppercase tracking-widest">
+                  <label htmlFor="registerHistory" className="text-[10px] font-black text-gray-300 cursor-pointer select-none uppercase tracking-widest">
                     Registrar Histórico?
                   </label>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Novo Horário</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Novo Horário</label>
                   <TimeGrid 
                     selected={rescheduleData.startTime} 
                     occupied={classes
@@ -1605,7 +1607,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
                 <button 
                   onClick={handleConfirmReschedule} 
-                  className="w-full py-5 bg-sky-500 hover:bg-sky-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-sky-500 hover:bg-sky-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                 >
                   Confirmar Alteração
                 </button>
