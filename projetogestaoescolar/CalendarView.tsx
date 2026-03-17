@@ -131,7 +131,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [agendaPage, setAgendaPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
-  const ITEMS_PER_PAGE = 9;
+  const ITEMS_PER_PAGE = 8;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -1202,7 +1202,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
                     return (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                           {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
                         </div>
                         
