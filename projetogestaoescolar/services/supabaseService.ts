@@ -1790,6 +1790,15 @@ export const SupabaseService = {
         return !error;
     },
 
+    async deleteScheduledClass(id: string): Promise<boolean> {
+        const { error } = await supabase.from('scheduled_classes').delete().eq('id', id);
+        if (error) {
+            console.error("Error deleting scheduled class:", error);
+            return false;
+        }
+        return true;
+    },
+
     // --- SIMULADOS ---
     async getSimulados(): Promise<Simulado[]> {
         const { data, error } = await supabase.from('simulados').select('*');
@@ -1879,6 +1888,15 @@ export const SupabaseService = {
             payment_account_id: accountId,
             paid_at: paidAt || new Date().toISOString()
         }).eq('id', classId);
+        return !error;
+    },
+
+    async confirmMultiplePayments(classIds: string[], accountId: string, paidAt?: string): Promise<boolean> {
+        const { error } = await supabase.from('scheduled_classes').update({
+            payment_status: 'PAID',
+            payment_account_id: accountId,
+            paid_at: paidAt || new Date().toISOString()
+        }).in('id', classIds);
         return !error;
     },
 

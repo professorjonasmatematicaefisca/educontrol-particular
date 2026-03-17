@@ -11,22 +11,24 @@ import {
   Edit2,
   BookOpen,
   User as UserIcon,
-  Search,
+  Play,
+  ArrowLeft,
+  ArrowRight,
   Target,
   Layout,
   History as HistoryIcon,
   FileText,
-  ArrowRight,
-  DollarSign,
+  Search,
   Filter,
-  Play,
-  ArrowLeft,
-  Check
+  Check,
+  Trash2,
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import { 
-  format, 
+  format,
   addMonths, 
-  subMonths, 
+  subMonths,
   startOfMonth, 
   endOfMonth, 
   startOfWeek, 
@@ -46,6 +48,50 @@ import { supabase } from './supabaseClient';
 import { ModernCalendar } from './components/ModernCalendar';
 import { getHoliday } from './utils/holidays';
 import { Star } from 'lucide-react';
+
+const UserAvatar = ({ name, photoUrl, size = 'md' }: { name: string; photoUrl?: string | null; size?: 'sm' | 'md' | 'lg' }) => {
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-[10px]',
+    md: 'w-10 h-10 text-xs',
+    lg: 'w-12 h-12 text-sm'
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
+      {photoUrl ? (
+        <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+      ) : (
+        <span className="font-black text-emerald-500">{initials}</span>
+      )}
+    </div>
+  );
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'COMPLETED': return <CheckCircle className="text-emerald-400" size={16} />;
+    case 'IN_PROGRESS': return <Target className="text-emerald-400 animate-pulse" size={16} />;
+    case 'CANCELLED': return <XCircle className="text-rose-400" size={16} />;
+    case 'ABSENT': return <Clock3 className="text-amber-400" size={16} />;
+    default: return <Clock className="text-sky-400" size={16} />;
+  }
+};
+
+const getCardColor = (id: string) => {
+  const colors = [
+    'from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/20 text-emerald-500',
+    'from-sky-500/10 via-sky-500/5 to-transparent border-sky-500/20 text-sky-500',
+    'from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/20 text-amber-500',
+    'from-rose-500/10 via-rose-500/5 to-transparent border-rose-500/20 text-rose-500',
+    'from-violet-500/10 via-violet-500/5 to-transparent border-violet-500/20 text-violet-500',
+  ];
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
 
 interface CalendarViewProps {
   onShowToast: (msg: string) => void;
@@ -71,11 +117,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>(userRole === UserRole.STUDENT ? 'calendar' : 'table');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStudent, setFilterStudent] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [registerHistory, setRegisterHistory] = useState(false);
+  const [registerHistory, setRegisterHistory] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [registerDeleteHistory, setRegisterDeleteHistory] = useState(true);
   const [agendaDate, setAgendaDate] = useState(new Date());
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [agendaPage, setAgendaPage] = useState(1);
@@ -108,6 +159,30 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     endTime: ''
   });
 
+  const openDeleteModal = (id: string) => {
+    setSelectedDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteClass = async () => {
+    if (!selectedDeleteId) return;
+    try {
+      await SupabaseService.deleteScheduledClass(selectedDeleteId);
+      setClasses(prev => prev.filter(c => c.id !== selectedDeleteId));
+      onShowToast('Aula excluída com sucesso!');
+      setShowDeleteModal(false);
+      setSelectedDeleteId(null);
+      setDeleteReason('');
+    } catch (err) {
+      console.error(err);
+      onShowToast('Erro ao excluir aula.');
+    }
+  };
+
+
+  const [selectedClassesForPayment, setSelectedClassesForPayment] = useState<string[]>([]);
+  const [selectedStudentFinance, setSelectedStudentFinance] = useState<string | null>(null);
+
   useEffect(() => {
     fetchData();
     fetchBankAccounts();
@@ -121,6 +196,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       console.error('Error fetching bank accounts:', error);
     }
   };
+
+// Movido para o escopo global
 
   const fetchData = async () => {
     setLoading(true);
@@ -392,25 +469,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     return now >= start && now < end;
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircle className="text-emerald-400" size={16} />;
-      case 'IN_PROGRESS': return <Target className="text-emerald-400 animate-pulse" size={16} />;
-      case 'CANCELLED': return <XCircle className="text-rose-400" size={16} />;
-      case 'ABSENT': return <Clock3 className="text-amber-400" size={16} />;
-      default: return <Clock className="text-sky-400" size={16} />;
+// Movido para o escopo global
+
+
+
+  const handleConfirmPayments = async (accountId: string) => {
+    if (selectedClassesForPayment.length === 0) {
+      onShowToast('Selecione ao menos uma aula para confirmar');
+      return;
     }
-  };
-
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-
-  const handleConfirmPayment = async (accountId: string) => {
-    if (!selectedClass) return;
     try {
-      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId, paymentDate);
+      const success = await SupabaseService.confirmMultiplePayments(selectedClassesForPayment, accountId, paymentDate);
       if (success) {
-        onShowToast('Pagamento confirmado com sucesso');
+        onShowToast('Pagamento(s) confirmado(s) com sucesso');
         setShowPaymentModal(false);
+        setSelectedClassesForPayment([]);
         fetchData();
       }
     } catch (error) {
@@ -419,129 +492,225 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     }
   };
 
-  const FinanceTab = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-3xl shadow-xl">
-          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Pendente</p>
-          <div className="flex items-baseline gap-2">
-            <h4 className="text-3xl font-black text-white">
-              {classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').length}
-            </h4>
-            <span className="text-xs font-bold text-gray-500 uppercase">Aulas</span>
-          </div>
-        </div>
-      </div>
+  const FinanceTab = () => {
+    const studentPayments = students.map(s => {
+      const pendingClasses = classes.filter(c => c.studentId === s.id && c.status === 'COMPLETED' && c.paymentStatus === 'PENDING');
+      const totalPending = pendingClasses.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+      return {
+        ...s,
+        pendingCount: pendingClasses.length,
+        totalPending
+      };
+    }).filter(s => s.pendingCount > 0);
 
-      <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
-        <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-black text-white mb-1">Aguardando Pagamento</h3>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Controle Financeiro</p>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
-                <th className="p-6">Aluno</th>
-                <th className="p-6">Data</th>
-                <th className="p-6">Valor</th>
-                <th className="p-6 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').map(c => (
-                <tr key={c.id} className="hover:bg-slate-800/30 transition-all group">
-                  <td className="p-6">
-                    <div className="flex flex-col">
-                      <span className="text-white font-bold text-sm uppercase tracking-tight">{c.studentName}</span>
-                      <span className="text-[10px] text-gray-500 font-bold uppercase italic">Responsável: {c.parentName || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="p-6 text-gray-400 font-bold text-sm">
-                    {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="p-6">
-                    <span className="text-emerald-400 font-black text-sm">R$ {c.totalValue?.toFixed(2) || '0,00'}</span>
-                  </td>
-                  <td className="p-6 text-right">
-                    <button 
-                      onClick={() => { setSelectedClass(c); setShowPaymentModal(true); }}
-                      className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg hover:shadow-emerald-500/20"
-                    >
-                      Confirmar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING').length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-16 text-center">
-                    <div className="opacity-20 flex flex-col items-center">
-                      <DollarSign size={48} className="mb-4" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma aula pendente de pagamento</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  const PaymentModal = () => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-[#0f172a] w-full max-w-md rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-        <div className="p-8 border-b border-slate-800">
-          <h3 className="text-xl font-black text-white mb-1">Confirmar Recebimento</h3>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Selecione a data e a conta de destino</p>
-        </div>
-        <div className="p-8 pb-0 space-y-4">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Data de Recebimento</label>
-            <input 
-              type="date" 
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 text-white text-sm font-bold focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none"
-            />
-          </div>
-        </div>
-        <div className="p-8 space-y-4">
-          {bankAccounts.length > 0 ? (
-            bankAccounts.map(account => (
-              <button
-                key={account.id}
-                onClick={() => handleConfirmPayment(account.id)}
-                className="w-full p-4 bg-slate-800/40 hover:bg-emerald-500/10 border border-slate-700/50 hover:border-emerald-500/50 rounded-2xl flex items-center gap-4 transition-all group"
-              >
-                <div className="w-12 h-12 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden">
-                  {account.imageUrl ? (
-                    <img src={account.imageUrl} className="w-full h-full object-contain" alt="" />
-                  ) : (
-                    <DollarSign size={20} className="text-slate-500" />
-                  )}
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-black uppercase text-sm group-hover:text-emerald-400 transition-colors">{account.name}</p>
-                </div>
-              </button>
-            ))
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-xs font-bold text-gray-500 uppercase italic">Nenhuma conta cadastrada nas configurações.</p>
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500">
+        {/* Lado Esquerdo: Resumo por Aluno */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total a Receber</p>
+              <h4 className="text-4xl font-black text-white">
+                R$ {studentPayments.reduce((acc, curr) => acc + curr.totalPending, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </h4>
             </div>
-          )}
+            <DollarSign className="absolute -right-4 -bottom-4 text-emerald-500/10 group-hover:scale-110 transition-transform duration-500" size={160} />
+          </div>
+
+          <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+            <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-black text-white mb-1">Aguardando Pagamento</h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumo por Aluno</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/20">
+                    <th className="p-6">Aluno</th>
+                    <th className="p-6">Aulas</th>
+                    <th className="p-6">Total</th>
+                    <th className="p-6 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {studentPayments.map(s => (
+                    <tr key={s.id} className="hover:bg-slate-800/30 transition-all group">
+                      <td className="p-6">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar name={s.name} size="sm" />
+                          <div className="flex flex-col">
+                            <span className="text-white font-bold text-sm uppercase tracking-tight">{s.name}</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase italic">{s.billing_day ? `Vence dia ${s.billing_day}` : 'Sem dia fixo'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <span className="text-gray-400 font-bold text-sm">{s.pendingCount} aulas</span>
+                      </td>
+                      <td className="p-6">
+                        <span className="text-emerald-400 font-black text-sm">R$ {s.totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      </td>
+                      <td className="p-6 text-right">
+                        <button 
+                          onClick={() => { 
+                            setSelectedStudentFinance(s.id);
+                            const pending = classes.filter(c => c.studentId === s.id && c.status === 'COMPLETED' && c.paymentStatus === 'PENDING');
+                            setSelectedClassesForPayment(pending.map(p => p.id));
+                            setShowPaymentModal(true); 
+                          }}
+                          className="px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg hover:shadow-emerald-500/20 flex items-center gap-2 ml-auto"
+                        >
+                          <Check size={14} /> Receber
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {studentPayments.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-24 text-center">
+                        <div className="opacity-20 flex flex-col items-center">
+                          <DollarSign size={64} className="mb-4" />
+                          <p className="text-[10px] font-black uppercase tracking-widest">Nenhum recebimento pendente</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div className="p-8 bg-slate-900/50 flex justify-end">
-          <button onClick={() => setShowPaymentModal(false)} className="px-6 py-2 text-xs font-black text-gray-500 uppercase tracking-widest hover:text-white transition-colors">Fechar</button>
+
+        {/* Lado Direito: Aulas Ministradas (Histórico Recente) */}
+        <div className="lg:col-span-4 space-y-6">
+           <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
+              <h3 className="text-lg font-black text-white flex items-center gap-3 mb-6">
+                <HistoryIcon size={20} className="text-emerald-500" />
+                Aulas Ministradas
+              </h3>
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {classes
+                  .filter(c => c.status === 'COMPLETED')
+                  .sort((a,b) => b.classDate.localeCompare(a.classDate))
+                  .slice(0, 15)
+                  .map(c => (
+                    <div key={c.id} className="p-4 bg-[#0f172a]/60 rounded-2xl border border-gray-800/50 flex flex-col gap-2">
+                       <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-black text-gray-500 uppercase">{format(parseISO(c.classDate), 'dd/MM/yyyy')}</span>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.paymentStatus === 'PAID' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                            {c.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
+                          </span>
+                       </div>
+                       <p className="text-white font-bold text-sm truncate uppercase tracking-tight">{c.studentName}</p>
+                       <p className="text-[10px] text-emerald-400 font-black">R$ {c.totalValue?.toFixed(2)}</p>
+                    </div>
+                  ))
+                }
+              </div>
+           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const PaymentModal = () => {
+    const student = students.find(s => s.id === selectedStudentFinance);
+    const pendingClasses = classes.filter(c => c.studentId === selectedStudentFinance && c.status === 'COMPLETED' && c.paymentStatus === 'PENDING');
+
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+        <div className="bg-[#0f172a] w-full max-w-2xl rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-black text-white mb-1">Confirmar Recebimento</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Aluno: <span className="text-emerald-500">{student?.name}</span></p>
+            </div>
+            <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-white transition-all">
+              <XCircle size={24} />
+            </button>
+          </div>
+          
+          <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            {/* Esquerda: Lista de Aulas para Seleção */}
+            <div className="space-y-4">
+              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2 block">Selecione as Aulas para Baixa</label>
+              <div className="space-y-2">
+                {pendingClasses.map(c => (
+                  <label key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${selectedClassesForPayment.includes(c.id) ? 'bg-emerald-500/10 border-emerald-500/50' : 'bg-slate-800/20 border-slate-800'}`}>
+                    <input 
+                      type="checkbox" 
+                      className="w-5 h-5 rounded-lg bg-slate-900 border-slate-700 text-emerald-500 focus:ring-emerald-500/20"
+                      checked={selectedClassesForPayment.includes(c.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedClassesForPayment([...selectedClassesForPayment, c.id]);
+                        } else {
+                          setSelectedClassesForPayment(selectedClassesForPayment.filter(id => id !== c.id));
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <p className="text-xs font-black text-white uppercase tracking-tight">{format(parseISO(c.classDate), 'dd/MM/yyyy')}</p>
+                      <p className="text-[10px] text-emerald-400 font-bold">R$ {c.totalValue?.toFixed(2)}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Direita: Dados de Destino */}
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">Dados do Recebimento</label>
+                <div className="bg-slate-800/20 border border-slate-800 rounded-2xl p-4">
+                   <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Data</p>
+                   <input 
+                    type="date" 
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs font-bold outline-none"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Conta de Destino</p>
+                  {bankAccounts.map(account => (
+                    <button
+                      key={account.id}
+                      onClick={() => handleConfirmPayments(account.id)}
+                      className="w-full p-4 bg-slate-800/40 hover:bg-emerald-500 text-white rounded-2xl flex items-center gap-4 transition-all group"
+                    >
+                      <div className="w-10 h-10 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden">
+                        {account.imageUrl ? (
+                          <img src={account.imageUrl} className="w-full h-full object-contain" alt="" />
+                        ) : (
+                          <DollarSign size={18} />
+                        )}
+                      </div>
+                      <p className="text-xs font-black uppercase tracking-widest group-hover:scale-105 transition-transform">{account.name}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-3xl">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Selecionado</p>
+                <h4 className="text-2xl font-black text-emerald-500">
+                  R$ {pendingClasses
+                    .filter(c => selectedClassesForPayment.includes(c.id))
+                    .reduce((acc, curr) => acc + (curr.totalValue || 0), 0)
+                    .toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                  }
+                </h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const ModernDatePicker: React.FC<{ value: string; onChange: (date: string) => void }> = ({ value, onChange }) => {
     const initialDate = value ? parseISO(value) : new Date();
@@ -628,24 +797,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     </div>
   );
 
-  const UserAvatar = ({ name, photoUrl, size = 'sm' }: { name: string; photoUrl?: string | null; size?: 'sm' | 'md' | 'lg' }) => {
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    const sizeClasses = {
-      sm: 'w-8 h-8 text-[10px]',
-      md: 'w-10 h-10 text-xs',
-      lg: 'w-12 h-12 text-sm'
-    };
+// Removido componente duplicado já definido acima
 
-    return (
-      <div className={`${sizeClasses[size]} rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center overflow-hidden flex-shrink-0`}>
-        {photoUrl ? (
-          <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
-        ) : (
-          <span className="font-black text-emerald-500">{initials}</span>
-        )}
-      </div>
-    );
-  };
 
   const AlphabetFilter = ({ selected, onSelect }: { selected: string | null; onSelect: (letter: string | null) => void }) => (
     <div className="flex flex-wrap gap-1 mb-6 p-2 bg-slate-900/40 border border-slate-800 rounded-2xl backdrop-blur-md">
@@ -694,71 +847,90 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     );
   };
 
-  const AgendaCard = ({ c }: { c: ScheduledClass }) => (
-    <div key={c.id} className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] hover:border-emerald-500/30 transition-all group">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex gap-3">
-          <UserAvatar name={c.studentName || ''} photoUrl={c.studentPhoto} size="md" />
-          <div>
-            <h4 className="text-white font-black uppercase tracking-tight text-sm">
-              {c.studentName}
-            </h4>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{c.className}</p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1 text-[10px] font-black text-sky-400 bg-sky-500/10 px-2 py-1 rounded-lg border border-sky-500/20 uppercase">
-            <Clock size={10} /> {c.startTime}
-          </div>
-          {c.status !== 'SCHEDULED' && (
-            <div className="mt-2">{getStatusIcon(c.status)}</div>
-          )}
-        </div>
-      </div>
+// Movido para o escopo global
 
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center gap-2 text-xs font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
-          <BookOpen size={14} className="text-emerald-500" />
-          <span className="truncate">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
-        </div>
-        {c.rescheduledBy && (
-          <div className="flex items-center gap-2 text-[10px] font-black text-amber-500/80 bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 italic">
-            <HistoryIcon size={12} /> Reagendada
-          </div>
-        )}
-      </div>
+  const AgendaCard = ({ c }: { c: ScheduledClass }) => {
+    const colorStyle = getCardColor(c.studentId);
+    const [colorBase, colorVia, colorTo, borderStyle, textStyle] = colorStyle.split(' ');
 
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        {c.status === 'SCHEDULED' && isToday(new Date(c.classDate + 'T12:00:00')) && (
-          <button 
-            onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
-            className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
-          >
-            <Play size={14} /> Iniciar Aula
-          </button>
-        )}
+    return (
+      <div key={c.id} className={`bg-slate-900/60 p-6 rounded-[2rem] border-2 ${borderStyle} hover:scale-[1.02] transition-all group relative overflow-hidden`}>
+        {/* Background gradient subtle */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${colorBase} ${colorVia} ${colorTo} opacity-40`}></div>
         
-        {c.status === 'IN_PROGRESS' && (
-          <button 
-            onClick={() => openCompletionModal(c)} 
-            className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-          >
-            <CheckCircle size={14} /> Concluir Aula
-          </button>
-        )}
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex gap-3">
+              <UserAvatar name={c.studentName || ''} photoUrl={c.studentPhoto} size="md" />
+              <div>
+                <h4 className="text-white font-black uppercase tracking-tight text-sm">
+                  {c.studentName}
+                </h4>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{c.className}</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <div className={`flex items-center gap-1 text-[10px] font-black ${textStyle} bg-white/5 px-2 py-1 rounded-lg border border-current/20 uppercase`}>
+                <Clock size={10} /> {c.startTime}
+              </div>
+              {c.status !== 'SCHEDULED' && getStatusIcon(c.status)}
+            </div>
+          </div>
 
-        {c.status === 'SCHEDULED' && (
-          <button 
-            onClick={() => openRescheduleModal(c)}
-            className="p-3 bg-slate-800 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-95"
-            title="Alterar Horário"
-          >
-            <Edit2 size={14} />
-          </button>
-        )}
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
+              <BookOpen size={14} className={textStyle.split(' ')[0]} />
+              <span className="truncate">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
+            </div>
+            {c.rescheduledBy && (
+              <div className="flex items-center gap-2 text-[10px] font-black text-amber-500/80 bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 italic">
+                <HistoryIcon size={12} /> Reagendada
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            {c.status === 'SCHEDULED' && isToday(new Date(c.classDate + 'T12:00:00')) && (
+              <button 
+                onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
+                className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Play size={14} /> Iniciar
+              </button>
+            )}
+            
+            {c.status === 'IN_PROGRESS' && (
+              <button 
+                onClick={() => openCompletionModal(c)} 
+                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={14} /> Concluir
+              </button>
+            )}
+
+            {c.status === 'SCHEDULED' && (
+              <>
+                <button 
+                  onClick={() => openRescheduleModal(c)}
+                  className="p-3 bg-slate-800/80 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-95"
+                  title="Alterar Horário"
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button 
+                  onClick={() => openDeleteModal(c.id)}
+                  className="p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all active:scale-95 border border-rose-500/20"
+                  title="Excluir Aula"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const HistoryCard = ({ c }: { c: ScheduledClass }) => (
     <div key={c.id} className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all group">
@@ -845,46 +1017,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             )}
           </div>
   
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-[#1e293b]/50 p-1 rounded-xl border border-gray-700">
-            <button 
-              onClick={() => { setAgendaDate(prev => subDays(prev, 1)); setAgendaPage(1); }}
-              className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div className="px-3 py-1 bg-emerald-500/10 rounded-lg">
-              <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">
-                {format(agendaDate, "dd MMM", { locale: ptBR })}
-              </span>
-            </div>
-            <button 
-              onClick={() => { setAgendaDate(prev => addDays(prev, 1)); setAgendaPage(1); }}
-              className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
-            >
-              <ChevronRight size={20} />
-            </button>
+          <div className="flex items-center gap-4">
+            {userRole !== UserRole.STUDENT && (
+              <button 
+                onClick={() => {
+                  setNewClass({
+                    ...newClass,
+                    classDate: new Date().toISOString().split('T')[0],
+                    startTime: '08:00',
+                    endTime: '09:00',
+                    studentId: ''
+                  });
+                  setShowModal(true);
+                }}
+                className="group relative flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
+              >
+                <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                Novo Agendamento
+              </button>
+            )}
           </div>
-
-          {userRole !== UserRole.STUDENT && (
-            <button 
-              onClick={() => {
-                setNewClass({
-                  ...newClass,
-                  classDate: new Date().toISOString().split('T')[0],
-                  startTime: '08:00',
-                  endTime: '09:00',
-                  studentId: ''
-                });
-                setShowModal(true);
-              }}
-              className="group relative flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95"
-            >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform" />
-              Novo Agendamento
-            </button>
-          )}
-        </div>
       </div>
     </div>
   
@@ -1034,32 +1186,37 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 <div className="p-8">
                   {(() => {
                     const filtered = classes.filter(c => 
+                      c.status === 'SCHEDULED' && 
                       (userRole === UserRole.STUDENT 
                         ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
                         : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
                       ) &&
                       (!filterDiscipline || c.disciplineId === filterDiscipline)
-                    );
+                    ).sort((a,b) => {
+                      const dateComp = a.classDate.localeCompare(b.classDate);
+                      if (dateComp !== 0) return dateComp;
+                      return a.startTime.localeCompare(b.startTime);
+                    });
                     
-                    const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+                    const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
 
                     return (
                       <>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
+                          {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
                         </div>
                         
                         {filtered.length === 0 && (
                           <div className="text-center py-20 opacity-30 select-none">
-                            <Search size={64} className="mx-auto mb-4" />
-                            <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum registro encontrado</p>
+                            <CalendarIcon size={64} className="mx-auto mb-4" />
+                            <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum agendamento ativo</p>
                           </div>
                         )}
 
                         <Pagination 
-                          current={historyPage} 
+                          current={agendaPage} 
                           total={filtered.length} 
-                          onPageChange={setHistoryPage} 
+                          onPageChange={setAgendaPage} 
                         />
                       </>
                     );
@@ -1391,23 +1548,40 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       {/* Modal de Reagendamento */}
       {showRescheduleModal && selectedClass && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-[#1e293b] w-full max-w-md rounded-2xl border border-gray-700 shadow-2xl">
+          <div className="bg-[#1e293b] w-full max-w-3xl rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-blue-500/10">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2 text-blue-500">
-                <Edit2 size={20} /> Alterar Horário
+              <h2 className="text-xl font-black text-white flex items-center gap-3 text-blue-500 uppercase tracking-tight">
+                <Edit2 size={24} /> Alterar Horário
               </h2>
-              <button onClick={() => setShowRescheduleModal(false)} className="text-gray-400 hover:text-white"><XCircle size={24} /></button>
+              <button onClick={() => setShowRescheduleModal(false)} className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-xl transition-all">
+                <XCircle size={24} />
+              </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-400">Alterando aula de <strong>{selectedClass.studentName}</strong></p>
-              
-              <div className="space-y-4">
+            
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Nova Data</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Nova Data</label>
                   <ModernDatePicker value={rescheduleData.date} onChange={(date) => setRescheduleData({ ...rescheduleData, date })} />
                 </div>
+                
+                <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
+                  <input 
+                    type="checkbox" 
+                    id="registerHistory"
+                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-emerald-500/50"
+                    checked={registerHistory}
+                    onChange={(e) => setRegisterHistory(e.target.checked)}
+                  />
+                  <label htmlFor="registerHistory" className="text-xs font-black text-gray-300 cursor-pointer select-none uppercase tracking-widest">
+                    Registrar Histórico?
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Novo Horário</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Novo Horário</label>
                   <TimeGrid 
                     selected={rescheduleData.startTime} 
                     occupied={classes
@@ -1429,35 +1603,72 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   />
                 </div>
 
+                <button 
+                  onClick={handleConfirmReschedule} 
+                  className="w-full py-5 bg-sky-500 hover:bg-sky-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                >
+                  Confirmar Alteração
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Exclusão */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-[#1e293b] w-full max-w-md rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
+            <div className="p-8 border-b border-gray-700 flex justify-between items-center bg-rose-500/10 text-rose-500">
+               <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
+                 <Trash2 size={24} /> Excluir Aula
+               </h2>
+               <button onClick={() => setShowDeleteModal(false)} className="text-gray-400 hover:text-white"><XCircle size={28} /></button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <p className="text-sm text-gray-400 font-bold leading-relaxed text-center">
+                Deseja realmente excluir este agendamento? Esta ação não pode ser desfeita.
+              </p>
+
+              <div className="space-y-4">
                 <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
                   <input 
                     type="checkbox" 
-                    id="registerHistory"
-                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-500 focus:ring-emerald-500/50"
-                    checked={registerHistory}
-                    onChange={(e) => setRegisterHistory(e.target.checked)}
+                    id="registerDeleteHistory"
+                    className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-rose-500 focus:ring-rose-500/50"
+                    checked={registerDeleteHistory}
+                    onChange={(e) => setRegisterDeleteHistory(e.target.checked)}
                   />
-                  <label htmlFor="registerHistory" className="text-xs font-bold text-gray-300 cursor-pointer select-none">
-                    Registrar no histórico de remarcação?
+                  <label htmlFor="registerDeleteHistory" className="text-xs font-black text-gray-300 cursor-pointer select-none uppercase tracking-widest">
+                    Registrar motivo (Histórico)?
                   </label>
                 </div>
+
+                {registerDeleteHistory && (
+                  <textarea 
+                    className="w-full bg-[#0f172a] border border-gray-700 rounded-2xl p-4 text-white text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500/50 h-24"
+                    placeholder="Motivo da exclusão..."
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                  />
+                )}
               </div>
 
-              {registerHistory && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500"><Clock size={16} /></div>
-                  <p className="text-[11px] text-amber-500 font-bold italic leading-tight">
-                    Esta alteração registrará que você reagendou de <strong>{selectedClass.startTime}</strong> para o novo horário.
-                  </p>
-                </div>
-              )}
-
-              <button 
-                onClick={handleConfirmReschedule} 
-                className="w-full py-4 bg-sky-500 hover:bg-sky-600 text-white font-black rounded-2xl mt-2 active:scale-95 transition-all shadow-[0_0_20px_rgba(14,165,233,0.3)]"
-              >
-                Confirmar Alteração
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-2xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleDeleteClass}
+                  className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-2xl transition-all shadow-lg active:scale-95"
+                >
+                  Excluir Aula
+                </button>
+              </div>
             </div>
           </div>
         </div>

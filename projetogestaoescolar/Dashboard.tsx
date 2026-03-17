@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { ScheduledClass, Student, UserRole } from './types';
@@ -63,19 +64,25 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     }, [paymentRange, baseDate, paymentFilter]);
 
     const loadDashboardData = async () => {
-        const now = new Date();
         setLoading(true);
         try {
-            // Agregar faturamento diário para o gráfico (baseado no baseDate)
+            const now = new Date();
+            const startOfWeekNow = startOfWeek(now, { weekStartsOn: 1 });
+            
+            // Faturamento do mês (gráfico)
             const startM = startOfMonth(baseDate);
             const endM = endOfMonth(baseDate);
             const daysInterval = eachDayOfInterval({ start: startM, end: endM });
             
+            // Buscar todas as aulas para os cálculos
+            // Para vencimentos, precisamos de uma janela maior (ex: desde o começo do mês passado até hoje)
+            const startHistory = format(addWeeks(now, -4), 'yyyy-MM-dd');
             const [students, allSchedule] = await Promise.all([
                 SupabaseService.getStudents(),
-                SupabaseService.getScheduledClasses(format(startM, 'yyyy-MM-dd'))
+                SupabaseService.getScheduledClasses(startHistory)
             ]);
 
+            // Gráfico diário (vínculo com baseDate selecionado no UI)
             const processedChartData = daysInterval.map(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
                 const dayValue = allSchedule
@@ -90,61 +97,69 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             });
             setDailyData(processedChartData);
 
-            // Calcular faturamento total do mês
+            // Estatísticas
             const monthlyRevenue = allSchedule
-                .filter(c => c.status === 'COMPLETED')
+                .filter(c => {
+                    const d = parseISO(c.classDate);
+                    return d >= startM && d <= endM && c.status === 'COMPLETED';
+                })
                 .reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
 
-            const classesToday = allSchedule.filter(c => isSameDay(parseISO(c.classDate), now));
+            const classesToday = allSchedule
+                .filter(c => isSameDay(parseISO(c.classDate), now))
+                .sort((a,b) => a.startTime.localeCompare(b.startTime));
+
+            setUpcomingClasses(classesToday);
 
             setStats({
                 totalStudents: students.length,
                 monthlyRevenue: monthlyRevenue,
                 classesToday: classesToday.length,
-                pendingSimulados: 2
+                pendingSimulados: 0
             });
 
+            // Lógica de Vencimentos baseada em aulas COMPLETED e PENDING
             if (paymentFilter === 'WEEKLY') {
-                const weekStart = startOfWeek(addWeeks(now, paymentRange), { weekStartsOn: 1 });
-                const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+                // Aulas desta semana (selecionada pelo paymentRange)
+                const weekOffsetStart = startOfWeek(addWeeks(now, paymentRange), { weekStartsOn: 1 });
+                const weekOffsetEnd = endOfWeek(weekOffsetStart, { weekStartsOn: 1 });
 
-                const mockPayments: PaymentItem[] = students
-                    .filter(s => (s as any).billing_day)
-                    .map(s => {
-                       const dueDate = new Date(now.getFullYear(), now.getMonth(), (s as any).billing_day);
-                       return {
-                         studentName: s.name,
-                         amount: (((s as any).hourlyRate || (s as any).hourly_rate || 0) as number) * 4,
-                         dueDate: dueDate,
-                         type: (s as any).billing_period || 'MONTHLY'
-                       };
+                const weeklyPayments: PaymentItem[] = allSchedule
+                    .filter(c => {
+                        const d = parseISO(c.classDate);
+                        return d >= weekOffsetStart && d <= weekOffsetEnd && 
+                               c.status === 'COMPLETED' && 
+                               c.paymentStatus !== 'PAID';
                     })
-                    .filter(p => p.dueDate >= weekStart && p.dueDate <= weekEnd);
-                setUpcomingPayments(mockPayments);
+                    .map(c => ({
+                        studentName: c.studentName || 'Aluno',
+                        amount: c.totalValue || 0,
+                        dueDate: parseISO(c.classDate), // Vencimento é o dia da aula para este critério
+                        type: 'Aula Ministrada'
+                    }));
+                setUpcomingPayments(weeklyPayments);
             } else {
-                // OVERDUE
-                const overduePayments: PaymentItem[] = students
-                    .filter(s => (s as any).billing_day)
-                    .map(s => {
-                       const dueDate = new Date(now.getFullYear(), now.getMonth(), (s as any).billing_day);
-                       return {
-                         studentName: s.name,
-                         amount: (((s as any).hourlyRate || (s as any).hourly_rate || 0) as number) * 4,
-                         dueDate: dueDate,
-                         type: (s as any).billing_period || 'MONTHLY'
-                       };
+                // OVERDUE: Aulas de semanas anteriores ainda pendentes
+                const overduePayments: PaymentItem[] = allSchedule
+                    .filter(c => {
+                        const d = parseISO(c.classDate);
+                        return d < startOfWeekNow && 
+                               c.status === 'COMPLETED' && 
+                               c.paymentStatus !== 'PAID';
                     })
-                    .filter(p => p.dueDate < now); // Simplificado para demonstração
+                    .map(c => ({
+                        studentName: c.studentName || 'Aluno',
+                        amount: c.totalValue || 0,
+                        dueDate: parseISO(c.classDate),
+                        type: 'Atrasado'
+                    }));
                 setUpcomingPayments(overduePayments);
             }
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
-        } finally {
-            setLoading(false);
         }
     };
-
 
     const handleConfirmPayment = (payment: PaymentItem) => {
         // Lógica de confirmação aqui
@@ -255,26 +270,44 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 {/* Agenda do Dia & Vencimentos */}
                 <div className="space-y-6">
                   {/* Agenda de Hoje */}
-                  <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl">
-                      <h3 className="font-bold text-white mb-6 flex items-center gap-2">
-                          <Clock size={20} className="text-purple-500" />
-                          Agenda de Hoje
-                      </h3>
-                      <div className="space-y-4">
-                          {upcomingClasses.map(c => (
-                              <div key={c.id} className="flex items-center gap-4 p-3 bg-[#0f172a] rounded-xl border border-gray-800">
-                                  <div className="text-center min-w-[50px]">
-                                      <p className="text-[10px] font-black text-gray-500 uppercase">{c.startTime}</p>
-                                      <div className={`w-1 h-4 mx-auto rounded-full mt-1 ${c.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-500'}`}></div>
-                                  </div>
-                                  <div className="flex-1">
-                                      <p className="text-sm font-bold text-white">{(c as any).studentName}</p>
-                                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{c.status}</p>
-                                  </div>
-                              </div>
-                          ))}
+                  <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl overflow-hidden relative">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <Clock size={20} className="text-purple-500" />
+                            Agenda de Hoje
+                        </h3>
+                        <span className="text-[10px] font-black text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 uppercase">
+                          {format(new Date(), "dd 'de' MMM", { locale: ptBR })}
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                          {upcomingClasses.map((c, idx) => {
+                              const colors = [
+                                'border-emerald-500/30 bg-emerald-500/5 text-emerald-500',
+                                'border-sky-500/30 bg-sky-500/5 text-sky-500',
+                                'border-violet-500/30 bg-violet-500/5 text-violet-500',
+                                'border-amber-500/30 bg-amber-500/5 text-amber-500'
+                              ];
+                              const colorStyle = colors[idx % colors.length];
+
+                              return (
+                                <div key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border ${colorStyle} transition-all hover:scale-[1.02] active:scale-95 cursor-pointer`}>
+                                    <div className="text-center min-w-[60px] border-r border-current/20 pr-4">
+                                        <p className="text-xs font-black uppercase tracking-tighter">{c.startTime}</p>
+                                        <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 bg-current animate-pulse`}></div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
+                                        <p className="text-[9px] font-bold uppercase opacity-60 tracking-[0.2em]">{c.status}</p>
+                                    </div>
+                                </div>
+                              );
+                          })}
                           {upcomingClasses.length === 0 && (
-                              <p className="text-center text-gray-500 py-10 italic text-sm">Nenhuma aula para hoje</p>
+                            <div className="text-center py-12 border-2 border-dashed border-gray-800 rounded-2xl">
+                              <CalendarIcon size={32} className="mx-auto mb-2 text-gray-700" />
+                              <p className="text-xs font-black text-gray-600 uppercase tracking-widest">Sem compromissos hoje</p>
+                            </div>
                           )}
                       </div>
                   </div>
