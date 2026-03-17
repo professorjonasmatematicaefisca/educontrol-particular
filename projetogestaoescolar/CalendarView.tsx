@@ -894,7 +894,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </div>
 
           <div className="flex flex-wrap gap-2 mt-auto">
-            {c.status === 'SCHEDULED' && isToday(new Date(c.classDate + 'T12:00:00')) && (
+            {c.status === 'SCHEDULED' && (
               <button 
                 onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} 
                 className="flex-1 min-w-[100px] py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 flex items-center justify-center gap-2"
