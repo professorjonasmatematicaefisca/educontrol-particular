@@ -44,6 +44,8 @@ import { UserRole, ScheduledClass, Student, Discipline, BankAccount } from './ty
 import { SupabaseService } from './services/supabaseService';
 import { supabase } from './supabaseClient';
 import { ModernCalendar } from './components/ModernCalendar';
+import { getHoliday } from './utils/holidays';
+import { Star } from 'lucide-react';
 
 interface CalendarViewProps {
   onShowToast: (msg: string) => void;
@@ -573,26 +575,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
             <div key={d} className="text-[9px] font-black text-slate-600 text-center py-1">{d}</div>
           ))}
-          {monthDays.map(day => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const isSelected = value === dateStr;
-            const isCurrentMonth = isSameMonth(day, viewDate);
+            const holidayName = getHoliday(day);
             return (
               <button
                 key={day.toString()}
                 onClick={() => onChange(dateStr)}
-                className={`aspect-square p-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center ${
+                title={holidayName || undefined}
+                className={`aspect-square p-1 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center justify-center relative ${
                   isSelected 
                   ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
                   : isCurrentMonth 
                     ? 'text-slate-300 hover:bg-white/5' 
                     : 'text-slate-700'
-                }`}
+                } ${holidayName ? 'text-amber-500' : ''}`}
               >
                 {format(day, 'd')}
+                {holidayName && <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-amber-500 rounded-full"></div>}
               </button>
             );
-          })}
         </div>
       </div>
     );

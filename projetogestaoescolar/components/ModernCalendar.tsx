@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, CheckCircle, Calendar as CalendarIcon, Star } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ScheduledClass, UserRole } from '../types';
+import { getHoliday } from '../utils/holidays';
 
 interface ModernCalendarProps {
   classes: ScheduledClass[];
@@ -92,19 +93,32 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
           const dayClasses = getClassesForDay(day);
           const isSelectedMonth = isSameMonth(day, currentMonth);
           const isToday = isSameDay(day, new Date());
+          const holidayName = getHoliday(day);
 
           return (
             <div 
               key={day.toString()} 
               onDrop={(e) => handleDrop(e, day)}
               onDragOver={handleDragOver}
-              className={`min-h-[120px] p-2 border-r border-b border-slate-800/50 transition-all ${!isSelectedMonth ? 'opacity-20' : ''} ${isToday ? 'bg-emerald-500/5' : ''} hover:bg-white/5 transition-colors`}
+              className={`min-h-[120px] p-2 border-r border-b border-slate-800/50 transition-all ${!isSelectedMonth ? 'opacity-20' : ''} ${isToday ? 'bg-emerald-500/5' : ''} ${holidayName ? 'bg-amber-500/5' : ''} hover:bg-white/5 transition-colors group/cell`}
             >
               <div className="flex justify-between items-start mb-2">
                 <span className={`text-xs font-bold ${isToday ? 'bg-emerald-500 text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-500'}`}>
                   {format(day, 'd')}
                 </span>
+                {holidayName && (
+                  <div className="flex items-center gap-1 text-amber-500 animate-pulse">
+                    <Star size={10} fill="currentColor" />
+                  </div>
+                )}
               </div>
+              
+              {holidayName && (
+                <div className="mb-2 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] font-black text-amber-500 uppercase truncate">
+                  {holidayName}
+                </div>
+              )}
+
               <div className="space-y-1">
                 {dayClasses.map(c => {
                   const studentColor = getStudentColor(c.studentId);
