@@ -1097,12 +1097,35 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                                 {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
                               </p>
                             </div>
-                            <button 
-                              onClick={() => openRescheduleModal(c)}
-                              className="p-2 opacity-0 group-hover:opacity-100 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
-                            >
-                              <Edit2 size={14} />
-                            </button>
+                            <div className="flex gap-1">
+                              {c.status === 'SCHEDULED' && (
+                                <button 
+                                  onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
+                                  className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-lg transition-all shadow-lg shadow-amber-500/10 active:scale-90"
+                                  title="Iniciar Aula"
+                                >
+                                  <Play size={12} fill="currentColor" />
+                                </button>
+                              )}
+                              
+                              {c.status === 'IN_PROGRESS' && (
+                                <button 
+                                  onClick={() => openCompletionModal(c)}
+                                  className="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-lg shadow-sky-500/10 active:scale-90"
+                                  title="Concluir Aula"
+                                >
+                                  <CheckCircle size={12} />
+                                </button>
+                              )}
+
+                              <button 
+                                onClick={() => openRescheduleModal(c)}
+                                className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+                                title="Reagendar"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
