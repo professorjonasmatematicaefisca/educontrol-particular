@@ -1078,6 +1078,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   const filtered = classes
                     .filter(c => 
                       c.status !== 'CANCELLED' && 
+                      c.status !== 'COMPLETED' && 
                       c.classDate === format(agendaDate, 'yyyy-MM-dd')
                     )
                     .sort((a,b) => a.startTime.localeCompare(b.startTime));
@@ -1093,9 +1094,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                  {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
+                                </p>
+                                {c.status === 'IN_PROGRESS' && (
+                                  <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-white uppercase tracking-wider animate-pulse shadow-lg shadow-orange-500/20">
+                                    Aula em Andamento
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex gap-1">
                               {c.status === 'SCHEDULED' && (
