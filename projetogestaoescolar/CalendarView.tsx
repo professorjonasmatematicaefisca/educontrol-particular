@@ -1077,9 +1077,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 {(() => {
                   const filtered = classes
                     .filter(c => 
-                      c.status === 'SCHEDULED' && 
-                      c.classDate === format(agendaDate, 'yyyy-MM-dd') && 
-                      !isLive(c)
+                      c.status !== 'CANCELLED' && 
+                      c.classDate === format(agendaDate, 'yyyy-MM-dd')
                     )
                     .sort((a,b) => a.startTime.localeCompare(b.startTime));
                   
