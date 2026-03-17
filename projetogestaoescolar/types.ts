@@ -221,20 +221,36 @@ export interface Simulado {
   title: string;
   description?: string;
   teacherId: string;
-  questions: any[]; // Estrutura de questões conforme sugerido
+  disciplineId: string;
+  type: 'LISTA' | 'SIMULADO';
+  contentTopic?: string;
+  questions: any[]; 
   durationMinutes?: number;
   createdAt?: string;
+}
+
+export interface SimuladoAssignment {
+  id: string;
+  simuladoId: string;
+  studentId: string;
+  teacherId: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+  dueDate?: string;
+  createdAt?: string;
+  simulado?: Simulado; // Joined field
 }
 
 export interface SimuladoAttempt {
   id: string;
   simuladoId: string;
   studentId: string;
+  assignmentId?: string;
   score?: number;
   startedAt: string;
   completedAt?: string;
   answers: any[];
   status: 'IN_PROGRESS' | 'COMPLETED';
+  timeSpentSeconds?: number;
 }
 
 export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES' | 'WHITEBOARD';

@@ -32,6 +32,8 @@ function App() {
   const [toast, setToast] = useState<{ msg: string, visible: boolean }>({ msg: '', visible: false });
   const [isRecovering, setIsRecovering] = useState(false);
   const [activeWhiteboardContext, setActiveWhiteboardContext] = useState<{ classId: string; disciplineId: string } | null>(null);
+  const [students, setStudents] = useState<any[]>([]);
+  const [disciplines, setDisciplines] = useState<any[]>([]);
 
   // Theme Init
   useEffect(() => {
@@ -87,6 +89,9 @@ function App() {
   useEffect(() => {
     if (isAuthenticated && userEmail && userRole) {
       SupabaseService.getUnreadMessagesCount(userEmail, userRole).then(setUnreadCount);
+      // Carregar dados auxiliares para simulados
+      SupabaseService.getStudents().then(setStudents);
+      SupabaseService.getDisciplines().then(setDisciplines);
     }
   }, [isAuthenticated, userEmail, userRole, currentView]);
 
@@ -196,7 +201,13 @@ function App() {
         handleViewChange(view);
       }} />;
       case 'FINANCIAL': return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
-      case 'SIMULADO': return <SimuladoView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userName={userName} />;
+      case 'SIMULADO': return <SimuladoView 
+        onShowToast={showToast} 
+        userEmail={userEmail} 
+        userRole={userRole!} 
+        students={students}
+        disciplines={disciplines}
+      />;
       case 'ADMIN': return <AdminPanel onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
       case 'SETTINGS': return <SettingsView userEmail={userEmail} userRole={userRole!} onShowToast={showToast} />;
       case 'COURSES': return <CoursesView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;

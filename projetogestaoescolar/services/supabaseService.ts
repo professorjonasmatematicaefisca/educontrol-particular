@@ -1810,6 +1810,9 @@ export const SupabaseService = {
             teacherId: item.teacher_id,
             questions: item.questions,
             durationMinutes: item.duration_minutes,
+            disciplineId: item.discipline_id,
+            type: item.type,
+            contentTopic: item.content_topic,
             createdAt: item.created_at
         }));
     },
@@ -1820,7 +1823,52 @@ export const SupabaseService = {
             description: simulado.description,
             teacher_id: simulado.teacherId,
             questions: simulado.questions,
-            duration_minutes: simulado.durationMinutes
+            duration_minutes: simulado.durationMinutes,
+            discipline_id: simulado.disciplineId,
+            type: simulado.type,
+            content_topic: simulado.contentTopic
+        });
+        return !error;
+    },
+
+    async getSimuladoAssignments(studentId?: string, teacherId?: string): Promise<SimuladoAssignment[]> {
+        let query = supabase.from('simulado_assignments').select('*, simulados(*)');
+        if (studentId) query = query.eq('student_id', studentId);
+        if (teacherId) query = query.eq('teacher_id', teacherId);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        
+        return data.map((item: any) => ({
+            id: item.id,
+            simuladoId: item.simulado_id,
+            studentId: item.student_id,
+            teacherId: item.teacher_id,
+            status: item.status,
+            dueDate: item.due_date,
+            createdAt: item.created_at,
+            simulado: item.simulados ? {
+                id: item.simulados.id,
+                title: item.simulados.title,
+                description: item.simulados.description,
+                teacherId: item.simulados.teacher_id,
+                questions: item.simulados.questions,
+                durationMinutes: item.simulados.duration_minutes,
+                disciplineId: item.simulados.discipline_id,
+                type: item.simulados.type,
+                contentTopic: item.simulados.content_topic,
+                createdAt: item.simulados.created_at
+            } : undefined
+        }));
+    },
+
+    async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<boolean> {
+        const { error } = await supabase.from('simulado_assignments').insert({
+            simulado_id: assignment.simuladoId,
+            student_id: assignment.studentId,
+            teacher_id: assignment.teacherId,
+            due_date: assignment.dueDate,
+            status: 'PENDING'
         });
         return !error;
     },
@@ -1832,11 +1880,13 @@ export const SupabaseService = {
             id: item.id,
             simuladoId: item.simulado_id,
             studentId: item.student_id,
+            assignmentId: item.assignment_id,
             score: item.score,
             startedAt: item.started_at,
             completedAt: item.completed_at,
             answers: item.answers,
-            status: item.status
+            status: item.status,
+            timeSpentSeconds: item.time_spent_seconds
         }));
     },
 
@@ -1844,9 +1894,37 @@ export const SupabaseService = {
         const { error } = await supabase.from('simulado_attempts').insert({
             simulado_id: attempt.simuladoId,
             student_id: attempt.studentId,
+            assignment_id: attempt.assignmentId,
             started_at: attempt.startedAt,
             status: 'IN_PROGRESS'
         });
+        
+        if (!error && attempt.assignmentId) {
+            await supabase.from('simulado_assignments')
+                .update({ status: 'IN_PROGRESS' })
+                .eq('id', attempt.assignmentId);
+        }
+        
+        return !error;
+    },
+
+    async updateSimuladoAttempt(id: string, updates: Partial<SimuladoAttempt>): Promise<boolean> {
+        const payload: any = {
+            score: updates.score,
+            completed_at: updates.completedAt,
+            answers: updates.answers,
+            status: updates.status,
+            time_spent_seconds: updates.timeSpentSeconds
+        };
+        
+        const { error } = await supabase.from('simulado_attempts').update(payload).eq('id', id);
+        
+        if (!error && updates.status === 'COMPLETED' && updates.assignmentId) {
+            await supabase.from('simulado_assignments')
+                .update({ status: 'COMPLETED' })
+                .eq('id', updates.assignmentId);
+        }
+        
         return !error;
     },
 
