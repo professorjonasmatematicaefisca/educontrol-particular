@@ -878,6 +878,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           </div>
 
           <div className="space-y-2 mb-4 flex-1">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-white bg-slate-950/50 p-2 rounded-xl border border-white/5">
+              <CalendarIcon size={12} className="text-emerald-500" />
+              <span>{format(new Date(c.classDate + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })}</span>
+            </div>
             <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 bg-slate-950/50 p-2 rounded-xl">
               <BookOpen size={12} className={textStyle.split(' ')[0]} />
               <span className="truncate">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</span>
@@ -1186,7 +1190,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 <div className="p-8">
                   {(() => {
                     const filtered = classes.filter(c => 
-                      c.status === 'SCHEDULED' && 
                       (userRole === UserRole.STUDENT 
                         ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
                         : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
