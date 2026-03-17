@@ -598,18 +598,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     );
   };
 
-  const TimeGrid = ({ selected, onSelect }: { selected: string; onSelect: (time: string) => void }) => (
+  const TimeGrid = ({ selected, onSelect, occupied = [] }: { selected: string; onSelect: (time: string) => void; occupied?: string[] }) => (
     <div className="grid grid-cols-4 gap-2">
       {Array.from({ length: 15 }, (_, i) => i + 7).map(h => {
         const time = `${h.toString().padStart(2, '0')}:00`;
+        const isOccupied = occupied.includes(time);
         return (
           <button
             key={time}
+            disabled={isOccupied}
             onClick={() => onSelect(time)}
             className={`p-2 rounded-lg text-sm font-bold transition-all border ${
-              selected === time 
-              ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20 scale-105' 
-              : 'bg-[#0f172a] border-gray-700 text-gray-400 hover:border-emerald-500/50'
+              isOccupied
+              ? 'bg-gray-800/50 border-gray-800 text-gray-600 cursor-not-allowed'
+              : selected === time 
+                ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20 scale-105' 
+                : 'bg-[#0f172a] border-gray-700 text-gray-400 hover:border-emerald-500/50'
             }`}
           >
             {time}
@@ -1254,6 +1258,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-4">3. Selecione o Horário</label>
                   <TimeGrid 
                     selected={newClass.startTime || ''} 
+                    occupied={classes
+                      .filter(c => c.classDate === newClass.classDate && c.status !== 'CANCELLED')
+                      .map(c => c.startTime)
+                    }
                     onSelect={(time) => {
                       const h = parseInt(time.split(':')[0]);
                       setNewClass({ 
@@ -1397,6 +1405,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Novo Horário</label>
                   <TimeGrid 
                     selected={rescheduleData.startTime} 
+                    occupied={classes
+                      .filter(c => 
+                        c.classDate === rescheduleData.date && 
+                        c.status !== 'CANCELLED' && 
+                        c.id !== selectedClass.id
+                      )
+                      .map(c => c.startTime)
+                    }
                     onSelect={(time) => {
                       const h = parseInt(time.split(':')[0]);
                       setRescheduleData({ 
