@@ -1823,13 +1823,26 @@ export const SupabaseService = {
         return data.map((item: any) => this.mapSimulado(item));
     },
 
+    async getUserByEmail(email: string): Promise<any> {
+        const { data, error } = await supabase.from('users').select('*').eq('email', email).single();
+        if (error) return null;
+        return data;
+    },
+
     async createSimulado(simulado: any): Promise<Simulado> {
+        let teacherId = null;
+        if (simulado.teacherEmail) {
+            const user = await this.getUserByEmail(simulado.teacherEmail);
+            if (user) teacherId = user.id;
+        }
+
         const { data, error } = await supabase
             .from('simulados')
             .insert([{
                 title: simulado.title,
                 description: simulado.description,
                 questions: simulado.questions,
+                teacher_id: teacherId,
                 teacher_email: simulado.teacherEmail,
                 type: simulado.type,
                 discipline_id: simulado.disciplineId,
@@ -1905,10 +1918,18 @@ export const SupabaseService = {
     },
 
     async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<boolean> {
+        let teacherId = assignment.teacherId;
+        
+        // Se o teacherId for um e-mail, resolver para UUID
+        if (teacherId && teacherId.includes('@')) {
+            const user = await this.getUserByEmail(teacherId);
+            if (user) teacherId = user.id;
+        }
+
         const { error } = await supabase.from('simulado_assignments').insert({
             simulado_id: assignment.simuladoId,
             student_id: assignment.studentId,
-            teacher_id: assignment.teacherId,
+            teacher_id: teacherId,
             due_date: assignment.dueDate,
             status: 'PENDING'
         });

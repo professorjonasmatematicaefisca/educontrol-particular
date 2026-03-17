@@ -103,6 +103,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     return (
       <SimuladoCreator 
         disciplines={disciplines} 
+        teacherEmail={userEmail}
         editingSimulado={editingSimulado}
         onSave={() => { 
           setShowCreator(false); 
@@ -163,6 +164,16 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
 
         <div className="flex items-center gap-4">
+           <div className="relative group">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+              <input 
+                type="text"
+                placeholder="Buscar títulos, tópicos..."
+                className="bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-6 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all w-64 md:w-80"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+           </div>
            {userRole !== UserRole.STUDENT && (
              <button 
                 onClick={() => { setEditingSimulado(null); setShowCreator(true); }}
@@ -199,7 +210,18 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activeTab === 'my_simulados' && simulados.filter(s => s.type === repoTab).map(s => (
+          {activeTab === 'my_simulados' && simulados
+            .filter(s => s.type === repoTab)
+            .filter(s => {
+              if (!searchTerm) return true;
+              const search = searchTerm.toLowerCase();
+              const discName = disciplines.find(d => d.id === s.disciplineId)?.name?.toLowerCase() || '';
+              const contentTopic = s.contentTopic?.toLowerCase() || '';
+              return s.title.toLowerCase().includes(search) || 
+                     contentTopic.includes(search) ||
+                     discName.includes(search);
+            })
+            .map(s => (
             <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex gap-2">
@@ -237,8 +259,13 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                   {s.type}
                 </span>
               </div>
-              <h3 className="text-lg font-black text-white mb-2 leading-tight group-hover:text-emerald-400 transition-colors uppercase italic">{s.title}</h3>
-              <p className="text-xs text-slate-500 font-bold mb-6 flex-1 line-clamp-2">{s.description || 'Sem descrição.'}</p>
+              <h3 className="text-lg font-black text-white mb-1 leading-tight group-hover:text-emerald-400 transition-colors uppercase italic">
+                {s.contentTopic || s.title}
+              </h3>
+              <div className="flex flex-col gap-0.5 mb-6 flex-1">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{s.title}</p>
+                <p className="text-[10px] text-slate-500 font-bold line-clamp-2 italic">{s.description || 'Sem descrição.'}</p>
+              </div>
               
               <div className="space-y-4 pt-6 border-t border-white/5">
                 <div className="flex flex-wrap gap-2">

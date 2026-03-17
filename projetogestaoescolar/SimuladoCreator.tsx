@@ -24,6 +24,7 @@ import { SupabaseService } from './services/supabaseService';
 
 interface SimuladoCreatorProps {
   disciplines: Discipline[];
+  teacherEmail: string;
   editingSimulado?: Simulado | null; // Optional simulado for editing
   onSave: () => void;
   onCancel: () => void;
@@ -32,6 +33,7 @@ interface SimuladoCreatorProps {
 
 export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({ 
   disciplines, 
+  teacherEmail,
   editingSimulado,
   onSave, 
   onCancel,
@@ -193,7 +195,10 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
         await SupabaseService.updateSimulado(editingSimulado.id, simulado);
         onShowToast('Simulado/Lista atualizado com sucesso!');
       } else {
-        await SupabaseService.createSimulado(simulado);
+        await SupabaseService.createSimulado({
+          ...simulado,
+          teacherEmail: teacherEmail
+        });
         onShowToast('Simulado/Lista criado com sucesso!');
       }
       onSave();
