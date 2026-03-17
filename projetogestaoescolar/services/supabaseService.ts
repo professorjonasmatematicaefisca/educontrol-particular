@@ -1926,7 +1926,7 @@ export const SupabaseService = {
         }));
     },
 
-    async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<boolean> {
+    async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<{ success: boolean; error?: string }> {
         let teacherId: string | null = assignment.teacherId || null;
         
         // Se o teacherId for um e-mail, resolver para UUID de forma segura
@@ -1950,9 +1950,9 @@ export const SupabaseService = {
 
         if (error) {
             console.error('assignSimulado error:', error);
-            return false;
+            return { success: false, error: error.message };
         }
-        return true;
+        return { success: true };
     },
 
     async getSimuladoAttempts(studentId: string): Promise<SimuladoAttempt[]> {

@@ -102,20 +102,20 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
       ? new Date(assignData.dueDate).toISOString() 
       : undefined;
 
-    const success = await SupabaseService.assignSimulado({
+    const result = await SupabaseService.assignSimulado({
       simuladoId: selectedSimulado.id,
       studentId: assignData.studentId,
       teacherId: userEmail, // supabaseService will resolve email → UUID
       dueDate: dueDateISO
     });
 
-    if (success) {
+    if (result.success) {
       onShowToast('✅ Atribuído com sucesso!');
       setShowAssignModal(false);
       setAssignData({ studentId: '', dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) });
       fetchData();
     } else {
-      onShowToast('❌ Erro ao atribuir. Tente novamente.');
+      onShowToast(`❌ Erro: ${result.error || 'Erro ao atribuir. Tente novamente.'}`);
     }
   };
 
