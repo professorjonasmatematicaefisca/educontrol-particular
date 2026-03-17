@@ -116,16 +116,34 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
        }
     }
 
-    // Padronizar LaTeX: remove espaços extras dentro de $ $
-    let questionText = questionTextLines.join('\n');
-    questionText = questionText.replace(/\$\s*(.+?)\s*\$/g, '$$$1$');
+    // Função auxiliar para padronizar e envolver em LaTeX se necessário
+    const formatLatex = (text: string) => {
+      text = text.trim();
+      // Se já tem $, apenas padroniza removendo espaços
+      if (text.includes('$')) {
+        return text.replace(/\$\s*(.+?)\s*\$/g, '$$$1$');
+      }
+      // Se parecer conteúdo matemático (números, sinais, frações simples, variáveis isoladas)
+      // envolve em $ para manter a consistência visual moderna
+      if (/^[\d.,+\-*/^()=<>a-zA-Z\s]+$/.test(text) && text.length > 0) {
+        // Se for uma palavra muito longa (provavelmente texto), não envolve. 
+        // Se tiver poucos espaços e caracteres matemáticos, envolve.
+        const isLikelyMath = text.split(' ').length <= 3 || /[\d+\-*/^=<>]+/.test(text);
+        if (isLikelyMath) {
+          return `$${text.replace(/\s+/g, '')}$`;
+        }
+      }
+      return text;
+    };
+
+    const questionText = formatLatex(questionTextLines.join('\n'));
 
     setCurrentQuestion({
       id: Math.random().toString(36).substring(7),
       text: questionText,
       options: options.length > 0 ? options.map(opt => ({
         ...opt,
-        text: opt.text.replace(/\$\s*(.+?)\s*\$/g, '$$$1$')
+        text: formatLatex(opt.text)
       })) : [
         { id: 'A', text: '', isCorrect: false },
         { id: 'B', text: '', isCorrect: false },
