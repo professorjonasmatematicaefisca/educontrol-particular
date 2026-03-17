@@ -575,6 +575,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
           {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
             <div key={d} className="text-[9px] font-black text-slate-600 text-center py-1">{d}</div>
           ))}
+          {monthDays.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const isSelected = value === dateStr;
+            const isCurrentMonth = isSameMonth(day, viewDate);
             const holidayName = getHoliday(day);
             return (
               <button
@@ -593,6 +597,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 {holidayName && <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-amber-500 rounded-full"></div>}
               </button>
             );
+          })}
         </div>
       </div>
     );
