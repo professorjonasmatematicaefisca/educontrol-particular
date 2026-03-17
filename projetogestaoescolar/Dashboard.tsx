@@ -293,14 +293,16 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                               const colorStyle = colors[idx % colors.length];
 
                               return (
-                                <div key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border ${colorStyle} transition-all hover:scale-[1.02] active:scale-95 cursor-pointer`}>
-                                    <div className="text-center min-w-[60px] border-r border-current/20 pr-4">
-                                        <p className="text-xs font-black uppercase tracking-tighter">{c.startTime}</p>
-                                        <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 bg-current animate-pulse`}></div>
+                                <div key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/40 to-amber-500/10 border-orange-500/50 shadow-lg shadow-orange-500/20' : colorStyle}`}>
+                                    <div className={`text-center min-w-[60px] border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-white/20' : 'border-current/20'}`}>
+                                        <p className={`text-xs font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : ''}`}>{c.startTime}</p>
+                                        <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-current animate-pulse'}`}></div>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
-                                        <p className="text-[9px] font-bold uppercase opacity-60 tracking-[0.2em]">{c.status}</p>
+                                        <p className={`text-[9px] font-bold uppercase opacity-60 tracking-[0.2em] ${c.status === 'IN_PROGRESS' ? 'text-orange-200' : ''}`}>
+                                          {c.status === 'IN_PROGRESS' ? 'AULA EM ANDAMENTO' : c.status}
+                                        </p>
                                     </div>
                                 </div>
                               );

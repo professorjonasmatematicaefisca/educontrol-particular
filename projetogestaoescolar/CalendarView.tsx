@@ -854,9 +854,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     const [colorBase, colorVia, colorTo, borderStyle, textStyle] = colorStyle.split(' ');
 
     return (
-      <div key={c.id} className={`bg-slate-900/60 p-5 rounded-[2rem] border-2 ${borderStyle} hover:scale-[1.02] transition-all group relative overflow-hidden flex flex-col justify-between h-full`}>
+      <div key={c.id} className={`p-5 rounded-[2rem] border-2 ${borderStyle} hover:scale-[1.02] transition-all group relative overflow-hidden flex flex-col justify-between h-full ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-br from-orange-600/40 via-amber-500/20 to-transparent border-orange-500/50 shadow-[0_0_30px_rgba(249,115,22,0.15)]' : 'bg-slate-900/60'}`}>
         {/* Background gradient subtle */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${colorBase} ${colorVia} ${colorTo} opacity-40`}></div>
+        <div className={`absolute inset-0 bg-gradient-to-br ${colorBase} ${colorVia} ${colorTo} ${c.status === 'IN_PROGRESS' ? 'opacity-0' : 'opacity-40'}`}></div>
         
         <div className="relative z-10 flex flex-col h-full">
           <div className="flex justify-between items-start mb-4">
@@ -1087,22 +1087,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                     <>
                       <div className="space-y-3">
                         {filtered.map(c => (
-                          <div key={c.id} className="group flex items-center gap-4 p-4 bg-[#0f172a]/60 hover:bg-[#0f172a] rounded-2xl border border-gray-800/50 hover:border-emerald-500/30 transition-all">
-                            <div className="flex flex-col items-center min-w-[50px] py-1 border-r border-gray-800/50 pr-4">
-                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">{c.startTime}</span>
-                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 mt-1 group-hover:bg-blue-500 transition-colors"></div>
+                          <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10' : 'bg-[#0f172a]/60 hover:bg-[#0f172a] border-gray-800/50 hover:border-emerald-500/30'}`}>
+                            <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-orange-500/20' : 'border-gray-800/50'}`}>
+                              <span className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : 'text-gray-500'}`}>{c.startTime}</span>
+                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-blue-500/50 group-hover:bg-blue-500'} transition-colors`}></div>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
                               <div className="flex items-center gap-2">
-                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                <p className={`text-[10px] font-bold uppercase tracking-widest ${c.status === 'IN_PROGRESS' ? 'text-orange-200/60' : 'text-gray-500'}`}>
                                   {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
                                 </p>
-                                {c.status === 'IN_PROGRESS' && (
-                                  <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-white uppercase tracking-wider animate-pulse shadow-lg shadow-orange-500/20">
-                                    Aula em Andamento
-                                  </span>
-                                )}
                               </div>
                             </div>
                             <div className="flex gap-1">
