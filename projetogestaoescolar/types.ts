@@ -221,6 +221,7 @@ export interface Simulado {
   title: string;
   description?: string;
   teacherId: string;
+  teacherEmail?: string; // New field for identification
   disciplineId: string;
   type: 'LISTA' | 'SIMULADO';
   contentTopic?: string;

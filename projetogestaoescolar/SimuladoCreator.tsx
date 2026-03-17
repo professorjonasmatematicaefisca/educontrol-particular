@@ -24,6 +24,7 @@ import { SupabaseService } from './services/supabaseService';
 
 interface SimuladoCreatorProps {
   disciplines: Discipline[];
+  editingSimulado?: Simulado | null; // Optional simulado for editing
   onSave: () => void;
   onCancel: () => void;
   onShowToast: (msg: string) => void;
@@ -31,12 +32,13 @@ interface SimuladoCreatorProps {
 
 export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({ 
   disciplines, 
+  editingSimulado,
   onSave, 
   onCancel,
   onShowToast 
 }) => {
   const [step, setStep] = useState(1);
-  const [simulado, setSimulado] = useState<Partial<Simulado>>({
+  const [simulado, setSimulado] = useState<Partial<Simulado>>(editingSimulado || {
     title: '',
     description: '',
     type: 'SIMULADO',
@@ -114,10 +116,17 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
        }
     }
 
+    // Padronizar LaTeX: remove espaços extras dentro de $ $
+    let questionText = questionTextLines.join('\n');
+    questionText = questionText.replace(/\$\s*(.+?)\s*\$/g, '$$$1$');
+
     setCurrentQuestion({
       id: Math.random().toString(36).substring(7),
-      text: questionTextLines.join('\n'),
-      options: options.length > 0 ? options : [
+      text: questionText,
+      options: options.length > 0 ? options.map(opt => ({
+        ...opt,
+        text: opt.text.replace(/\$\s*(.+?)\s*\$/g, '$$$1$')
+      })) : [
         { id: 'A', text: '', isCorrect: false },
         { id: 'B', text: '', isCorrect: false },
         { id: 'C', text: '', isCorrect: false },
@@ -161,11 +170,17 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
       return;
     }
 
-    const success = await SupabaseService.createSimulado(simulado);
-    if (success) {
-      onShowToast('Simulado/Lista criado com sucesso!');
+    try {
+      if (editingSimulado?.id) {
+        await SupabaseService.updateSimulado(editingSimulado.id, simulado);
+        onShowToast('Simulado/Lista atualizado com sucesso!');
+      } else {
+        await SupabaseService.createSimulado(simulado);
+        onShowToast('Simulado/Lista criado com sucesso!');
+      }
       onSave();
-    } else {
+    } catch (error) {
+      console.error(error);
       onShowToast('Erro ao salvar simulado.');
     }
   };
@@ -183,8 +198,8 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
             <Plus size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black">{simulado.type === 'SIMULADO' ? 'Novo Simulado' : 'Nova Lista de Exercícios'}</h2>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">Criação de Conteúdo Acadêmico</p>
+            <h2 className="text-2xl font-black">{editingSimulado ? 'Editar' : 'Novo'} {simulado.type === 'SIMULADO' ? 'Simulado' : 'Lista de Exercícios'}</h2>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">{editingSimulado ? 'Atualizando' : 'Criação de'} Conteúdo Acadêmico</p>
           </div>
         </div>
         <div className="flex gap-3">
@@ -369,7 +384,7 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
                         />
                         <div className="flex gap-2">
                            <button 
-                             onClick={() => setCurrentQuestion(prev => ({...prev, text: prev.text + ' $ ... $ '}))}
+                             onClick={() => setCurrentQuestion(prev => ({...prev, text: prev.text + ' $...$ '}))}
                              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-black text-slate-300 rounded-lg transition-all"
                            >
                              <Sigma size={12} /> Inserir LaTeX
@@ -502,12 +517,12 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
                 >
                   <ChevronLeft size={20} /> Voltar para Edição
                 </button>
-                <button 
-                  onClick={handleSave}
-                  className="flex items-center gap-3 px-12 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-3xl font-black transition-all shadow-[0_10px_40px_rgba(16,185,129,0.4)] active:scale-95"
-                >
-                  <Save size={24} /> Criar Repositório Final
-                </button>
+                 <button 
+                   onClick={handleSave}
+                   className="flex items-center gap-3 px-12 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-3xl font-black transition-all shadow-[0_10px_40px_rgba(16,185,129,0.4)] active:scale-95"
+                 >
+                   <Save size={24} /> {editingSimulado ? 'Salvar Alterações' : 'Criar Repositório Final'}
+                 </button>
               </div>
             </div>
           )}

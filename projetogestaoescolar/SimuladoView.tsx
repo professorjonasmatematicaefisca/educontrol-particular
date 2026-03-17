@@ -11,6 +11,8 @@ import {
   User,
   ArrowRight,
   Send,
+  Trash2,
+  Edit3,
   BarChart3,
   FileText
 } from 'lucide-react';
@@ -35,7 +37,9 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   onShowToast 
 }) => {
   const [activeTab, setActiveTab] = useState<'my_simulados' | 'assignments' | 'results'>('my_simulados');
+  const [repoTab, setRepoTab] = useState<'SIMULADO' | 'LISTA'>('SIMULADO');
   const [simulados, setSimulados] = useState<Simulado[]>([]);
+  const [editingSimulado, setEditingSimulado] = useState<Simulado | null>(null);
   const [assignments, setAssignments] = useState<SimuladoAssignment[]>([]);
   const [showCreator, setShowCreator] = useState(false);
   const [activeSimulado, setActiveSimulado] = useState<Simulado | null>(null);
@@ -99,8 +103,16 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     return (
       <SimuladoCreator 
         disciplines={disciplines} 
-        onSave={() => { setShowCreator(false); fetchData(); }}
-        onCancel={() => setShowCreator(false)}
+        editingSimulado={editingSimulado}
+        onSave={() => { 
+          setShowCreator(false); 
+          setEditingSimulado(null);
+          fetchData(); 
+        }}
+        onCancel={() => {
+          setShowCreator(false);
+          setEditingSimulado(null);
+        }}
         onShowToast={onShowToast}
       />
     );
@@ -153,7 +165,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         <div className="flex items-center gap-4">
            {userRole !== UserRole.STUDENT && (
              <button 
-                onClick={() => setShowCreator(true)}
+                onClick={() => { setEditingSimulado(null); setShowCreator(true); }}
                 className="flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
              >
                 <Plus size={20} /> Novo Conteúdo
@@ -161,6 +173,23 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
            )}
         </div>
       </div>
+
+      {activeTab === 'my_simulados' && (
+        <div className="flex justify-start gap-4 mb-4">
+          <button 
+            onClick={() => setRepoTab('SIMULADO')}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${repoTab === 'SIMULADO' ? 'bg-white text-black' : 'bg-slate-900/40 text-slate-500 border border-slate-800'}`}
+          >
+            Simulados
+          </button>
+          <button 
+            onClick={() => setRepoTab('LISTA')}
+            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${repoTab === 'LISTA' ? 'bg-white text-black' : 'bg-slate-900/40 text-slate-500 border border-slate-800'}`}
+          >
+            Listas de Exercícios
+          </button>
+        </div>
+      )}
 
       {/* Grid de Cards */}
       {loading ? (
@@ -170,11 +199,39 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activeTab === 'my_simulados' && simulados.map(s => (
-            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full">
+          {activeTab === 'my_simulados' && simulados.filter(s => s.type === repoTab).map(s => (
+            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
               <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
-                  <BookOpen size={24} />
+                <div className="flex gap-2">
+                  <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
+                    <BookOpen size={24} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {userRole !== UserRole.STUDENT && (
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={() => { setEditingSimulado(s); setShowCreator(true); }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
+                          title="Editar"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            if (confirm('Tem certeza que deseja excluir?')) {
+                              await SupabaseService.deleteSimulado(s.id);
+                              onShowToast('Excluído com sucesso!');
+                              fetchData();
+                            }
+                          }}
+                          className="p-1.5 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-500 transition-all"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <span className="px-3 py-1 bg-slate-950 text-slate-500 rounded-full text-[8px] font-black uppercase border border-white/5">
                   {s.type}

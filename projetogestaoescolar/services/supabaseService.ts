@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAttempt, BankAccount, Course, CourseItem } from '../types';
+import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAssignment, SimuladoAttempt, BankAccount, Course, CourseItem } from '../types';
 import { SEED_STUDENTS, SEED_CLASSES, SEED_TEACHERS, SEED_OCCURRENCES } from './mockData';
 import { offlineService } from './offlineService';
 
@@ -1800,35 +1800,77 @@ export const SupabaseService = {
     },
 
     // --- SIMULADOS ---
-    async getSimulados(): Promise<Simulado[]> {
-        const { data, error } = await supabase.from('simulados').select('*');
-        if (error) throw error;
-        return data.map((item: any) => ({
+    // Helper to map DB record to Simulado interface
+    mapSimulado(item: any): Simulado {
+        return {
             id: item.id,
             title: item.title,
             description: item.description,
             teacherId: item.teacher_id,
+            teacherEmail: item.teacher_email,
             questions: item.questions,
             durationMinutes: item.duration_minutes,
             disciplineId: item.discipline_id,
             type: item.type,
             contentTopic: item.content_topic,
             createdAt: item.created_at
-        }));
+        };
     },
 
-    async createSimulado(simulado: Partial<Simulado>): Promise<boolean> {
-        const { error } = await supabase.from('simulados').insert({
-            title: simulado.title,
-            description: simulado.description,
-            teacher_id: simulado.teacherId,
-            questions: simulado.questions,
-            duration_minutes: simulado.durationMinutes,
-            discipline_id: simulado.disciplineId,
-            type: simulado.type,
-            content_topic: simulado.contentTopic
-        });
-        return !error;
+    async getSimulados(): Promise<Simulado[]> {
+        const { data, error } = await supabase.from('simulados').select('*');
+        if (error) throw error;
+        return data.map((item: any) => this.mapSimulado(item));
+    },
+
+    async createSimulado(simulado: any): Promise<Simulado> {
+        const { data, error } = await supabase
+            .from('simulados')
+            .insert([{
+                title: simulado.title,
+                description: simulado.description,
+                questions: simulado.questions,
+                teacher_email: simulado.teacherEmail,
+                type: simulado.type,
+                discipline_id: simulado.disciplineId,
+                content_topic: simulado.contentTopic
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return this.mapSimulado(data);
+    },
+
+    async updateSimulado(id: string, simulado: any): Promise<Simulado> {
+        const { data, error } = await supabase
+            .from('simulados')
+            .update({
+                title: simulado.title,
+                description: simulado.description,
+                questions: simulado.questions,
+                type: simulado.type,
+                discipline_id: simulado.disciplineId,
+                content_topic: simulado.contentTopic,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return this.mapSimulado(data);
+    },
+
+    async deleteSimulado(id: string): Promise<void> {
+        // Primeiro remove assignments vinculados (ou deixa RLS/Cascata tratar se configurado)
+        // Aqui assumimos que o professor quer deletar o template e suas questoes
+        const { error } = await supabase
+            .from('simulados')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     },
 
     async getSimuladoAssignments(studentId?: string, teacherId?: string): Promise<SimuladoAssignment[]> {
