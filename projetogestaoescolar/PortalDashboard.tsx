@@ -24,7 +24,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     const [sessions, setSessions] = useState<ClassSession[]>([]);
     const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([]);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
-    const [simuladoAttempts, setSimuladoAttempts] = useState<any[]>([]);
+    const [simuladoAssignments, setSimuladoAssignments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -44,13 +44,13 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                     SupabaseService.getSessions(),
                     SupabaseService.getScheduledClasses(undefined, undefined, me.id),
                     SupabaseService.getDisciplines(),
-                    SupabaseService.getSimuladoAttempts(me.id)
+                    SupabaseService.getSimuladoAssignments(me.id) // Fetch full assignments, including completed ones with scores
                 ]);
                 const filtered = allSessions.filter(s => s.className === me.className);
                 setSessions(filtered);
                 setScheduledClasses(allScheduled);
                 setDisciplines(allDisciplines);
-                setSimuladoAttempts(myAttempts || []);
+                setSimuladoAssignments(myAttempts || []);
             }
         } catch (err) {
             console.error("Error loading portal data:", err);
@@ -89,13 +89,13 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     }).length;
 
     // 2. Atividades/Simulados em Aberto
-    // Assuming simulados have a status property
-    const openActivities = simuladoAttempts.filter(a => a.status !== 'COMPLETED').length;
+    // Assignments give us the full picture (PENDING vs COMPLETED)
+    const openActivities = simuladoAssignments.filter(a => a.status !== 'COMPLETED').length;
 
     // 3. Desempenho (Média)
     const myRecords = sessions.map(s => s.records.find(r => r.studentId === student.id)).filter(Boolean);
     const sessionGrades = myRecords.map(r => r ? StorageService.calculateGrade(r) : 0);
-    const simuladoGrades = simuladoAttempts.filter(a => a.status === 'COMPLETED').map(a => a.score || 0);
+    const simuladoGrades = simuladoAssignments.filter(a => a.status === 'COMPLETED').map(a => a.score || 0);
     const allGrades = [...sessionGrades, ...simuladoGrades];
     const avgGrade = allGrades.length > 0 ? (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1) : '0.0';
 
@@ -177,29 +177,77 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                 Desempenho em Atividades
                             </h3>
                         </div>
-                        <div className="h-48 w-full flex items-end justify-around gap-2 px-4 relative">
+                        <div className="h-48 w-full flex items-end justify-center relative mt-4">
                             {/* Grid Lines */}
-                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5 border-y border-gray-500 py-1">
+                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10 border-y border-gray-500 py-1 z-0">
                                 <div className="w-full border-t border-gray-500"></div>
                                 <div className="w-full border-t border-gray-500"></div>
                                 <div className="w-full border-t border-gray-500"></div>
                             </div>
                             
-                            {recentGrades.length > 0 ? recentGrades.map((grade, idx) => (
-                                <div key={idx} className="flex flex-col items-center gap-2 group w-full max-w-[40px]">
-                                    <div className="relative w-full">
-                                        <div 
-                                            className="w-full bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all duration-1000 group-hover:from-emerald-500 group-hover:to-teal-400"
-                                            style={{ height: `${(grade / 100) * 160}px` }}
-                                        ></div>
-                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap">
-                                            {grade.toFixed(1)}
-                                        </div>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Act {idx + 1}</span>
+                            {recentGrades.length > 1 ? (
+                                <div className="relative w-full h-[160px] z-10">
+                                    <svg viewBox={`0 0 ${recentGrades.length * 100} 160`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                                        <defs>
+                                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                                                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                                            </linearGradient>
+                                        </defs>
+
+                                        {/* Area Polygon */}
+                                        <polygon 
+                                            points={`
+                                                0,160 
+                                                ${recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (g / 100) * 160}`).join(' ')} 
+                                                ${(recentGrades.length - 1) * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},160
+                                            `} 
+                                            fill="url(#areaGradient)" 
+                                        />
+
+                                        {/* Line */}
+                                        <polyline 
+                                            points={recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (g / 100) * 160}`).join(' ')} 
+                                            fill="none" 
+                                            stroke="#10b981" 
+                                            strokeWidth="3" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round" 
+                                        />
+
+                                        {/* Data Points */}
+                                        {recentGrades.map((g, i) => {
+                                            const cx = i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1;
+                                            const cy = 160 - (g / 100) * 160;
+                                            return (
+                                                <g key={i} className="group cursor-pointer">
+                                                    <circle cx={cx} cy={cy} r="5" fill="#0f172a" stroke="#10b981" strokeWidth="2" className="transition-all group-hover:r=8 group-hover:fill-[#10b981]" />
+                                                    {/* Tooltip text (SVG) */}
+                                                    <text x={cx} y={cy - 15} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {g.toFixed(1)}
+                                                    </text>
+                                                    {/* X-axis labels */}
+                                                    <text x={cx} y="175" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="bold">
+                                                        Act {i + 1}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                    </svg>
                                 </div>
-                            )) : (
-                                <div className="flex flex-col items-center justify-center w-full h-full text-gray-600 italic text-sm">
+                            ) : recentGrades.length === 1 ? (
+                                /* Single point fallback */
+                                <div className="flex flex-col items-center justify-end w-full h-[160px] z-10 mb-6">
+                                    <div className="relative group">
+                                         <div className="w-16 bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all" style={{ height: `${(recentGrades[0] / 100) * 160}px` }}></div>
+                                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap">
+                                            {recentGrades[0].toFixed(1)}
+                                         </div>
+                                         <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-500 uppercase">Act 1</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center w-full h-full text-gray-600 italic text-sm z-10">
                                     Nenhuma atividade registrada para gerar o gráfico.
                                 </div>
                             )}
@@ -272,13 +320,13 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                             <Activity size={18} className="text-emerald-400" />
                             Status de Atividades
                         </h3>
-                        {simuladoAttempts.length > 0 ? (
+                        {simuladoAssignments.length > 0 ? (
                             <div className="space-y-4">
-                                {simuladoAttempts.slice(0, 5).map((a, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2 p-4 bg-slate-900/50 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('STUDENT_ACTIVITIES')}>
+                                {simuladoAssignments.slice(0, 5).map((a, idx) => (
+                                    <div key={idx} className="flex flex-col gap-2 p-4 bg-slate-900/50 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('SIMULADO')}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-white uppercase truncate max-w-[150px]">{a.simuladoTitle || 'Atividade'}</span>
+                                                <span className="text-[10px] font-black text-white uppercase truncate max-w-[150px]">{a.simulado?.title || 'Atividade'}</span>
                                                 <span className="text-[8px] text-gray-500 font-bold uppercase">{a.completedAt ? format(new Date(a.completedAt), 'dd/MM/yy HH:mm') : 'Em andamento'}</span>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
@@ -302,7 +350,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                         ) : (
                             <p className="text-[10px] text-gray-500 font-bold italic uppercase">Sem atividades recentes.</p>
                         )}
-                        <button onClick={() => onNavigate('STUDENT_ACTIVITIES')} className="w-full mt-6 py-3 text-[10px] font-black text-white hover:bg-white/5 border border-slate-800 rounded-xl transition-all tracking-widest uppercase">
+                        <button onClick={() => onNavigate('SIMULADO')} className="w-full mt-6 py-3 text-[10px] font-black text-white hover:bg-white/5 border border-slate-800 rounded-xl transition-all tracking-widest uppercase">
                             Ver Todas Atividades
                         </button>
                     </div>

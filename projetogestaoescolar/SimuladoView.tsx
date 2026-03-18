@@ -54,6 +54,11 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   const [studentFilter, setStudentFilter] = useState<StudentFilter>('ALL');
   const [loading, setLoading] = useState(true);
 
+  // Filtros da aba de Resultados (Professor)
+  const [resultsNameFilter, setResultsNameFilter] = useState('');
+  const [resultsDateFilter, setResultsDateFilter] = useState<'ALL' | 'TODAY' | 'WEEK'>('ALL');
+  const [resultsStatusFilter, setResultsStatusFilter] = useState<'ALL' | 'COMPLETED' | 'PENDING' | 'OVERDUE'>('ALL');
+
   // Atribuição Modal
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedSimulado, setSelectedSimulado] = useState<Simulado | null>(null);
@@ -457,48 +462,163 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
             );
           })}
 
-          {activeTab === 'results' && assignments.filter(a => a.status === 'COMPLETED').map(a => (
-            <div 
-              key={a.id} 
-              className="bg-slate-900/40 border border-emerald-500/20 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/50 transition-all flex flex-col h-full cursor-pointer"
-              onClick={() => handleOpenAssignment(a)}
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                  <BarChart3 size={24} />
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-white">{a.score}%</div>
-                  <div className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Score Final</div>
-                </div>
+          {/* Aba de Resultados (Professor) */}
+          {activeTab === 'results' && userRole !== UserRole.STUDENT && (
+            <div className="col-span-full">
+              {/* Filtros de Resultados */}
+              <div className="flex flex-col md:flex-row gap-4 mb-8 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800 backdrop-blur-xl">
+                 <div className="flex-1 relative">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar aluno por nome..." 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                      value={resultsNameFilter}
+                      onChange={e => setResultsNameFilter(e.target.value)}
+                    />
+                 </div>
+                 
+                 <div className="flex items-center gap-2">
+                    <CalendarIcon size={16} className="text-slate-500 hidden md:block" />
+                    <select 
+                      className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                      value={resultsDateFilter}
+                      onChange={e => setResultsDateFilter(e.target.value as any)}
+                    >
+                       <option value="ALL">Todas as Datas</option>
+                       <option value="TODAY">Hoje</option>
+                       <option value="WEEK">Nesta Semana</option>
+                    </select>
+                 </div>
+
+                 <div className="flex items-center gap-2">
+                    <Filter size={16} className="text-slate-500 hidden md:block" />
+                    <select 
+                      className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                      value={resultsStatusFilter}
+                      onChange={e => setResultsStatusFilter(e.target.value as any)}
+                    >
+                       <option value="ALL">Todos os Status</option>
+                       <option value="COMPLETED">Concluídos</option>
+                       <option value="PENDING">Pendentes</option>
+                       <option value="OVERDUE">Atrasados</option>
+                    </select>
+                 </div>
               </div>
 
-              <h3 className="text-lg font-black text-white mb-1 uppercase italic leading-tight">
-                {a.simulado?.contentTopic || a.simulado?.title || 'Atividade'}
-              </h3>
-              
-              <div className="space-y-3 mt-4">
-                <div className="flex items-center gap-2">
-                  <User size={14} className="text-slate-500" />
-                  <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest">
-                    {students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-slate-500" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    {a.completedAt ? new Date(a.completedAt).toLocaleDateString('pt-BR') : '-'}
-                  </span>
-                </div>
-              </div>
+              {/* Lista Detalhada */}
+              <div className="space-y-4">
+                {assignments
+                  .filter(a => {
+                    // Pre-calculate status specifically for overdue check
+                    const isPending = a.status !== 'COMPLETED';
+                    const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
+                    const computedStatus = a.status === 'COMPLETED' ? 'COMPLETED' : overdue ? 'OVERDUE' : 'PENDING';
 
-              <div className="mt-auto pt-6 border-t border-white/5">
-                <button className="w-full py-3 bg-white/5 hover:bg-white text-slate-400 hover:text-black rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
-                  Ver Detalhes
-                </button>
+                    // Name Filter
+                    const stName = students.find(s => s.id === a.studentId)?.name?.toLowerCase() || '';
+                    if (resultsNameFilter && !stName.includes(resultsNameFilter.toLowerCase())) return false;
+
+                    // Date Filter (using completedAt if completed, otherwise dueDate or assign date - roughly using dueDate or today for pending logic if needed, but best to filter by completedAt for "Completed" and dueDate for pending/overdue)
+                    if (resultsDateFilter !== 'ALL') {
+                       const targetDate = a.completedAt ? new Date(a.completedAt) : (a.dueDate ? new Date(a.dueDate) : new Date());
+                       const now = new Date();
+                       if (resultsDateFilter === 'TODAY' && targetDate.toDateString() !== now.toDateString()) return false;
+                       
+                       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                       if (resultsDateFilter === 'WEEK' && targetDate < weekAgo) return false;
+                    }
+
+                    // Status Filter
+                    if (resultsStatusFilter !== 'ALL' && computedStatus !== resultsStatusFilter) return false;
+
+                    return true;
+                  })
+                  .sort((a, b) => {
+                     // Sort Completed first if showing all, then overdue, then pending
+                     if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return -1;
+                     if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return 1;
+                     // Sort by latest action
+                     const tA = a.completedAt ? new Date(a.completedAt).getTime() : (a.dueDate ? new Date(a.dueDate).getTime() : 0);
+                     const tB = b.completedAt ? new Date(b.completedAt).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : 0);
+                     return tB - tA;
+                  })
+                  .map(a => {
+                    const isPending = a.status !== 'COMPLETED';
+                    const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
+                    const stName = students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido';
+
+                    return (
+                      <div 
+                        key={a.id} 
+                        className={`flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:p-6 bg-slate-900/40 border rounded-[2rem] backdrop-blur-xl group transition-all ${
+                           !isPending 
+                             ? 'border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer' 
+                             : overdue 
+                               ? 'border-rose-500/20' 
+                               : 'border-amber-500/20'
+                        }`}
+                        onClick={() => { if (!isPending) handleOpenAssignment(a); }}
+                      >
+                         {/* Name & Type */}
+                         <div className="flex items-center gap-4 w-full md:w-1/3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                               !isPending ? 'bg-emerald-500/10 text-emerald-500' : 
+                               overdue ? 'bg-rose-500/10 text-rose-500' : 'bg-amber-500/10 text-amber-500'
+                            }`}>
+                               {a.simulado?.type === 'LISTA' ? <FileText size={20} /> : <BookOpen size={20} />}
+                            </div>
+                            <div className="flex flex-col overflow-hidden">
+                               <span className="text-sm font-black text-white uppercase truncate">{stName}</span>
+                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                  {a.simulado?.title || 'Atividade Excluída'}
+                               </span>
+                            </div>
+                         </div>
+
+                         {/* Status & Date */}
+                         <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto flex-1">
+                            <div className="flex flex-col md:items-end w-1/2 md:w-auto">
+                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</span>
+                               <span className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg border ${
+                                  !isPending ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                  overdue ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                  'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                               }`}>
+                                  {!isPending ? 'Concluído' : overdue ? 'Atrasado' : 'Pendente'}
+                               </span>
+                            </div>
+
+                            <div className="flex flex-col md:items-end w-1/2 md:w-auto">
+                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                                  {!isPending ? 'Finalizado em' : 'Prazo Final'}
+                               </span>
+                               <span className="text-xs font-black text-white">
+                                  {!isPending && a.completedAt 
+                                    ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
+                                    : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
+                               </span>
+                            </div>
+
+                            {/* Score & Action (Only if completed) */}
+                            {!isPending && (
+                               <div className="flex items-center gap-6 ml-auto">
+                                  <div className="flex flex-col items-center">
+                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Nota</span>
+                                     <span className="text-lg font-black text-white leading-none">{a.score}%</span>
+                                  </div>
+                                  <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-colors">
+                                     <ArrowRight size={16} className="text-slate-400 group-hover:text-white" />
+                                  </button>
+                               </div>
+                            )}
+                         </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
