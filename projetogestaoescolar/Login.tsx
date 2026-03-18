@@ -45,8 +45,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             const userInput = email.trim().toLowerCase();
             const isEmail = userInput.includes('@');
 
-            // ── Fluxo do Aluno (Novo ou Game): senha 123 ──
-            if (password === '123') {
+            // ── Fluxo do Aluno (Novo ou Game): senha 2026 ──
+            if (password === '2026') {
                 const { data: students } = await supabase
                     .from('students')
                     .select('id, name');
@@ -82,9 +82,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 onLogin(result.role, result.email, result.name, result.photoUrl);
             } else {
                 // Fallback para as credenciais padrão se o login falhar
-                if (email === 'coordenador@gmail.com' && password === 'mudar123') {
+                if (email === 'coordenador@gmail.com' && password === '2026') {
                     onLogin(UserRole.COORDINATOR, email);
-                } else if ((email === 'prof@edu.com' || email === 'mon@edu.com') && password === '123') {
+                } else if ((email === 'prof@edu.com' || email === 'mon@edu.com') && password === '2026') {
                     onLogin(email === 'prof@edu.com' ? UserRole.TEACHER : UserRole.MONITOR, email);
                 } else {
                     setError('Credenciais inválidas ou usuário não encontrado.');

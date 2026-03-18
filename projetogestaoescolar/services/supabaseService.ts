@@ -307,7 +307,7 @@ export const SupabaseService = {
         const teachersToInsert = SEED_TEACHERS.filter(t => !existingEmails.has(t.email)).map(t => ({
             name: t.name,
             email: t.email,
-            password: '123', // Senha padrão 123
+            password: '2026', // Senha padrão 2026
             role: 'TEACHER',
             subject: t.subject,
             assignments: t.assignments,
@@ -474,7 +474,7 @@ export const SupabaseService = {
                 await supabase.from('users').insert({
                     name: `Responsável de ${student.name}`,
                     email: student.parentEmail,
-                    password: 'mudar123',
+                    password: '2026',
                     role: 'PARENT'
                 });
             }
@@ -631,7 +631,7 @@ export const SupabaseService = {
                     const { error: iError } = await supabase.from('users').insert({
                         name: `Responsável de ${student.name}`,
                         email: student.parent_email,
-                        password: 'mudar123',
+                        password: '2026',
                         role: 'PARENT'
                     });
                     if (!iError) createdCount++;
@@ -1168,7 +1168,7 @@ export const SupabaseService = {
     },
 
     // --- TEACHER/USER CRUD ---
-    async createTeacher(teacher: Omit<Teacher, 'id'>, password: string = '123'): Promise<boolean> {
+    async createTeacher(teacher: Omit<Teacher, 'id'>, password: string = '2026'): Promise<boolean> {
         const { error } = await supabase.from('users').insert({
             name: teacher.name,
             email: teacher.email,

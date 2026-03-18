@@ -12,7 +12,7 @@ const KEYS = {
   DISCIPLINES: 'educontrol_disciplines'
 };
 
-const DEFAULT_PASSWORD = 'mudar123';
+const DEFAULT_PASSWORD = '2026';
 
 // Initialize Data
 const init = () => {
@@ -58,17 +58,17 @@ const init = () => {
   // Initialize Users (Auth)
   if (!localStorage.getItem(KEYS.USERS)) {
     const initialUsers: User[] = [
-      { id: 'admin-1', name: 'Coordenador', email: 'coordenador@gmail.com', password: 'mudar123', role: UserRole.COORDINATOR },
+      { id: 'admin-1', name: 'Coordenador', email: 'coordenador@gmail.com', password: '2026', role: UserRole.COORDINATOR },
       {
         id: 'prof-1',
         name: 'Prof. Anderson',
         email: 'prof@edu.com',
-        password: '123',
+        password: '2026',
         role: UserRole.TEACHER,
         subject: 'Biologia',
         assignments: SEED_TEACHERS[0].assignments
       },
-      { id: 'mon-1', name: 'Monitora Julia', email: 'mon@edu.com', password: '123', role: UserRole.MONITOR }
+      { id: 'mon-1', name: 'Monitora Julia', email: 'mon@edu.com', password: '2026', role: UserRole.MONITOR }
     ];
     // Sync Mock Teachers to Users
     SEED_TEACHERS.forEach(t => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { UserPlus, Users, School, BookOpen, X, Plus, Camera, Lock, Trash2, GraduationCap, Edit2, RefreshCw, Mail, AlertCircle, CalendarRange, DollarSign, TrendingUp, CreditCard, Search, Calendar, Filter, CheckCircle, XCircle, Clock, ChevronDown, ImageIcon, Upload, Save, Banknote, Settings, FileText, CloudOff } from 'lucide-react';
+import { UserPlus, Users, School, BookOpen, X, Plus, Camera, Lock, Trash2, GraduationCap, Edit2, RefreshCw, Mail, AlertCircle, CalendarRange, DollarSign, TrendingUp, CreditCard, Search, Calendar, Filter, CheckCircle, XCircle, Clock, ChevronDown, ImageIcon, Upload, Save, Banknote, Settings, FileText, CloudOff, Share2, Copy } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { Student, Teacher, ClassRoom, Discipline, UserRole, TeacherClassAssignment, ScheduledClass, BankAccount } from './types';
 import { UserAvatar } from './components/UserAvatar';
@@ -1361,6 +1361,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                 {activeMainTab === 'CONFIG' && (
                     <div className="max-w-4xl">
                         {activeSubTab === 'LOGO' && (
+                            <div className="space-y-6">
                             <div className="bg-[#0f172a] border border-gray-800 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
                                 <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl" />
                                 <div className="flex items-center gap-4 mb-8 border-b border-gray-800/50 pb-6 relative z-10">
@@ -1428,6 +1429,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                            
+                            {/* New Card for Link */}
+                            <div className="bg-[#0f172a] border border-gray-800 rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+                                <div className="flex items-center gap-4 mb-4 border-b border-gray-800/50 pb-6 relative z-10">
+                                     <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-inner">
+                                         <Share2 size={28} />
+                                     </div>
+                                     <div>
+                                         <h2 className="text-2xl font-black text-white uppercase tracking-tight">Compartilhar <span className="text-emerald-500">Acesso</span></h2>
+                                         <p className="text-xs text-gray-500 font-bold uppercase tracking-[0.2em] mt-1">Link do portal para alunos</p>
+                                     </div>
+                                </div>
+                                <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 mt-6">
+                                    <div className="flex-1 w-full bg-[#1e293b] border border-gray-700 rounded-xl p-4 text-white text-sm truncate">
+                                        https://projetogestaoescolar.vercel.app
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`Acesse o Portal do Aluno: https://projetogestaoescolar.vercel.app\nLogin: Seu Nome + Sobrenome\nSenha padrão: 2026`);
+                                            onShowToast('Link e instruções copiados!');
+                                        }}
+                                        className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg text-sm uppercase tracking-widest whitespace-nowrap"
+                                    >
+                                        <Copy size={20} /> Copiar Link e Instruções
+                                    </button>
+                                </div>
+                            </div>
                             </div>
                         )}
                     </div>

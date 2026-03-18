@@ -17,7 +17,8 @@ import {
   PlayCircle,
   Eye,
   Filter,
-  XCircle
+  XCircle,
+  Copy
 } from 'lucide-react';
 import { UserRole, Simulado, SimuladoAssignment, Student, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -368,12 +369,25 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                      {s.questions.length} Questões
                   </span>
                 </div>
-                <button 
-                  onClick={() => { setSelectedSimulado(s); setShowAssignModal(true); }}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
-                >
-                  <Send size={14} /> Atribuir ao Aluno
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => { setSelectedSimulado(s); setShowAssignModal(true); }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-95"
+                  >
+                    <Send size={14} /> Atribuir
+                  </button>
+                  <button 
+                    onClick={() => {
+                        const msg = `Olá! Você tem uma nova atividade: *${s.title}*.\n\nAcesse o Portal do Aluno: https://projetogestaoescolar.vercel.app\nLogin: Seu Nome + Sobrenome\nSenha: 2026`;
+                        navigator.clipboard.writeText(msg);
+                        onShowToast('Link e instruções copiados!');
+                    }}
+                    className="px-4 flex items-center justify-center bg-slate-800 text-slate-300 rounded-xl hover:bg-emerald-500 hover:text-white transition-all active:scale-95 border border-slate-700 hover:border-emerald-500"
+                    title="Copiar instruções para o aluno"
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
