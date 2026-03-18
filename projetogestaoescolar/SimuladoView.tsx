@@ -301,7 +301,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
            <p className="text-sm font-black uppercase tracking-widest">Carregando conteúdos...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activeTab === 'my_simulados' && simulados
             .filter(s => s.type === repoTab)
             .filter(s => {
@@ -314,8 +314,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                      discName.includes(search);
             })
             .map(s => (
-            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
-              <div className="flex justify-between items-start mb-6">
+            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-5 rounded-[2rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
+              <div className="flex justify-between items-start mb-4">
                 <div className="flex gap-2">
                   <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
                     <BookOpen size={24} />
@@ -387,7 +387,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               <div 
                 key={a.id} 
                 onClick={() => handleOpenAssignment(a)}
-                className={`bg-slate-900/40 border p-8 rounded-[2.5rem] backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                className={`bg-slate-900/40 border p-5 rounded-[2rem] backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                   !isPending 
                     ? 'border-emerald-500/30 hover:border-emerald-500/60' 
                     : overdue
@@ -395,7 +395,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                       : 'border-slate-800 hover:border-amber-500/30'
                 }`}
               >
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-4">
                   <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${
                     !isPending ? 'bg-emerald-500/10 text-emerald-500' 
                     : overdue ? 'bg-rose-500/10 text-rose-500'
@@ -437,7 +437,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                   </div>
                 )}
                 
-                <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
+                <div className="mt-auto pt-4 border-t border-white/5 space-y-4">
                   <div className="flex justify-between items-center text-[10px] font-black uppercase">
                     <span className={overdue && isPending ? 'text-rose-400' : 'text-slate-500'}>Prazo</span>
                     <span className={`${overdue && isPending ? 'text-rose-400' : 'text-white'}`}>
@@ -506,8 +506,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                  </div>
               </div>
 
-              {/* Lista Detalhada */}
-              <div className="space-y-4">
+              {/* Lista Detalhada em Grid de Cards Compactos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {assignments
                   .filter(a => {
                     // Pre-calculate status specifically for overdue check
@@ -519,7 +519,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     const stName = students.find(s => s.id === a.studentId)?.name?.toLowerCase() || '';
                     if (resultsNameFilter && !stName.includes(resultsNameFilter.toLowerCase())) return false;
 
-                    // Date Filter (using completedAt if completed, otherwise dueDate or assign date - roughly using dueDate or today for pending logic if needed, but best to filter by completedAt for "Completed" and dueDate for pending/overdue)
+                    // Date Filter
                     if (resultsDateFilter !== 'ALL') {
                        const targetDate = a.completedAt ? new Date(a.completedAt) : (a.dueDate ? new Date(a.dueDate) : new Date());
                        const now = new Date();
@@ -548,10 +548,18 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
                     const stName = students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido';
 
+                    // Formatar tempo
+                    const formatTime = (seconds?: number) => {
+                       if (!seconds) return '-- : --';
+                       const m = Math.floor(seconds / 60);
+                       const s = seconds % 60;
+                       return `${m}m ${s}s`;
+                    };
+
                     return (
                       <div 
                         key={a.id} 
-                        className={`flex flex-col md:flex-row items-center justify-between gap-4 p-4 md:p-6 bg-slate-900/40 border rounded-[2rem] backdrop-blur-xl group transition-all ${
+                        className={`flex flex-col gap-3 p-4 bg-slate-900/40 border rounded-2xl backdrop-blur-xl group transition-all ${
                            !isPending 
                              ? 'border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer' 
                              : overdue 
@@ -560,59 +568,41 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                         }`}
                         onClick={() => { if (!isPending) handleOpenAssignment(a); }}
                       >
-                         {/* Name & Type */}
-                         <div className="flex items-center gap-4 w-full md:w-1/3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                               !isPending ? 'bg-emerald-500/10 text-emerald-500' : 
-                               overdue ? 'bg-rose-500/10 text-rose-500' : 'bg-amber-500/10 text-amber-500'
+                         <div className="flex items-center justify-between">
+                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md border ${
+                               !isPending ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                               overdue ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                               'bg-amber-500/10 text-amber-500 border-amber-500/20'
                             }`}>
-                               {a.simulado?.type === 'LISTA' ? <FileText size={20} /> : <BookOpen size={20} />}
-                            </div>
-                            <div className="flex flex-col overflow-hidden">
-                               <span className="text-sm font-black text-white uppercase truncate">{stName}</span>
-                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                                  {a.simulado?.title || 'Atividade Excluída'}
-                               </span>
-                            </div>
+                               {!isPending ? 'Concluído' : overdue ? 'Atrasado' : 'Pendente'}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                               <Timer size={10} /> 
+                               {!isPending && a.completedAt 
+                                 ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
+                                 : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
+                            </span>
                          </div>
 
-                         {/* Status & Date */}
-                         <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto flex-1">
-                            <div className="flex flex-col md:items-end w-1/2 md:w-auto">
-                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</span>
-                               <span className={`px-3 py-1 text-[9px] font-black uppercase rounded-lg border ${
-                                  !isPending ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                                  overdue ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
-                                  'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                               }`}>
-                                  {!isPending ? 'Concluído' : overdue ? 'Atrasado' : 'Pendente'}
-                               </span>
-                            </div>
+                         <div className="flex flex-col">
+                            <span className="text-sm font-black text-white uppercase truncate" title={stName}>{stName}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={a.simulado?.title}>
+                               {a.simulado?.title || 'Atividade Excluída'}
+                            </span>
+                         </div>
 
-                            <div className="flex flex-col md:items-end w-1/2 md:w-auto">
-                               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                                  {!isPending ? 'Finalizado em' : 'Prazo Final'}
-                               </span>
-                               <span className="text-xs font-black text-white">
-                                  {!isPending && a.completedAt 
-                                    ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
-                                    : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
-                               </span>
-                            </div>
-
-                            {/* Score & Action (Only if completed) */}
-                            {!isPending && (
-                               <div className="flex items-center gap-6 ml-auto">
-                                  <div className="flex flex-col items-center">
-                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Nota</span>
-                                     <span className="text-lg font-black text-white leading-none">{a.score}%</span>
-                                  </div>
-                                  <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 group-hover:bg-emerald-500 group-hover:border-emerald-500 transition-colors">
-                                     <ArrowRight size={16} className="text-slate-400 group-hover:text-white" />
-                                  </button>
+                         {!isPending && (
+                            <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800">
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Nota</span>
+                                  <span className="text-sm font-black text-emerald-400">{a.score}%</span>
                                </div>
-                            )}
-                         </div>
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Tempo</span>
+                                  <span className="text-sm font-black text-sky-400">{formatTime(a.timeSpentSeconds)}</span>
+                               </div>
+                            </div>
+                         )}
                       </div>
                     );
                   })}

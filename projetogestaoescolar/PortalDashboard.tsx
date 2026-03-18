@@ -89,13 +89,13 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     }).length;
 
     // 2. Atividades/Simulados em Aberto
-    // Assignments give us the full picture (PENDING vs COMPLETED)
     const openActivities = simuladoAssignments.filter(a => a.status !== 'COMPLETED').length;
 
     // 3. Desempenho (Média)
     const myRecords = sessions.map(s => s.records.find(r => r.studentId === student.id)).filter(Boolean);
     const sessionGrades = myRecords.map(r => r ? StorageService.calculateGrade(r) : 0);
-    const simuladoGrades = simuladoAssignments.filter(a => a.status === 'COMPLETED').map(a => a.score || 0);
+    // Use the actual score from backend attempt
+    const simuladoGrades = simuladoAssignments.filter(a => a.status === 'COMPLETED' && a.score !== undefined).map(a => a.score as number);
     const allGrades = [...sessionGrades, ...simuladoGrades];
     const avgGrade = allGrades.length > 0 ? (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1) : '0.0';
 
@@ -321,26 +321,32 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                             Status de Atividades
                         </h3>
                         {simuladoAssignments.length > 0 ? (
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 {simuladoAssignments.slice(0, 5).map((a, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2 p-4 bg-slate-900/50 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('SIMULADO')}>
-                                        <div className="flex justify-between items-start">
+                                    <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('SIMULADO')}>
+                                        <div className="flex justify-between items-center">
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-black text-white uppercase truncate max-w-[150px]">{a.simulado?.title || 'Atividade'}</span>
-                                                <span className="text-[8px] text-gray-500 font-bold uppercase">{a.completedAt ? format(new Date(a.completedAt), 'dd/MM/yy HH:mm') : 'Em andamento'}</span>
+                                                {a.status !== 'COMPLETED' && (
+                                                    <span className="text-[8px] text-gray-500 font-bold uppercase mt-0.5">Em andamento</span>
+                                                )}
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
-                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${a.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
-                                                    {a.status === 'COMPLETED' ? 'Finalizado' : 'Pendente'}
-                                                </span>
-                                                {a.status === 'COMPLETED' && (
-                                                    <span className="text-[10px] font-black text-white">{a.score}%</span>
+                                                {a.status === 'COMPLETED' ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Finalizado</span>
+                                                        <span className="text-[10px] font-black text-white">{a.score ?? 0}%</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${a.dueDate && new Date(a.dueDate) < new Date() ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
+                                                        {a.dueDate && new Date(a.dueDate) < new Date() ? 'Atrasado' : 'Pendente'}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
                                             <div 
-                                                className={`h-full transition-all duration-1000 ${a.status === 'COMPLETED' ? (a.score >= 70 ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-sky-500'}`} 
+                                                className={`h-full transition-all duration-1000 ${a.status === 'COMPLETED' ? ((a.score ?? 0) >= 70 ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-sky-500'}`} 
                                                 style={{ width: `${a.status === 'COMPLETED' ? 100 : 40}%` }}
                                             ></div>
                                         </div>

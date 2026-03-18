@@ -1903,27 +1903,51 @@ export const SupabaseService = {
         const { data, error } = await query;
         if (error) throw error;
         
-        return data.map((item: any) => ({
-            id: item.id,
-            simuladoId: item.simulado_id,
-            studentId: item.student_id,
-            teacherId: item.teacher_id,
-            status: item.status,
-            dueDate: item.due_date,
-            createdAt: item.created_at,
-            simulado: item.simulados ? {
-                id: item.simulados.id,
-                title: item.simulados.title,
-                description: item.simulados.description,
-                teacherId: item.simulados.teacher_id,
-                questions: item.simulados.questions,
-                durationMinutes: item.simulados.duration_minutes,
-                disciplineId: item.simulados.discipline_id,
-                type: item.simulados.type,
-                contentTopic: item.simulados.content_topic,
-                createdAt: item.simulados.created_at
-            } : undefined
-        }));
+        // Fetch attempts to merge scores and completion times into assignments
+        const assignmentIds = data.map((a: any) => a.id);
+        const { data: attempts } = await supabase
+            .from('simulado_attempts')
+            .select('assignment_id, score, started_at, completed_at, time_spent_seconds, answers')
+            .in('assignment_id', assignmentIds);
+
+        const attemptsMap = new Map();
+        if (attempts) {
+            attempts.forEach((att: any) => {
+                // If there are multiple attempts for the same assignment, keep the latest completed one
+                if (!attemptsMap.has(att.assignment_id) || att.completed_at) {
+                    attemptsMap.set(att.assignment_id, att);
+                }
+            });
+        }
+
+        return data.map((item: any) => {
+            const attempt = attemptsMap.get(item.id);
+            return {
+                id: item.id,
+                simuladoId: item.simulado_id,
+                studentId: item.student_id,
+                teacherId: item.teacher_id,
+                status: item.status,
+                dueDate: item.due_date,
+                createdAt: item.created_at,
+                score: attempt?.score,
+                completedAt: attempt?.completed_at,
+                answers: attempt?.answers,
+                timeSpentSeconds: attempt?.time_spent_seconds,
+                simulado: item.simulados ? {
+                    id: item.simulados.id,
+                    title: item.simulados.title,
+                    description: item.simulados.description,
+                    teacherId: item.simulados.teacher_id,
+                    questions: item.simulados.questions,
+                    durationMinutes: item.simulados.duration_minutes,
+                    disciplineId: item.simulados.discipline_id,
+                    type: item.simulados.type,
+                    contentTopic: item.simulados.content_topic,
+                    createdAt: item.simulados.created_at
+                } : undefined
+            };
+        });
     },
 
     async assignSimulado(assignment: Partial<SimuladoAssignment>): Promise<{ success: boolean; error?: string }> {
