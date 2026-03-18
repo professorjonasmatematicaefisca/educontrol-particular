@@ -128,9 +128,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [deleteReason, setDeleteReason] = useState('');
   const [registerDeleteHistory, setRegisterDeleteHistory] = useState(true);
   const [agendaDate, setAgendaDate] = useState(new Date());
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [agendaPage, setAgendaPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
+  const historyFileInputRef = React.useRef<HTMLInputElement>(null);
+  const [updatingPDFId, setUpdatingPDFId] = useState<string | null>(null);
   const ITEMS_PER_PAGE = 8;
 
   useEffect(() => {
@@ -800,25 +801,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 // Removido componente duplicado já definido acima
 
 
-  const AlphabetFilter = ({ selected, onSelect }: { selected: string | null; onSelect: (letter: string | null) => void }) => (
-    <div className="flex flex-wrap gap-1 mb-6 p-2 bg-slate-900/40 border border-slate-800 rounded-2xl backdrop-blur-md">
-      <button
-        onClick={() => onSelect(null)}
-        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${!selected ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-      >
-        Tudo
-      </button>
-      {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => (
-        <button
-          key={l}
-          onClick={() => onSelect(l === selected ? null : l)}
-          className={`w-8 h-8 flex items-center justify-center rounded-lg text-[11px] font-black transition-all ${selected === l ? 'bg-emerald-500 text-white' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-        >
-          {l}
-        </button>
-      ))}
-    </div>
-  );
 
   const Pagination = ({ current, total, onPageChange }: { current: number; total: number; onPageChange: (p: number) => void }) => {
     const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
@@ -963,13 +945,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
-        {c.pdfUrl ? (
-          <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
-            <FileText size={12} /> PDF Aula
-          </a>
-        ) : (
-          <span className="text-[9px] text-slate-600 font-bold uppercase ring-1 ring-slate-800 px-2 py-1 rounded">Sem Material</span>
-        )}
+        <div className="flex items-center gap-3">
+          {c.pdfUrl ? (
+            <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
+              <FileText size={12} /> PDF Aula
+            </a>
+          ) : (
+            <span className="text-[9px] text-slate-600 font-bold uppercase ring-1 ring-slate-800 px-2 py-1 rounded">Sem Material</span>
+          )}
+
+          {userRole !== UserRole.STUDENT && (
+            <button 
+              onClick={() => {
+                setUpdatingPDFId(c.id);
+                historyFileInputRef.current?.click();
+              }}
+              className="p-1.5 bg-slate-800/50 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-500 rounded-lg transition-all"
+              title="Alterar/Adicionar PDF"
+            >
+              <Edit2 size={12} />
+            </button>
+          )}
+        </div>
         
         {userRole !== UserRole.STUDENT && (c.status === 'SCHEDULED' || c.status === 'IN_PROGRESS') && (
           <button 
@@ -1357,15 +1354,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                 </div>
               </div>
 
-              <AlphabetFilter selected={selectedLetter} onSelect={setSelectedLetter} />
             </div>
 
             <div className="p-8">
               {(() => {
                 const filtered = classes.filter(c => 
+                  c.classDate === currentDate &&
                   (!filterStudent || c.studentId === filterStudent) && 
-                  (!filterDiscipline || c.disciplineId === filterDiscipline) &&
-                  (!selectedLetter || c.studentName.toUpperCase().startsWith(selectedLetter))
+                  (!filterDiscipline || c.disciplineId === filterDiscipline)
                 );
                 
                 const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
@@ -1396,6 +1392,39 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         </div>
       )}
     </div>
+
+    <input 
+      type="file" 
+      ref={historyFileInputRef} 
+      className="hidden" 
+      accept=".pdf"
+      onChange={async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !updatingPDFId) return;
+        
+        onShowToast('Enviando PDF...');
+        try {
+          const url = await SupabaseService.uploadPDF(file);
+          if (url) {
+            const currentClass = classes.find(cl => cl.id === updatingPDFId);
+            const success = await SupabaseService.updateScheduledClassStatus(updatingPDFId, currentClass?.status || 'COMPLETED', { pdfUrl: url });
+            if (success) {
+              onShowToast('PDF atualizado com sucesso!');
+              fetchData();
+            } else {
+              onShowToast('Erro ao atualizar registro.');
+            }
+          } else {
+            onShowToast('Erro no upload do arquivo.');
+          }
+        } catch (err) {
+          onShowToast('Erro na operação.');
+        } finally {
+          setUpdatingPDFId(null);
+          if (historyFileInputRef.current) historyFileInputRef.current.value = '';
+        }
+      }}
+    />
 
       {showModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
