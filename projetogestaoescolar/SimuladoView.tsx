@@ -314,10 +314,10 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                      discName.includes(search);
             })
             .map(s => (
-            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-5 rounded-[2rem] backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
-              <div className="flex justify-between items-start mb-4">
+            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
+              <div className="flex justify-between items-start mb-3">
                 <div className="flex gap-2">
-                  <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
+                  <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
                     <BookOpen size={24} />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -387,7 +387,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               <div 
                 key={a.id} 
                 onClick={() => handleOpenAssignment(a)}
-                className={`bg-slate-900/40 border p-5 rounded-[2rem] backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                className={`bg-slate-900/40 border p-4 rounded-3xl backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                   !isPending 
                     ? 'border-emerald-500/30 hover:border-emerald-500/60' 
                     : overdue
@@ -395,8 +395,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                       : 'border-slate-800 hover:border-amber-500/30'
                 }`}
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${
+                <div className="flex justify-between items-start mb-3">
+                  <div className={`p-2.5 rounded-2xl transition-transform group-hover:scale-110 ${
                     !isPending ? 'bg-emerald-500/10 text-emerald-500' 
                     : overdue ? 'bg-rose-500/10 text-rose-500'
                     : 'bg-amber-500/10 text-amber-500'

@@ -1904,24 +1904,35 @@ export const SupabaseService = {
         if (error) throw error;
         
         // Fetch attempts to merge scores and completion times into assignments
-        const assignmentIds = data.map((a: any) => a.id);
-        const { data: attempts } = await supabase
-            .from('simulado_attempts')
-            .select('assignment_id, score, started_at, completed_at, time_spent_seconds, answers')
-            .in('assignment_id', assignmentIds);
-
+        const simuladoIds = [...new Set(data.filter((a: any) => a.simulado_id).map((a: any) => a.simulado_id))];
         const attemptsMap = new Map();
-        if (attempts) {
-            attempts.forEach((att: any) => {
-                // If there are multiple attempts for the same assignment, keep the latest completed one
-                if (!attemptsMap.has(att.assignment_id) || att.completed_at) {
-                    attemptsMap.set(att.assignment_id, att);
-                }
-            });
+
+        if (simuladoIds.length > 0) {
+            const { data: attempts } = await supabase
+                .from('simulado_attempts')
+                .select('assignment_id, simulado_id, student_id, score, started_at, completed_at, time_spent_seconds, answers')
+                .in('simulado_id', simuladoIds);
+
+            if (attempts) {
+                attempts.forEach((att: any) => {
+                    // Try mapping by assignment_id
+                    if (att.assignment_id) {
+                        if (!attemptsMap.has(att.assignment_id) || att.completed_at) {
+                            attemptsMap.set(att.assignment_id, att);
+                        }
+                    } else if (att.simulado_id && att.student_id) {
+                        // Fallback mapping by simulado_id + student_id
+                        const fallbackKey = `${att.simulado_id}_${att.student_id}`;
+                        if (!attemptsMap.has(fallbackKey) || att.completed_at) {
+                            attemptsMap.set(fallbackKey, att);
+                        }
+                    }
+                });
+            }
         }
 
         return data.map((item: any) => {
-            const attempt = attemptsMap.get(item.id);
+            const attempt = attemptsMap.get(item.id) || attemptsMap.get(`${item.simulado_id}_${item.student_id}`);
             return {
                 id: item.id,
                 simuladoId: item.simulado_id,
