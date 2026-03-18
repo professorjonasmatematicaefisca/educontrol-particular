@@ -130,11 +130,13 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
       // Se parecer conteúdo matemático (números, sinais, frações simples, variáveis isoladas)
       // envolve em $ para manter a consistência visual moderna
       if (/^[\d.,+\-*/^()=<>a-zA-Z\s]+$/.test(text) && text.length > 0) {
-        // Se for uma palavra muito longa (provavelmente texto), não envolve. 
-        // Se tiver poucos espaços e caracteres matemáticos, envolve.
+        // Se parecer conteúdo matemático (números, sinais, frações simples, variáveis isoladas)
+        // envolve em $ para manter a consistência visual moderna
         const isLikelyMath = text.split(' ').length <= 3 || /[\d+\-*/^=<>]+/.test(text);
         if (isLikelyMath) {
-          return `$${text.replace(/\s+/g, '')}$`;
+          // Escapa espaços para que o KaTeX os renderize corretamente em modo matemático
+          const escapedText = text.replace(/ /g, '\\ ');
+          return `$${escapedText}$`;
         }
       }
       return text;
