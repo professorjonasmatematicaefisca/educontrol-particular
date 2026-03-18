@@ -2025,7 +2025,7 @@ export const SupabaseService = {
         return !error;
     },
 
-    async updateSimuladoAttempt(id: string, updates: Partial<SimuladoAttempt>): Promise<boolean> {
+    async updateSimuladoAttempt(assignmentId: string, updates: Partial<SimuladoAttempt>): Promise<boolean> {
         const payload: any = {
             score: updates.score,
             completed_at: updates.completedAt,
@@ -2034,12 +2034,16 @@ export const SupabaseService = {
             time_spent_seconds: updates.timeSpentSeconds
         };
         
-        const { error } = await supabase.from('simulado_attempts').update(payload).eq('id', id);
+        // Update the attempt row matched by assignment_id
+        const { error } = await supabase
+            .from('simulado_attempts')
+            .update(payload)
+            .eq('assignment_id', assignmentId);
         
-        if (!error && updates.status === 'COMPLETED' && updates.assignmentId) {
+        if (!error && updates.status === 'COMPLETED') {
             await supabase.from('simulado_assignments')
                 .update({ status: 'COMPLETED' })
-                .eq('id', updates.assignmentId);
+                .eq('id', assignmentId);
         }
         
         return !error;

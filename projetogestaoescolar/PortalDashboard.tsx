@@ -199,7 +199,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                         <polygon 
                                             points={`
                                                 0,160 
-                                                ${recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (g / 100) * 160}`).join(' ')} 
+                                                ${recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (Number(g) / 100) * 160}`).join(' ')} 
                                                 ${(recentGrades.length - 1) * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},160
                                             `} 
                                             fill="url(#areaGradient)" 
@@ -207,7 +207,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
 
                                         {/* Line */}
                                         <polyline 
-                                            points={recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (g / 100) * 160}`).join(' ')} 
+                                            points={recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (Number(g) / 100) * 160}`).join(' ')} 
                                             fill="none" 
                                             stroke="#10b981" 
                                             strokeWidth="3" 
@@ -218,13 +218,13 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                         {/* Data Points */}
                                         {recentGrades.map((g, i) => {
                                             const cx = i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1;
-                                            const cy = 160 - (g / 100) * 160;
+                                            const cy = 160 - (Number(g) / 100) * 160;
                                             return (
                                                 <g key={i} className="group cursor-pointer">
-                                                    <circle cx={cx} cy={cy} r="5" fill="#0f172a" stroke="#10b981" strokeWidth="2" className="transition-all group-hover:r=8 group-hover:fill-[#10b981]" />
+                                                    <circle cx={cx} cy={cy} r="5" fill="#0f172a" stroke="#10b981" strokeWidth="2" className="transition-all group-hover:r={8} group-hover:fill-[#10b981]" />
                                                     {/* Tooltip text (SVG) */}
                                                     <text x={cx} y={cy - 15} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {g.toFixed(1)}
+                                                        {Number(g).toFixed(1)}
                                                     </text>
                                                     {/* X-axis labels */}
                                                     <text x={cx} y="175" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="bold">
@@ -241,7 +241,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                     <div className="relative group">
                                          <div className="w-16 bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all" style={{ height: `${(recentGrades[0] / 100) * 160}px` }}></div>
                                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap">
-                                            {recentGrades[0].toFixed(1)}
+                                            {Number(recentGrades[0]).toFixed(1)}
                                          </div>
                                          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-500 uppercase">Act 1</span>
                                     </div>
