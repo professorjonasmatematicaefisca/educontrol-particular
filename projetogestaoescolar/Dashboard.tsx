@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { 
-  Sparkles, 
   TrendingUp, 
   Users, 
   DollarSign, 
@@ -13,11 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Check,
-  Trash2
+  Check
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
-import { ScheduledClass, Student, UserRole } from './types';
+import { ScheduledClass } from './types';
 import { 
   format, 
   startOfMonth, 
@@ -69,20 +66,16 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             const now = new Date();
             const startOfWeekNow = startOfWeek(now, { weekStartsOn: 1 });
             
-            // Faturamento do mês (gráfico)
             const startM = startOfMonth(baseDate);
             const endM = endOfMonth(baseDate);
             const daysInterval = eachDayOfInterval({ start: startM, end: endM });
             
-            // Buscar todas as aulas para os cálculos
-            // Para vencimentos, precisamos de uma janela maior (ex: desde o começo do mês passado até hoje)
             const startHistory = format(addWeeks(now, -4), 'yyyy-MM-dd');
             const [students, allSchedule] = await Promise.all([
                 SupabaseService.getStudents(),
                 SupabaseService.getScheduledClasses(startHistory)
             ]);
 
-            // Gráfico diário (vínculo com baseDate selecionado no UI)
             const processedChartData = daysInterval.map(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
                 const dayValue = allSchedule
@@ -97,7 +90,6 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             });
             setDailyData(processedChartData);
 
-            // Estatísticas
             const monthlyRevenue = allSchedule
                 .filter(c => {
                     const d = parseISO(c.classDate);
@@ -118,9 +110,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 pendingSimulados: 0
             });
 
-            // Lógica de Vencimentos baseada em aulas COMPLETED e PENDING
             if (paymentFilter === 'WEEKLY') {
-                // Aulas desta semana (selecionada pelo paymentRange)
                 const weekOffsetStart = startOfWeek(addWeeks(now, paymentRange), { weekStartsOn: 1 });
                 const weekOffsetEnd = endOfWeek(weekOffsetStart, { weekStartsOn: 1 });
 
@@ -134,12 +124,11 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                     .map(c => ({
                         studentName: c.studentName || 'Aluno',
                         amount: c.totalValue || 0,
-                        dueDate: parseISO(c.classDate), // Vencimento é o dia da aula para este critério
+                        dueDate: parseISO(c.classDate),
                         type: 'Aula Ministrada'
                     }));
                 setUpcomingPayments(weeklyPayments);
             } else {
-                // OVERDUE: Aulas de semanas anteriores ainda pendentes
                 const overduePayments: PaymentItem[] = allSchedule
                     .filter(c => {
                         const d = parseISO(c.classDate);
@@ -164,23 +153,21 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     };
 
     const handleConfirmPayment = (payment: PaymentItem) => {
-        // Lógica de confirmação aqui
         alert(`Pagamento de ${payment.studentName} confirmado!`);
     };
 
     if (loading) return <div className="text-white p-6 animate-pulse">Carregando painel de controle...</div>;
 
     return (
-        <div className="max-w-[1600px] mx-auto space-y-6 pb-10">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-3xl font-black text-white">Olá, Professor Jonas</h2>
-                    <p className="text-gray-400 text-sm mt-1">Bem-vindo ao seu painel administrativo centralizado.</p>
-                </div>
+        <div className="max-w-[1600px] mx-auto space-y-4 pb-4">
+            {/* Header Fixo com Degradê Moderna */}
+            <div className="sticky top-0 z-30 -mx-6 px-6 py-4 bg-gradient-to-b from-[#0f172a] via-[#0f172a]/95 to-transparent backdrop-blur-md mb-2">
+                <h2 className="text-2xl font-black text-white">Olá, Professor Jonas</h2>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Painel administrativo centralizado</p>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* KPI Cards Reduzidos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard 
                     icon={Users} 
                     label="Alunos Ativos" 
@@ -216,182 +203,172 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Revenue Chart */}
-                <div className="lg:col-span-2 bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl">
-                    <div className="flex justify-between items-center mb-8">
-                        <div>
-                            <h3 className="font-bold text-white flex items-center gap-2">
-                                <TrendingUp size={20} className="text-emerald-500" />
-                                Evolução Mensal - Faturamento (R$)
-                            </h3>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Passe o mouse para ver os valores</p>
+                {/* Coluna da Esquerda: Gráfico + Vencimentos (Horizontal) */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-[#1e293b]/40 p-5 rounded-2xl border border-gray-800 shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                                    <TrendingUp size={16} className="text-emerald-500" />
+                                    Evolução Mensal
+                                </h3>
+                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Faturamento em Reais (R$)</p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-slate-950/50 p-1 rounded-xl border border-gray-800">
+                                 <button 
+                                    onClick={() => setBaseDate(prev => addDays(startOfMonth(prev), -1))}
+                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
+                                 >
+                                    <ChevronLeft size={16} />
+                                 </button>
+                                 <span className="text-[10px] font-black text-white min-w-[100px] text-center uppercase tracking-widest">
+                                    {format(baseDate, 'MMM yyyy', { locale: ptBR })}
+                                 </span>
+                                 <button 
+                                    onClick={() => setBaseDate(prev => addDays(endOfMonth(prev), 1))}
+                                    className="p-1.5 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
+                                 >
+                                    <ChevronRight size={16} />
+                                 </button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-4 bg-[#0f172a] p-1.5 rounded-xl border border-gray-700">
-                             <button 
-                                onClick={() => setBaseDate(prev => addDays(startOfMonth(prev), -1))}
-                                className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
-                             >
-                                <ChevronLeft size={18} />
-                             </button>
-                             <span className="text-xs font-black text-white min-w-[120px] text-center uppercase tracking-widest">
-                                {format(baseDate, 'MMMM yyyy', { locale: ptBR })}
-                             </span>
-                             <button 
-                                onClick={() => setBaseDate(prev => addDays(endOfMonth(prev), 1))}
-                                className="p-2 hover:bg-slate-800 rounded-lg text-gray-400 hover:text-white transition-all"
-                             >
-                                <ChevronRight size={18} />
-                             </button>
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={dailyData} margin={{ top: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} hide />
+                                    <Tooltip 
+                                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)' }}
+                                        itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
+                                        labelStyle={{ color: '#64748b', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}
+                                        formatter={(value: any) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Faturamento']}
+                                        labelFormatter={(label, items) => items[0]?.payload?.fullDate || label}
+                                    />
+                                    <Bar 
+                                      dataKey="valor" 
+                                      fill="#10b981" 
+                                      radius={[6, 6, 0, 0]} 
+                                      animationDuration={1500}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                    <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyData} margin={{ top: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} hide />
-                                <Tooltip 
-                                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)' }}
-                                    itemStyle={{ color: '#10b981', fontWeight: 'bold' }}
-                                    labelStyle={{ color: '#64748b', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}
-                                    formatter={(value: any) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Faturamento']}
-                                    labelFormatter={(label, items) => items[0]?.payload?.fullDate || label}
-                                />
-                                <Bar 
-                                  dataKey="valor" 
-                                  fill="#10b981" 
-                                  radius={[6, 6, 0, 0]} 
-                                  animationDuration={1500}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+
+                    {/* Vencimentos Horizontal - Agrupado por Aluno */}
+                    <div className="bg-[#1e293b]/40 p-5 rounded-2xl border border-gray-800 shadow-xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                                    <DollarSign size={16} className="text-amber-500" />
+                                    Vencimentos por Aluno
+                                </h3>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setPaymentFilter('WEEKLY')}
+                                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'WEEKLY' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'bg-slate-900 text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Semana
+                                    </button>
+                                    <button 
+                                        onClick={() => setPaymentFilter('OVERDUE')}
+                                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'OVERDUE' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-900 text-gray-500 hover:text-gray-300'}`}
+                                    >
+                                        Atraso
+                                    </button>
+                                </div>
+                            </div>
+                            {paymentFilter === 'WEEKLY' && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => setPaymentRange(prev => prev - 1)} className="p-1 bg-slate-950/50 hover:bg-slate-800 text-gray-400 rounded-lg"><ChevronLeft size={14} /></button>
+                                    <button onClick={() => setPaymentRange(prev => prev + 1)} className="p-1 bg-slate-950/50 hover:bg-slate-800 text-gray-400 rounded-lg"><ChevronRight size={14} /></button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {(() => {
+                                const grouped: Record<string, { total: number, count: number, latest: Date }> = {};
+                                upcomingPayments.forEach(p => {
+                                    if (!grouped[p.studentName]) {
+                                        grouped[p.studentName] = { total: 0, count: 0, latest: p.dueDate };
+                                    }
+                                    grouped[p.studentName].total += p.amount;
+                                    grouped[p.studentName].count += 1;
+                                    if (p.dueDate > grouped[p.studentName].latest) grouped[p.studentName].latest = p.dueDate;
+                                });
+
+                                const groupedArray = Object.entries(grouped);
+                                if (groupedArray.length === 0) {
+                                    return <div className="col-span-3 text-center py-6 text-gray-600 font-bold text-[10px] uppercase tracking-widest">Nenhum pagamento pendente</div>;
+                                }
+
+                                return groupedArray.slice(0, 6).map(([name, data]) => (
+                                    <div key={name} className={`p-3 rounded-xl border ${paymentFilter === 'OVERDUE' ? 'bg-red-500/5 border-red-500/10' : 'bg-slate-950/30 border-gray-800'} transition-all hover:border-emerald-500/30 group`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{name}</p>
+                                                <p className="text-[9px] text-gray-500 font-bold">{data.count} aula(s)</p>
+                                            </div>
+                                            <p className="text-[11px] font-black text-emerald-400">R$ {data.total.toLocaleString('pt-BR')}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleConfirmPayment(upcomingPayments.find(p => p.studentName === name)!)}
+                                            className="w-full py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 transition-all flex items-center justify-center gap-1"
+                                        >
+                                            <Check size={10} /> Confirmar
+                                        </button>
+                                    </div>
+                                ));
+                            })()}
+                        </div>
                     </div>
                 </div>
 
-                {/* Agenda do Dia & Vencimentos */}
-                <div className="space-y-6">
-                  {/* Agenda de Hoje */}
-                  <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl overflow-hidden relative">
+                {/* Coluna da Direita: Agenda de Hoje */}
+                <div className="space-y-4">
+                  <div className="bg-[#1e293b]/40 p-5 rounded-2xl border border-gray-800 shadow-xl relative overflow-hidden h-full">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-bold text-white flex items-center gap-2">
-                            <Clock size={20} className="text-purple-500" />
+                        <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                            <Clock size={16} className="text-purple-500" />
                             Agenda de Hoje
                         </h3>
-                        <span className="text-[10px] font-black text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 uppercase">
-                          {format(new Date(), "dd 'de' MMM", { locale: ptBR })}
+                        <span className="text-[9px] font-black text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 uppercase">
+                          {format(new Date(), "dd MMM", { locale: ptBR })}
                         </span>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                           {upcomingClasses.map((c, idx) => {
-                              const colors = [
-                                'border-emerald-500/30 bg-emerald-500/5 text-emerald-500',
-                                'border-sky-500/30 bg-sky-500/5 text-sky-500',
-                                'border-violet-500/30 bg-violet-500/5 text-violet-500',
-                                'border-amber-500/30 bg-amber-500/5 text-amber-500'
-                              ];
-                              const colorStyle = colors[idx % colors.length];
+                                const colors = [
+                                  'border-emerald-500/20 bg-emerald-500/5 text-emerald-500',
+                                  'border-sky-500/20 bg-sky-500/5 text-sky-500',
+                                  'border-violet-500/20 bg-violet-500/5 text-violet-500',
+                                  'border-amber-500/20 bg-amber-500/5 text-amber-500'
+                                ];
+                                const colorStyle = colors[idx % colors.length];
 
-                              return (
-                                <div key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/40 to-amber-500/10 border-orange-500/50 shadow-lg shadow-orange-500/20' : colorStyle}`}>
-                                    <div className={`text-center min-w-[60px] border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-white/20' : 'border-current/20'}`}>
-                                        <p className={`text-xs font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : ''}`}>{c.startTime}</p>
-                                        <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-current animate-pulse'}`}></div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
-                                        <p className={`text-[9px] font-bold uppercase opacity-60 tracking-[0.2em] ${c.status === 'IN_PROGRESS' ? 'text-orange-200' : ''}`}>
-                                          {c.status === 'IN_PROGRESS' ? 'AULA EM ANDAMENTO' : c.status}
-                                        </p>
-                                    </div>
-                                </div>
-                              );
-                          })}
+                                return (
+                                  <div key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] cursor-pointer ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/20 to-amber-500/5 border-orange-500/30' : colorStyle}`}>
+                                      <div className={`text-center min-w-[50px] border-r pr-3 ${c.status === 'IN_PROGRESS' ? 'border-white/10' : 'border-current/10'}`}>
+                                          <p className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : ''}`}>{c.startTime}</p>
+                                          <div className={`w-1 h-1 mx-auto rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-current opacity-40'}`}></div>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                          <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
+                                          <p className={`text-[8px] font-bold uppercase opacity-50 tracking-widest truncate`}>
+                                            {c.status === 'IN_PROGRESS' ? 'EM ANDAMENTO' : c.status}
+                                          </p>
+                                      </div>
+                                  </div>
+                                );
+                            })}
                           {upcomingClasses.length === 0 && (
-                            <div className="text-center py-12 border-2 border-dashed border-gray-800 rounded-2xl">
-                              <CalendarIcon size={32} className="mx-auto mb-2 text-gray-700" />
-                              <p className="text-xs font-black text-gray-600 uppercase tracking-widest">Sem compromissos hoje</p>
+                            <div className="text-center py-12 border border-dashed border-gray-800 rounded-2xl opacity-40">
+                              <CalendarIcon size={24} className="mx-auto mb-2 text-gray-700" />
+                              <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Sem compromissos hoje</p>
                             </div>
-                          )}
-                      </div>
-                  </div>
-
-                  {/* Vencimentos & Filtros */}
-                  <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl">
-                      <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h3 className="font-bold text-white flex items-center gap-2">
-                                <DollarSign size={20} className="text-amber-500" />
-                                Vencimentos
-                            </h3>
-                            <div className="flex gap-2 mt-3">
-                                <button 
-                                    onClick={() => setPaymentFilter('WEEKLY')}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'WEEKLY' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-slate-800 text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    Semana
-                                </button>
-                                <button 
-                                    onClick={() => setPaymentFilter('OVERDUE')}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${paymentFilter === 'OVERDUE' ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-gray-500 hover:text-gray-300'}`}
-                                >
-                                    Em Atraso
-                                </button>
-                            </div>
-                        </div>
-                        {paymentFilter === 'WEEKLY' && (
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => setPaymentRange(prev => prev - 1)}
-                                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <button 
-                                    onClick={() => setPaymentRange(prev => prev + 1)}
-                                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
-                            </div>
-                        )}
-                      </div>
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                          {upcomingPayments.map((p, idx) => (
-                              <div key={idx} className={`p-4 rounded-xl border transition-all hover:scale-[1.02] ${paymentFilter === 'OVERDUE' ? 'bg-red-500/5 border-red-500/20' : 'bg-[#0f172a] border-gray-800'}`}>
-                                  <div className="flex items-center justify-between mb-3">
-                                      <div className="flex items-center gap-3">
-                                          <div className={`p-2 rounded-lg ${paymentFilter === 'OVERDUE' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
-                                              <CalendarIcon size={16} />
-                                          </div>
-                                          <div>
-                                              <p className="text-sm font-bold text-white">{p.studentName}</p>
-                                              <p className={`text-[10px] font-black uppercase tracking-widest ${paymentFilter === 'OVERDUE' ? 'text-red-400' : 'text-amber-500/60'}`}>
-                                                  Vence {format(p.dueDate, 'dd/MM')}
-                                              </p>
-                                          </div>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-sm font-black text-white">R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                      </div>
-                                  </div>
-                                  
-                                  <button 
-                                    onClick={() => handleConfirmPayment(p)}
-                                    className={`w-full py-2 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${paymentFilter === 'OVERDUE' ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20'}`}
-                                  >
-                                      <Check size={14} />
-                                      Confirmar Recebimento
-                                  </button>
-                              </div>
-                          ))}
-                          {upcomingPayments.length === 0 && (
-                              <div className="text-center py-10">
-                                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-600">
-                                      <TrendingUp size={20} />
-                                  </div>
-                                  <p className="text-gray-500 italic text-sm">Nenhum pagamento encontrado</p>
-                              </div>
                           )}
                       </div>
                   </div>
@@ -402,15 +379,15 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 };
 
 const KPICard = ({ icon: Icon, label, value, trend, color, bgColor }: any) => (
-    <div className="bg-[#1e293b] p-6 rounded-2xl border border-gray-700 shadow-xl relative overflow-hidden group">
-        <div className="flex justify-between items-start">
+    <div className="bg-[#1e293b]/50 p-4 rounded-xl border border-gray-800 shadow-lg relative overflow-hidden group">
+        <div className="flex justify-between items-center">
             <div>
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{label}</p>
-                <h4 className="text-2xl font-black text-white mt-1">{value}</h4>
-                <p className={`text-[10px] font-bold mt-2 ${color} opacity-80 uppercase`}>{trend}</p>
+                <p className="text-gray-500 text-[9px] font-black uppercase tracking-[0.2em]">{label}</p>
+                <h4 className="text-xl font-black text-white mt-0.5">{value}</h4>
+                <p className={`text-[8px] font-bold mt-1 ${color} opacity-80 uppercase tracking-wider`}>{trend}</p>
             </div>
-            <div className={`p-3 rounded-xl ${bgColor} ${color} transition-transform group-hover:scale-110 duration-300`}>
-                <Icon size={24} />
+            <div className={`p-2.5 rounded-lg ${bgColor} ${color} transition-transform group-hover:scale-110 duration-300`}>
+                <Icon size={18} />
             </div>
         </div>
     </div>
