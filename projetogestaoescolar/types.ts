@@ -216,16 +216,28 @@ export interface BankAccount {
   createdAt?: string;
 }
 
+export interface SimuladoQuestion {
+  id: string;
+  text: string;
+  options: {
+    id: string;
+    text: string;
+    isCorrect: boolean;
+  }[];
+  explanation?: string; // Legacy
+  resolution?: string; // New: Detailed step-by-step resolution
+}
+
 export interface Simulado {
   id: string;
   title: string;
   description?: string;
   teacherId: string;
-  teacherEmail?: string; // New field for identification
+  teacherEmail?: string;
   disciplineId: string;
   type: 'LISTA' | 'SIMULADO';
   contentTopic?: string;
-  questions: any[]; 
+  questions: SimuladoQuestion[]; 
   durationMinutes?: number;
   createdAt?: string;
 }
@@ -238,18 +250,25 @@ export interface SimuladoAssignment {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   dueDate?: string;
   createdAt?: string;
+  score?: number; // Joined from attempts
+  completedAt?: string; // Joined from attempts
+  answers?: { questionId: string; selectedOption: string; }[]; // Joined from attempts
   simulado?: Simulado; // Joined field
 }
 
 export interface SimuladoAttempt {
   id: string;
   simuladoId: string;
+  simuladoTitle?: string; // For UI convenience
   studentId: string;
   assignmentId?: string;
   score?: number;
   startedAt: string;
   completedAt?: string;
-  answers: any[];
+  answers: {
+    questionId: string;
+    selectedOption: string;
+  }[];
   status: 'IN_PROGRESS' | 'COMPLETED';
   timeSpentSeconds?: number;
 }

@@ -274,17 +274,25 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                         </h3>
                         {simuladoAttempts.length > 0 ? (
                             <div className="space-y-4">
-                                {simuladoAttempts.slice(0, 3).map((a, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-white uppercase truncate max-w-[120px]">{a.simuladoTitle || 'Simulado'}</span>
-                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${a.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                                                {a.status === 'COMPLETED' ? 'Finalizado' : 'Em aberto'}
-                                            </span>
+                                {simuladoAttempts.slice(0, 5).map((a, idx) => (
+                                    <div key={idx} className="flex flex-col gap-2 p-4 bg-slate-900/50 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('STUDENT_ACTIVITIES')}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-white uppercase truncate max-w-[150px]">{a.simuladoTitle || 'Atividade'}</span>
+                                                <span className="text-[8px] text-gray-500 font-bold uppercase">{a.completedAt ? format(new Date(a.completedAt), 'dd/MM/yy HH:mm') : 'Em andamento'}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${a.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
+                                                    {a.status === 'COMPLETED' ? 'Finalizado' : 'Pendente'}
+                                                </span>
+                                                {a.status === 'COMPLETED' && (
+                                                    <span className="text-[10px] font-black text-white">{a.score}%</span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
                                             <div 
-                                                className={`h-full ${a.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                                className={`h-full transition-all duration-1000 ${a.status === 'COMPLETED' ? (a.score >= 70 ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-sky-500'}`} 
                                                 style={{ width: `${a.status === 'COMPLETED' ? 100 : 40}%` }}
                                             ></div>
                                         </div>
@@ -294,7 +302,7 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                         ) : (
                             <p className="text-[10px] text-gray-500 font-bold italic uppercase">Sem atividades recentes.</p>
                         )}
-                        <button className="w-full mt-6 py-2.5 text-[10px] font-black text-white/50 uppercase border border-slate-700/50 cursor-default rounded-xl transition-all tracking-widest">
+                        <button onClick={() => onNavigate('STUDENT_ACTIVITIES')} className="w-full mt-6 py-3 text-[10px] font-black text-white hover:bg-white/5 border border-slate-800 rounded-xl transition-all tracking-widest uppercase">
                             Ver Todas Atividades
                         </button>
                     </div>

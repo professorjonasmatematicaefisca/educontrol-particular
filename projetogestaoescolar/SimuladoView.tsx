@@ -123,6 +123,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     if (!assignment.simulado) return;
     setActiveAssignment(assignment);
     setActiveSimulado(assignment.simulado);
+    // If completed, we set the viewing mode to true which will launch SimuladoPlayer in REVIEW mode
     setViewingCompleted(assignment.status === 'COMPLETED');
   };
 
@@ -154,37 +155,26 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   }
 
   if (activeSimulado && activeAssignment) {
-    // If viewing a completed assignment, show a read-only review
+    // If viewing a completed assignment, use SimuladoPlayer in REVIEW mode
     if (viewingCompleted) {
       return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <div className="flex items-center gap-4 mb-6">
-            <button 
-              onClick={() => { setActiveSimulado(null); setActiveAssignment(null); setViewingCompleted(false); }}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase transition-all"
-            >
-              <XCircle size={16} /> Voltar
-            </button>
-            <div>
-              <h2 className="text-2xl font-black text-white">{activeSimulado.title}</h2>
-              <p className="text-xs text-emerald-500 font-black uppercase tracking-widest">Revisando atividade concluída</p>
-            </div>
-          </div>
-          <div className="bg-slate-900/40 border border-emerald-500/20 p-8 rounded-[2.5rem] text-center">
-            <CheckCircle2 size={64} className="mx-auto mb-4 text-emerald-500" />
-            <p className="text-xl font-black text-white mb-2">Atividade já foi concluída!</p>
-            <p className="text-sm text-slate-400">Você completou esta atividade. Em breve você poderá ver suas respostas aqui.</p>
-          </div>
-          {/* Questions preview */}
-          <div className="space-y-4">
-            {activeSimulado.questions.map((q, i) => (
-              <div key={q.id} className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem]">
-                <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Questão {i + 1}</p>
-                <p className="text-white font-bold">{q.statement}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SimuladoPlayer 
+          simulado={activeSimulado}
+          studentId={userEmail}
+          assignmentId={activeAssignment.id}
+          initialAnswers={activeAssignment.answers || []}
+          initialMode="REVIEW"
+          onComplete={() => {
+            setActiveSimulado(null);
+            setActiveAssignment(null);
+            setViewingCompleted(false);
+          }}
+          onCancel={() => { 
+            setActiveSimulado(null); 
+            setActiveAssignment(null); 
+            setViewingCompleted(false); 
+          }}
+        />
       );
     }
 
@@ -458,7 +448,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                       : 'bg-emerald-500 text-white shadow-emerald-500/20 group-hover:bg-emerald-600'
                   }`}>
                     {!isPending 
-                      ? <><Eye size={14} /> Ver Atividade</> 
+                      ? <><Eye size={14} /> Ver Desempenho</> 
                       : <><PlayCircle size={14} /> Iniciar Atividade</>}
                     <ArrowRight size={14} />
                   </div>
@@ -466,6 +456,49 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               </div>
             );
           })}
+
+          {activeTab === 'results' && assignments.filter(a => a.status === 'COMPLETED').map(a => (
+            <div 
+              key={a.id} 
+              className="bg-slate-900/40 border border-emerald-500/20 p-8 rounded-[2.5rem] backdrop-blur-xl group hover:border-emerald-500/50 transition-all flex flex-col h-full cursor-pointer"
+              onClick={() => handleOpenAssignment(a)}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+                  <BarChart3 size={24} />
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-black text-white">{a.score}%</div>
+                  <div className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Score Final</div>
+                </div>
+              </div>
+
+              <h3 className="text-lg font-black text-white mb-1 uppercase italic leading-tight">
+                {a.simulado?.contentTopic || a.simulado?.title || 'Atividade'}
+              </h3>
+              
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center gap-2">
+                  <User size={14} className="text-slate-500" />
+                  <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest">
+                    {students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-slate-500" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {a.completedAt ? new Date(a.completedAt).toLocaleDateString('pt-BR') : '-'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-6 border-t border-white/5">
+                <button className="w-full py-3 bg-white/5 hover:bg-white text-slate-400 hover:text-black rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">
+                  Ver Detalhes
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

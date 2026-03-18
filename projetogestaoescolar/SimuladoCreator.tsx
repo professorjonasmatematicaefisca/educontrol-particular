@@ -60,7 +60,8 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
       { id: 'D', text: '', isCorrect: false },
       { id: 'E', text: '', isCorrect: false },
     ],
-    explanation: ''
+    explanation: '',
+    resolution: ''
   });
 
   const [isPreview, setIsPreview] = useState(false);
@@ -78,6 +79,7 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
 
     const optionRegex = /^([A-E])\)[\s:]*(.*)/i;
     const correctRegex = /(?:Alternativa correta|Gabarito|Resposta|CORRETA)[\s:]*([A-E])/i;
+    const resolutionRegex = /(?:Resolução|Explicação|Comentário)[\s:]*([\s\S]*)/i;
 
     lines.forEach(line => {
       const optMatch = line.match(optionRegex);
@@ -140,6 +142,13 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
 
     const questionText = formatLatex(questionTextLines.join('\n'));
 
+    // Tenta encontrar resolução no texto completo se houver a palavra chave
+    let resolution = '';
+    const resMatch = smartInput.match(resolutionRegex);
+    if (resMatch) {
+      resolution = formatLatex(resMatch[1].trim());
+    }
+
     setCurrentQuestion({
       id: Math.random().toString(36).substring(7),
       text: questionText,
@@ -153,7 +162,8 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
         { id: 'D', text: '', isCorrect: false },
         { id: 'E', text: '', isCorrect: false },
       ],
-      explanation: ''
+      explanation: '',
+      resolution: resolution
     });
     
     setSmartInput('');
@@ -180,7 +190,8 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
         { id: 'D', text: '', isCorrect: false },
         { id: 'E', text: '', isCorrect: false },
       ],
-      explanation: ''
+      explanation: '',
+      resolution: ''
     });
   };
 
@@ -446,6 +457,17 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
                       />
                     </div>
                   ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Resolução / Explicação</label>
+                  <textarea 
+                    placeholder="Explique o passo a passo da resolução aqui..."
+                    className="w-full h-32 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs font-medium text-white focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
+                    value={currentQuestion.resolution}
+                    onChange={(e) => setCurrentQuestion({...currentQuestion, resolution: e.target.value})}
+                  />
+                  <p className="text-[9px] text-gray-500 italic">Este conteúdo aparecerá para o aluno após a conclusão do simulado.</p>
                 </div>
 
                 <button 
