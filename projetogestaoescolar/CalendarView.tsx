@@ -1038,360 +1038,360 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </button>
             )}
           </div>
+        </div>
       </div>
-    </div>
-  
+
       <div className="max-w-7xl mx-auto space-y-8">
+        {activeTab === 'agenda' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Sidebar: Status & Próximas - Hidden for Students */}
+            {userRole !== UserRole.STUDENT && (
+              <div className="lg:col-span-4 space-y-8">
+                <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-black text-white flex items-center gap-3">
+                      <Clock size={20} className="text-emerald-500" />
+                      {isToday(agendaDate) ? 'Agenda de Hoje' : `Agenda - ${format(agendaDate, 'dd/MM', { locale: ptBR })}`}
+                    </h3>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setAgendaDate(prev => subDays(prev, 1)); setAgendaPage(1); }}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button 
+                        onClick={() => { setAgendaDate(prev => addDays(prev, 1)); setAgendaPage(1); }}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                  </div>
 
-      {activeTab === 'agenda' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Sidebar: Status & Próximas */}
-          <div className="lg:col-span-4 space-y-8">
+                  <div className="space-y-3">
+                    {(() => {
+                      const filtered = classes
+                        .filter(c => 
+                          c.status !== 'CANCELLED' && 
+                          c.status !== 'COMPLETED' && 
+                          c.classDate === format(agendaDate, 'yyyy-MM-dd')
+                        )
+                        .sort((a,b) => a.startTime.localeCompare(b.startTime));
+                      
+                      return (
+                        <>
+                          <div className="space-y-3">
+                            {filtered.map(c => (
+                              <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10' : 'bg-[#0f172a]/60 hover:bg-[#0f172a] border-gray-800/50 hover:border-emerald-500/30'}`}>
+                                <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-orange-500/20' : 'border-gray-800/50'}`}>
+                                  <span className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : 'text-gray-500'}`}>{c.startTime}</span>
+                                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-blue-500/50 group-hover:bg-blue-500'} transition-colors`}></div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${c.status === 'IN_PROGRESS' ? 'text-orange-200/60' : 'text-gray-500'}`}>
+                                      {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  {c.status === 'SCHEDULED' && (
+                                    <button 
+                                      onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
+                                      className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-lg transition-all shadow-lg shadow-amber-500/10 active:scale-90"
+                                      title="Iniciar Aula"
+                                    >
+                                      <Play size={12} fill="currentColor" />
+                                    </button>
+                                  )}
+                                  
+                                  {c.status === 'IN_PROGRESS' && (
+                                    <button 
+                                      onClick={() => openCompletionModal(c)}
+                                      className="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-lg shadow-sky-500/10 active:scale-90"
+                                      title="Concluir Aula"
+                                    >
+                                      <CheckCircle size={12} />
+                                    </button>
+                                  )}
 
-            <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-black text-white flex items-center gap-3">
-                  <Clock size={20} className="text-emerald-500" />
-                  {isToday(agendaDate) ? 'Agenda de Hoje' : `Agenda - ${format(agendaDate, 'dd/MM', { locale: ptBR })}`}
-                </h3>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => { setAgendaDate(prev => subDays(prev, 1)); setAgendaPage(1); }}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button 
-                    onClick={() => { setAgendaDate(prev => addDays(prev, 1)); setAgendaPage(1); }}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white rounded-lg transition-all"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
+                                  <button 
+                                    onClick={() => openRescheduleModal(c)}
+                                    className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
+                                    title="Reagendar"
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {filtered.length === 0 && (
+                            <div className="text-center py-10 opacity-30 select-none">
+                              <CalendarIcon size={48} className="mx-auto mb-2" />
+                              <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="space-y-3">
-                {(() => {
-                  const filtered = classes
-                    .filter(c => 
-                      c.status !== 'CANCELLED' && 
-                      c.status !== 'COMPLETED' && 
-                      c.classDate === format(agendaDate, 'yyyy-MM-dd')
-                    )
-                    .sort((a,b) => a.startTime.localeCompare(b.startTime));
-                  
-                  return (
-                    <>
-                      <div className="space-y-3">
-                        {filtered.map(c => (
-                          <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10' : 'bg-[#0f172a]/60 hover:bg-[#0f172a] border-gray-800/50 hover:border-emerald-500/30'}`}>
-                            <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-orange-500/20' : 'border-gray-800/50'}`}>
-                              <span className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : 'text-gray-500'}`}>{c.startTime}</span>
-                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-blue-500/50 group-hover:bg-blue-500'} transition-colors`}></div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
-                              <div className="flex items-center gap-2">
-                                <p className={`text-[10px] font-bold uppercase tracking-widest ${c.status === 'IN_PROGRESS' ? 'text-orange-200/60' : 'text-gray-500'}`}>
-                                  {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex gap-1">
-                              {c.status === 'SCHEDULED' && (
-                                <button 
-                                  onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
-                                  className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-lg transition-all shadow-lg shadow-amber-500/10 active:scale-90"
-                                  title="Iniciar Aula"
-                                >
-                                  <Play size={12} fill="currentColor" />
-                                </button>
-                              )}
-                              
-                              {c.status === 'IN_PROGRESS' && (
-                                <button 
-                                  onClick={() => openCompletionModal(c)}
-                                  className="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-lg shadow-sky-500/10 active:scale-90"
-                                  title="Concluir Aula"
-                                >
-                                  <CheckCircle size={12} />
-                                </button>
-                              )}
-
-                              <button 
-                                onClick={() => openRescheduleModal(c)}
-                                className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
-                                title="Reagendar"
-                              >
-                                <Edit2 size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {filtered.length === 0 && (
-                        <div className="text-center py-10 opacity-30 select-none">
-                          <CalendarIcon size={48} className="mx-auto mb-2" />
-                          <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
+            {/* Main Content: Lista de Agendamentos / Histórico */}
+            <div className={`${userRole === UserRole.STUDENT ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-6`}>
+              <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+                <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex flex-col md:flex-row justify-between items-center gap-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white mb-1">
+                      {userRole === UserRole.STUDENT ? 'Histórico de Aulas' : 'Todas as Aulas'}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                      {userRole === UserRole.STUDENT ? 'Registro de aulas e materiais' : 'Controle Acadêmico'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
+                      <button 
+                        onClick={() => setViewMode('table')}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        Lista
+                      </button>
+                      <button 
+                        onClick={() => setViewMode('calendar')}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        Calendário
+                      </button>
+                    </div>
+                    
+                    {userRole === UserRole.STUDENT && (
+                      <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
+                        <div className="relative">
+                          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                          <select 
+                            value={filterDiscipline} 
+                            onChange={(e) => setFilterDiscipline(e.target.value)}
+                            className="bg-[#0f172a] border-none text-white text-[10px] font-black uppercase pl-10 pr-4 py-2 focus:ring-0 w-44 rounded-xl cursor-pointer"
+                          >
+                            <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
+                            {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
+                          </select>
                         </div>
-                      )}
-                    </>
-                  );
-                })()}
+                      </div>
+                    )}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                      <input 
+                        type="text" 
+                        placeholder="Buscar..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs font-bold pl-10 pr-4 py-3 focus:ring-emerald-500/50 w-48"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {viewMode === 'calendar' ? (
+                  <div className="p-8">
+                    <ModernCalendar 
+                      classes={classes} 
+                      userRole={userRole}
+                      onSelectClass={setSelectedClass}
+                      onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-8">
+                    {(() => {
+                      const filtered = classes.filter(c => 
+                        (userRole === UserRole.STUDENT 
+                          ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
+                          : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
+                        ) &&
+                        (!filterDiscipline || c.disciplineId === filterDiscipline)
+                      ).sort((a,b) => {
+                        const dateComp = a.classDate.localeCompare(b.classDate);
+                        if (dateComp !== 0) return dateComp;
+                        return a.startTime.localeCompare(b.startTime);
+                      });
+                      
+                      const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                            {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
+                          </div>
+                          
+                          {filtered.length === 0 && (
+                            <div className="text-center py-20 opacity-30 select-none">
+                              <CalendarIcon size={64} className="mx-auto mb-4" />
+                              <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum agendamento ativo</p>
+                            </div>
+                          )}
+
+                          <Pagination 
+                            current={agendaPage} 
+                            total={filtered.length} 
+                            onPageChange={setAgendaPage} 
+                          />
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        ) : activeTab === 'finance' ? (
+          <FinanceTab />
+        ) : (
+          /* Aba de Histórico e Análises */
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Dashboard de Histórico */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
+                <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Aulas Realizadas</p>
+                <h4 className="text-2xl font-black text-white">{classes.filter(c => c.status === 'COMPLETED').length}</h4>
+              </div>
+              <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
+                <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Presença</p>
+                <h4 className="text-2xl font-black text-white">
+                  {Math.round((classes.filter(c => c.status === 'COMPLETED').length / (classes.filter(c => c.status !== 'CANCELLED').length || 1)) * 100)}%
+                </h4>
+              </div>
+              <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
+                <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Alunos Ativos</p>
+                <h4 className="text-2xl font-black text-white">{new Set(classes.map(c => c.studentId)).size}</h4>
+              </div>
+              <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
+                <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Remarcações</p>
+                <h4 className="text-2xl font-black text-white">{classes.filter(c => c.rescheduledBy).length}</h4>
+              </div>
+            </div>
 
-          {/* Main Content: Lista de Agendamentos / Histórico */}
-          <div className="lg:col-span-8 space-y-6">
             <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
-              <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex flex-col md:flex-row justify-between items-center gap-6">
-                <div>
-                  <h3 className="text-lg font-black text-white mb-1">
-                    {userRole === UserRole.STUDENT ? 'Histórico de Aulas' : 'Todas as Aulas'}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                    {userRole === UserRole.STUDENT ? 'Registro de aulas e materiais' : 'Controle Acadêmico'}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
+              <div className="p-8 border-b border-slate-800 bg-slate-900/80">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-white mb-1">
+                        {userRole === UserRole.STUDENT ? 'Meus Materiais e Aulas' : 'Histórico Completo'}
+                      </h3>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                        {userRole === UserRole.STUDENT ? 'Baixe os PDFs das suas aulas' : 'Filtros e Auditoria'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => setViewMode('table')}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                      onClick={() => {
+                        const prev = subDays(new Date(currentDate + 'T12:00:00'), 1);
+                        setCurrentDate(format(prev, 'yyyy-MM-dd'));
+                      }}
+                      className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
                     >
-                      Lista
+                      <ChevronLeft size={20} />
                     </button>
+                    <div className="flex flex-col items-center min-w-[120px]">
+                      <h3 className="text-lg font-black text-white uppercase tracking-tighter">
+                        {isToday(new Date(currentDate + 'T12:00:00')) ? 'Hoje' : format(new Date(currentDate + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })}
+                      </h3>
+                      <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
+                        {format(new Date(currentDate + 'T12:00:00'), 'EEEE', { locale: ptBR })}
+                      </p>
+                    </div>
                     <button 
-                      onClick={() => setViewMode('calendar')}
-                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
+                      onClick={() => {
+                        const next = addDays(new Date(currentDate + 'T12:00:00'), 1);
+                        setCurrentDate(format(next, 'yyyy-MM-dd'));
+                      }}
+                      className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
                     >
-                      Calendário
+                      <ChevronRight size={20} />
                     </button>
                   </div>
-                  
-                  {userRole === UserRole.STUDENT && (
+                  <div className="flex flex-wrap gap-3">
+                    {userRole !== UserRole.STUDENT && (
+                      <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
+                        <div className="relative">
+                          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                          <select 
+                            value={filterStudent}
+                            onChange={(e) => setFilterStudent(e.target.value)}
+                            className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer"
+                          >
+                            <option value="">Todos os Alunos</option>
+                            {students.map(s => <option key={s.id} value={s.id} className="bg-[#0f172a]">{s.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
                       <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
+                        <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
                         <select 
-                          value={filterDiscipline} 
+                          value={filterDiscipline}
                           onChange={(e) => setFilterDiscipline(e.target.value)}
-                          className="bg-[#0f172a] border-none text-white text-[10px] font-black uppercase pl-10 pr-4 py-2 focus:ring-0 w-44 rounded-xl cursor-pointer"
+                          className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer shadow-inner"
                         >
                           <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
                           {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
                         </select>
                       </div>
                     </div>
-                  )}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="Buscar..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs font-bold pl-10 pr-4 py-3 focus:ring-emerald-500/50 w-48"
-                    />
                   </div>
                 </div>
+
               </div>
 
-              {viewMode === 'calendar' ? (
-                <div className="p-8">
-                  <ModernCalendar 
-                    classes={classes} 
-                    userRole={userRole}
-                    onSelectClass={setSelectedClass}
-                    onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined}
-                  />
-                </div>
-              ) : (
-                <div className="p-8">
-                  {(() => {
-                    const filtered = classes.filter(c => 
-                      (userRole === UserRole.STUDENT 
-                        ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                        : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
-                      ) &&
-                      (!filterDiscipline || c.disciplineId === filterDiscipline)
-                    ).sort((a,b) => {
-                      const dateComp = a.classDate.localeCompare(b.classDate);
-                      if (dateComp !== 0) return dateComp;
-                      return a.startTime.localeCompare(b.startTime);
-                    });
-                    
-                    const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
+              <div className="p-8">
+                {(() => {
+                  const filtered = classes.filter(c => 
+                    c.classDate === currentDate &&
+                    (!filterStudent || c.studentId === filterStudent) && 
+                    (!filterDiscipline || c.disciplineId === filterDiscipline)
+                  );
+                  
+                  const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
 
-                    return (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                          {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
+                      </div>
+                      
+                      {filtered.length === 0 && (
+                        <div className="text-center py-20 opacity-30 select-none">
+                          <FileText size={64} className="mx-auto mb-4" />
+                          <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum histórico encontrado</p>
                         </div>
-                        
-                        {filtered.length === 0 && (
-                          <div className="text-center py-20 opacity-30 select-none">
-                            <CalendarIcon size={64} className="mx-auto mb-4" />
-                            <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum agendamento ativo</p>
-                          </div>
-                        )}
+                      )}
 
-                        <Pagination 
-                          current={agendaPage} 
-                          total={filtered.length} 
-                          onPageChange={setAgendaPage} 
-                        />
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : activeTab === 'finance' ? (
-        <FinanceTab />
-      ) : (
-        /* Aba de Histórico e Análises */
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* Dashboard de Histórico */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
-              <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Aulas Realizadas</p>
-              <h4 className="text-2xl font-black text-white">{classes.filter(c => c.status === 'COMPLETED').length}</h4>
-            </div>
-            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
-              <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Presença</p>
-              <h4 className="text-2xl font-black text-white">
-                {Math.round((classes.filter(c => c.status === 'COMPLETED').length / (classes.filter(c => c.status !== 'CANCELLED').length || 1)) * 100)}%
-              </h4>
-            </div>
-            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
-              <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Alunos Ativos</p>
-              <h4 className="text-2xl font-black text-white">{new Set(classes.map(c => c.studentId)).size}</h4>
-            </div>
-            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] backdrop-blur-xl">
-              <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest mb-1">Remarcações</p>
-              <h4 className="text-2xl font-black text-white">{classes.filter(c => c.rescheduledBy).length}</h4>
-            </div>
-          </div>
-
-          <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
-            <div className="p-8 border-b border-slate-800 bg-slate-900/80">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                    <FileText size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-white mb-1">
-                      {userRole === UserRole.STUDENT ? 'Meus Materiais e Aulas' : 'Histórico Completo'}
-                    </h3>
-                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                      {userRole === UserRole.STUDENT ? 'Baixe os PDFs das suas aulas' : 'Filtros e Auditoria'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => {
-                      const prev = subDays(new Date(currentDate + 'T12:00:00'), 1);
-                      setCurrentDate(format(prev, 'yyyy-MM-dd'));
-                    }}
-                    className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <div className="flex flex-col items-center min-w-[120px]">
-                    <h3 className="text-lg font-black text-white uppercase tracking-tighter">
-                      {isToday(new Date(currentDate + 'T12:00:00')) ? 'Hoje' : format(new Date(currentDate + 'T12:00:00'), "dd 'de' MMMM", { locale: ptBR })}
-                    </h3>
-                    <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">
-                      {format(new Date(currentDate + 'T12:00:00'), 'EEEE', { locale: ptBR })}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      const next = addDays(new Date(currentDate + 'T12:00:00'), 1);
-                      setCurrentDate(format(next, 'yyyy-MM-dd'));
-                    }}
-                    className="p-2 hover:bg-emerald-500/10 rounded-full text-emerald-500 transition-all border border-transparent hover:border-emerald-500/20"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {userRole !== UserRole.STUDENT && (
-                    <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800 shadow-inner">
-                      <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                        <select 
-                          value={filterStudent}
-                          onChange={(e) => setFilterStudent(e.target.value)}
-                          className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer"
-                        >
-                          <option value="">Todos os Alunos</option>
-                          {students.map(s => <option key={s.id} value={s.id} className="bg-[#0f172a]">{s.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                    <div className="relative">
-                      <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                      <select 
-                        value={filterDiscipline}
-                        onChange={(e) => setFilterDiscipline(e.target.value)}
-                        className="bg-[#0f172a] border-none text-white text-sm font-bold pl-10 pr-4 py-2 focus:ring-0 w-48 rounded-xl cursor-pointer shadow-inner"
-                      >
-                        <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
-                        {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                      <Pagination 
+                        current={historyPage} 
+                        total={filtered.length} 
+                        onPageChange={setHistoryPage} 
+                      />
+                    </>
+                  );
+                })()}
               </div>
-
-            </div>
-
-            <div className="p-8">
-              {(() => {
-                const filtered = classes.filter(c => 
-                  c.classDate === currentDate &&
-                  (!filterStudent || c.studentId === filterStudent) && 
-                  (!filterDiscipline || c.disciplineId === filterDiscipline)
-                );
-                
-                const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
-
-                return (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
-                    </div>
-                    
-                    {filtered.length === 0 && (
-                      <div className="text-center py-20 opacity-30 select-none">
-                        <FileText size={64} className="mx-auto mb-4" />
-                        <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum histórico encontrado</p>
-                      </div>
-                    )}
-
-                    <Pagination 
-                      current={historyPage} 
-                      total={filtered.length} 
-                      onPageChange={setHistoryPage} 
-                    />
-                  </>
-                );
-              })()}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
 
     <input 
       type="file" 

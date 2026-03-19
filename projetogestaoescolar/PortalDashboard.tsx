@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
     Activity, GraduationCap,
     MessageSquare, FileText, CheckCircle, History,
-    AlertCircle, TrendingUp, Clock, BookOpen, Calendar as CalendarIcon, Star, ArrowRight
+    AlertCircle, TrendingUp, Clock, BookOpen, Calendar as CalendarIcon, Star, ArrowRight,
+    BarChart3, CheckCircle2
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { StorageService } from './services/storageService';
@@ -91,16 +92,9 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
     // 2. Atividades/Simulados em Aberto
     const openActivities = simuladoAssignments.filter(a => a.status !== 'COMPLETED').length;
 
-    // 3. Desempenho (Média)
-    const myRecords = sessions.map(s => s.records.find(r => r.studentId === student.id)).filter(Boolean);
-    const sessionGrades = myRecords.map(r => r ? StorageService.calculateGrade(r) : 0);
-    // Use the actual score from backend attempt
+    // 4. Média de Desempenho (Apenas Atividades conforme novo requisito)
     const simuladoGrades = simuladoAssignments.filter(a => a.status === 'COMPLETED' && a.score !== undefined).map(a => a.score as number);
-    const allGrades = [...sessionGrades, ...simuladoGrades];
-    const avgGrade = allGrades.length > 0 ? (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1) : '0.0';
-
-    // 4. Performance Chart Data (Last 5 activities)
-    const recentGrades = allGrades.slice(-6);
+    const avgGrade = simuladoGrades.length > 0 ? (simuladoGrades.reduce((a, b) => a + b, 0) / simuladoGrades.length).toFixed(1) : '0.0';
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
@@ -123,18 +117,8 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                 </div>
             </div>
 
-            {/* KPI Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Aulas no Mês</p>
-                        <h4 className="text-2xl font-black text-white">{monthlyClasses}</h4>
-                    </div>
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <CheckCircle size={22} className="text-emerald-400" />
-                    </div>
-                </div>
-
+            {/* KPI Section - Refined */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-amber-500/30 transition-all">
                     <div>
                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Atividades em Aberto</p>
@@ -145,222 +129,173 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                     </div>
                 </div>
 
-                <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-purple-500/30 transition-all">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Aulas Realizadas (Total)</p>
-                        <h4 className="text-2xl font-black text-white">{scheduledClasses.filter(c => c.status === 'COMPLETED').length}</h4>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <GraduationCap size={22} className="text-purple-400" />
-                    </div>
-                </div>
-
                 <div className="bg-[#0f172a] border border-gray-800 p-5 rounded-2xl flex items-center justify-between group hover:border-blue-500/30 transition-all">
                     <div>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Nota Desempenho</p>
-                        <h4 className="text-2xl font-black text-white">{avgGrade}</h4>
+                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Nota Desempenho (Atividades)</p>
+                        <h4 className="text-2xl font-black text-white">{avgGrade}%</h4>
                     </div>
                     <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <TrendingUp size={22} className="text-blue-400" />
+                        <BarChart3 size={22} className="text-blue-400" />
                     </div>
                 </div>
             </div>
 
+            {/* Main Grid - 3 Columns (Performance, Activities, Classes) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Performance Chart & Recent Activities */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Evolution Chart */}
-                    <div className="bg-[#0f172a] border border-gray-800 p-6 rounded-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
-                                <TrendingUp size={20} className="text-blue-400" />
-                                Desempenho em Atividades
-                            </h3>
+                
+                {/* Column 1: Performance in Activities */}
+                <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400">
+                            <BarChart3 size={18} />
                         </div>
-                        <div className="h-48 w-full flex items-end justify-center relative mt-4">
-                            {/* Grid Lines */}
-                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10 border-y border-gray-500 py-1 z-0">
-                                <div className="w-full border-t border-gray-500"></div>
-                                <div className="w-full border-t border-gray-500"></div>
-                                <div className="w-full border-t border-gray-500"></div>
-                            </div>
-                            
-                            {recentGrades.length > 1 ? (
-                                <div className="relative w-full h-[160px] z-10">
-                                    <svg viewBox={`0 0 ${recentGrades.length * 100} 160`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                                        <defs>
-                                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                                                <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                                            </linearGradient>
-                                        </defs>
-
-                                        {/* Area Polygon */}
-                                        <polygon 
-                                            points={`
-                                                0,160 
-                                                ${recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (Number(g) / 100) * 160}`).join(' ')} 
-                                                ${(recentGrades.length - 1) * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},160
-                                            `} 
-                                            fill="url(#areaGradient)" 
-                                        />
-
-                                        {/* Line */}
-                                        <polyline 
-                                            points={recentGrades.map((g, i) => `${i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1},${160 - (Number(g) / 100) * 160}`).join(' ')} 
-                                            fill="none" 
-                                            stroke="#10b981" 
-                                            strokeWidth="3" 
-                                            strokeLinecap="round" 
-                                            strokeLinejoin="round" 
-                                        />
-
-                                        {/* Data Points */}
-                                        {recentGrades.map((g, i) => {
-                                            const cx = i * (1000 / Math.max(1, recentGrades.length - 1)) * 0.1;
-                                            const cy = 160 - (Number(g) / 100) * 160;
-                                            return (
-                                                <g key={i} className="group cursor-pointer">
-                                                    <circle cx={cx} cy={cy} r="5" fill="#0f172a" stroke="#10b981" strokeWidth="2" className="transition-all group-hover:r={8} group-hover:fill-[#10b981]" />
-                                                    {/* Tooltip text (SVG) */}
-                                                    <text x={cx} y={cy - 15} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        {Number(g).toFixed(1)}
-                                                    </text>
-                                                    {/* X-axis labels */}
-                                                    <text x={cx} y="175" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="bold">
-                                                        Act {i + 1}
-                                                    </text>
-                                                </g>
-                                            );
-                                        })}
-                                    </svg>
-                                </div>
-                            ) : recentGrades.length === 1 ? (
-                                /* Single point fallback */
-                                <div className="flex flex-col items-center justify-end w-full h-[160px] z-10 mb-6">
-                                    <div className="relative group">
-                                         <div className="w-16 bg-gradient-to-t from-blue-600 to-sky-400 rounded-t-lg transition-all" style={{ height: `${(recentGrades[0] / 100) * 160}px` }}></div>
-                                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-xl whitespace-nowrap">
-                                            {Number(recentGrades[0]).toFixed(1)}
-                                         </div>
-                                         <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-500 uppercase">Act 1</span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center w-full h-full text-gray-600 italic text-sm z-10">
-                                    Nenhuma atividade registrada para gerar o gráfico.
-                                </div>
-                            )}
-                        </div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Desempenho em Atividades</h3>
                     </div>
-
+                    
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
-                                <Star size={20} className="text-amber-400" />
-                                Aula da Semana
-                            </h3>
-                        </div>
-
-                        {scheduledClasses
-                            .filter(c => c.status === 'SCHEDULED' && new Date(c.classDate + 'T00:00:00') >= new Date(new Date().setHours(0,0,0,0)))
-                            .sort((a,b) => (a.classDate + a.startTime).localeCompare(b.classDate + b.startTime))
-                            .slice(0, 1)
-                            .map(c => (
-                            <div key={c.id} className="relative overflow-hidden bg-slate-900/40 border border-slate-800 p-8 rounded-[2rem] group hover:border-emerald-500/50 transition-all shadow-2xl">
-                                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:rotate-12 transition-transform">
-                                    <Star size={100} />
+                        {simuladoAssignments.filter(a => a.status === 'COMPLETED').slice(0, 5).map(a => (
+                            <div key={a.id} className="flex flex-col gap-1">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-[10px] font-black uppercase text-gray-400 truncate max-w-[70%]">
+                                        {a.simulado?.title || 'Atividade'}
+                                    </span>
+                                    <span className="text-[10px] font-black text-emerald-400">{a.score}%</span>
                                 </div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <div className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-lg border border-amber-500/20">
-                                            Destaque da Semana
-                                        </div>
-                                        <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-lg border border-emerald-500/20">
-                                            {format(new Date(c.classDate + 'T12:00:00'), 'EEEE', { locale: ptBR })}
-                                        </div>
-                                    </div>
-                                    <h2 className="text-2xl font-black text-white mb-2 uppercase">{disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}</h2>
-                                    <div className="flex flex-wrap items-center gap-6 text-gray-400">
-                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
-                                            <CalendarIcon size={16} className="text-emerald-500" />
-                                            <span className="text-sm font-bold">{new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
-                                            <Clock size={16} className="text-emerald-500" />
-                                            <span className="text-sm font-bold uppercase">{c.startTime}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-slate-800">
-                                            <UserAvatar name={c.teacherName || ''} size="xs" />
-                                            <span className="text-sm font-bold">Prof. {c.teacherName}</span>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={() => onNavigate('CALENDAR')}
-                                        className="mt-8 flex items-center gap-2 text-emerald-500 font-black text-[10px] uppercase tracking-[0.2em] group/btn"
-                                    >
-                                        Ver Detalhes na Agenda 
-                                        <ArrowRight size={14} className="group-hover/btn:translate-x-2 transition-transform" />
-                                    </button>
+                                <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-emerald-500 rounded-full"
+                                        style={{ width: `${a.score}%` }}
+                                    />
                                 </div>
                             </div>
                         ))}
-                        {scheduledClasses.filter(c => c.status === 'SCHEDULED' && new Date(c.classDate + 'T00:00:00') >= new Date(new Date().setHours(0,0,0,0))).length === 0 && (
-                            <div className="bg-[#0f172a] border border-gray-800 border-dashed p-10 rounded-[2rem] text-center">
-                                <p className="text-xs text-gray-500 font-bold uppercase italic">Nenhuma aula agendada para esta semana.</p>
+                        {simuladoAssignments.filter(a => a.status === 'COMPLETED').length === 0 && (
+                            <div className="py-12 text-center opacity-30 italic text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                Nenhuma atividade concluída
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Right Column: Quick Actions & Highlights */}
-                <div className="space-y-6">
-                    <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
-                        <h3 className="font-black text-white mb-6 flex items-center gap-2 uppercase tracking-tight text-sm">
-                            <Activity size={18} className="text-emerald-400" />
-                            Status de Atividades
-                        </h3>
-                        {simuladoAssignments.length > 0 ? (
-                            <div className="space-y-3">
-                                {simuladoAssignments.slice(0, 5).map((a, idx) => (
-                                    <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer group" onClick={() => onNavigate('SIMULADO')}>
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-white uppercase truncate max-w-[150px]">{a.simulado?.title || 'Atividade'}</span>
-                                                {a.status !== 'COMPLETED' && (
-                                                    <span className="text-[8px] text-gray-500 font-bold uppercase mt-0.5">Em andamento</span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col items-end gap-1">
-                                                {a.status === 'COMPLETED' ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Finalizado</span>
-                                                        <span className="text-[10px] font-black text-white">{a.score ?? 0}%</span>
-                                                    </div>
-                                                ) : (
-                                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${a.dueDate && new Date(a.dueDate) < new Date() ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
-                                                        {a.dueDate && new Date(a.dueDate) < new Date() ? 'Atrasado' : 'Pendente'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1">
-                                            <div 
-                                                className={`h-full transition-all duration-1000 ${a.status === 'COMPLETED' ? ((a.score ?? 0) >= 70 ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-sky-500'}`} 
-                                                style={{ width: `${a.status === 'COMPLETED' ? 100 : 40}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-[10px] text-gray-500 font-bold italic uppercase">Sem atividades recentes.</p>
-                        )}
-                        <button onClick={() => onNavigate('SIMULADO')} className="w-full mt-6 py-3 text-[10px] font-black text-white hover:bg-white/5 border border-slate-800 rounded-xl transition-all tracking-widest uppercase">
-                            Ver Todas Atividades
-                        </button>
+                {/* Column 2: Activity Status */}
+                <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-amber-500/10 rounded-xl text-amber-400">
+                            <FileText size={18} />
+                        </div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Status de Atividades</h3>
                     </div>
 
+                    <div className="space-y-2">
+                        {simuladoAssignments.map(a => {
+                            const isPending = a.status !== 'COMPLETED';
+                            const overdue = a.dueDate && new Date(a.dueDate) < new Date() && isPending;
+                            
+                            return (
+                                <div 
+                                    key={a.id}
+                                    className={`p-2.5 rounded-xl border ${
+                                        !isPending ? 'bg-emerald-500/5 border-emerald-500/20' : 
+                                        overdue ? 'bg-rose-500/5 border-rose-500/20' : 
+                                        'bg-slate-900/50 border-gray-800'
+                                    } flex items-center justify-between group transition-all`}
+                                >
+                                    <div className="flex flex-col min-w-0 pr-4">
+                                        <span className="text-[10px] font-black text-white uppercase truncate">
+                                            {a.simulado?.title || 'Atividade'}
+                                        </span>
+                                        <span className={`text-[8px] font-bold uppercase tracking-widest ${
+                                            !isPending ? 'text-emerald-500' : overdue ? 'text-rose-500' : 'text-amber-500'
+                                        }`}>
+                                            {!isPending ? `Concluída • ${a.score}%` : overdue ? 'Em Atraso' : 'Em Aberto'}
+                                        </span>
+                                    </div>
+                                    <button 
+                                        onClick={() => onNavigate('SIMULADOS')}
+                                        className="p-1.5 bg-white/5 rounded-lg text-gray-500 group-hover:bg-emerald-500 group-hover:text-white transition-all"
+                                    >
+                                        <ArrowRight size={14} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {simuladoAssignments.length === 0 && (
+                            <div className="py-12 text-center opacity-30 italic text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                Nenhuma atividade atribuída
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Column 3: My Classes */}
+                <div className="bg-[#0f172a] border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-sky-500/10 rounded-xl text-sky-400">
+                            <CalendarIcon size={18} />
+                        </div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Minhas Aulas</h3>
+                    </div>
+
+                    <div className="space-y-3">
+                        {/* Upcoming Classes */}
+                        {scheduledClasses
+                            .filter(c => c.status === 'SCHEDULED' && new Date(c.classDate + 'T00:00:00') >= new Date(new Date().setHours(0,0,0,0)))
+                            .sort((a,b) => (a.classDate + a.startTime).localeCompare(b.classDate + b.startTime))
+                            .slice(0, 2)
+                            .map(c => (
+                                <div key={c.id} className="p-2.5 bg-sky-500/5 border border-sky-500/20 rounded-xl flex flex-col gap-1">
+                                    <div className="flex justify-between items-start">
+                                        <span className="text-[10px] font-black text-white uppercase italic truncate pr-2">
+                                            {c.subjectNotes || disciplines.find(d => d.id === c.disciplineId)?.name || 'Aula Particular'}
+                                        </span>
+                                        <span className="text-[7px] font-black bg-sky-500 text-white px-1.5 py-0.5 rounded-full uppercase">
+                                            Agendada
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[8px] font-bold text-gray-500 uppercase">
+                                        <Clock size={10} />
+                                        {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} • {c.startTime}
+                                    </div>
+                                </div>
+                            ))}
+
+                        {/* Completed Classes with Material */}
+                        {scheduledClasses
+                            .filter(c => c.status === 'COMPLETED' && (c.whiteboardUrl || c.pdfUrl))
+                            .sort((a, b) => b.classDate.localeCompare(a.classDate))
+                            .slice(0, 2)
+                            .map(c => (
+                                <div key={c.id} className="p-2.5 bg-slate-900/50 border border-gray-800 rounded-xl flex items-center justify-between group">
+                                    <div className="flex flex-col pr-4 min-w-0">
+                                        <span className="text-[10px] font-black text-gray-300 uppercase truncate">
+                                            {c.subjectNotes || c.disciplineName || 'Aula Concluída'}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-gray-500 uppercase">
+                                            Finalizada em {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {(c.whiteboardUrl || c.pdfUrl) && (
+                                            <a 
+                                                href={c.whiteboardUrl || c.pdfUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="p-1.5 bg-rose-500/10 rounded-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg"
+                                                title="Baixar Material PDF"
+                                            >
+                                                <FileText size={14} />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+
+                        {sessions.length === 0 && scheduledClasses.length === 0 && (
+                            <div className="py-12 text-center opacity-30 italic text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                                Nenhuma aula disponível
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

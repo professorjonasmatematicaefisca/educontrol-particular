@@ -401,7 +401,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               <div 
                 key={a.id} 
                 onClick={() => handleOpenAssignment(a)}
-                className={`bg-slate-900/40 border p-4 rounded-3xl backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                className={`bg-slate-900/40 border p-3 rounded-2xl backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                   !isPending 
                     ? 'border-emerald-500/30 hover:border-emerald-500/60' 
                     : overdue
@@ -409,67 +409,65 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                       : 'border-slate-800 hover:border-amber-500/30'
                 }`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className={`p-2.5 rounded-2xl transition-transform group-hover:scale-110 ${
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`p-2 rounded-xl transition-transform group-hover:scale-110 ${
                     !isPending ? 'bg-emerald-500/10 text-emerald-500' 
                     : overdue ? 'bg-rose-500/10 text-rose-500'
                     : 'bg-amber-500/10 text-amber-500'
                   }`}>
-                    {!isPending ? <CheckCircle2 size={24} /> : overdue ? <XCircle size={24} /> : <Timer size={24} />}
+                    {!isPending ? <CheckCircle2 size={20} /> : overdue ? <XCircle size={20} /> : <Timer size={20} />}
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${
-                    !isPending
-                      ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                      : overdue
-                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                        : 'bg-amber-500/10 text-amber-500 border-amber-500/10'
-                  }`}>
-                    {!isPending ? 'Concluída' : overdue ? 'Em Atraso' : 'Pendente'}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`px-2 py-0.5 rounded-md text-[7px] font-black uppercase border ${
+                      !isPending
+                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                        : overdue
+                          ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                          : 'bg-amber-500/10 text-amber-500 border-amber-500/10'
+                    }`}>
+                      {!isPending ? 'Concluída' : overdue ? 'Em Atraso' : 'Pendente'}
+                    </span>
+                    {!isPending && a.score !== undefined && (
+                      <span className="text-[10px] font-black text-emerald-400">Nota: {a.score}%</span>
+                    )}
+                  </div>
                 </div>
 
-                <h3 className="text-lg font-black text-white mb-1 uppercase italic leading-tight group-hover:text-emerald-400 transition-colors">
+                <h3 className="text-base font-black text-white mb-0.5 uppercase italic leading-tight group-hover:text-emerald-400 transition-colors truncate">
                   {a.simulado?.contentTopic || a.simulado?.title || 'Atividade'}
                 </h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider mb-1">
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider mb-1 truncate">
                   {a.simulado?.title}
                 </p>
-                {userRole !== UserRole.STUDENT && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <User size={12} className="text-slate-500" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      {students.find(s => s.id === a.studentId)?.name || 'Aluno'}
-                    </span>
-                  </div>
-                )}
+                
                 {a.simulado && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <BookOpen size={12} className="text-slate-500" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BookOpen size={10} className="text-slate-500" />
+                    <span className="text-[9px] font-black text-slate-500 uppercase">
                       {a.simulado.questions?.length || 0} questões
                     </span>
                   </div>
                 )}
                 
-                <div className="mt-auto pt-4 border-t border-white/5 space-y-4">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                <div className="mt-auto pt-3 border-t border-white/5 space-y-3">
+                  <div className="flex justify-between items-center text-[9px] font-black uppercase">
                     <span className={overdue && isPending ? 'text-rose-400' : 'text-slate-500'}>Prazo</span>
                     <span className={`${overdue && isPending ? 'text-rose-400' : 'text-white'}`}>
                       {a.dueDate 
-                        ? new Date(a.dueDate).toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        ? new Date(a.dueDate).toLocaleString('pt-BR', { day: '2-digit', month: 'short' })
                         : 'Sem prazo'}
                     </span>
                   </div>
                   
-                  <div className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl ${
+                  <div className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-xl ${
                     !isPending
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white'
                       : 'bg-emerald-500 text-white shadow-emerald-500/20 group-hover:bg-emerald-600'
                   }`}>
                     {!isPending 
-                      ? <><Eye size={14} /> Ver Desempenho</> 
-                      : <><PlayCircle size={14} /> Iniciar Atividade</>}
-                    <ArrowRight size={14} />
+                      ? <><Eye size={12} /> Ver Desempenho</> 
+                      : <><PlayCircle size={12} /> Iniciar</>}
+                    <ArrowRight size={12} />
                   </div>
                 </div>
               </div>
