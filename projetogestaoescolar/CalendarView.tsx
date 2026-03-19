@@ -1008,7 +1008,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             >
               <HistoryIcon size={16} /> {userRole === UserRole.STUDENT ? 'Aulas Concluídas' : 'Histórico'}
             </button>
-            {userRole !== UserRole.STUDENT && (
+            {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
               <button 
                 onClick={() => setActiveTab('finance')}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${activeTab === 'finance' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
@@ -1251,7 +1251,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </div>
             </div>
           </div>
-        ) : activeTab === 'finance' ? (
+        ) : activeTab === 'finance' && (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) ? (
           <FinanceTab />
         ) : (
           /* Aba de Histórico e Análises */

@@ -32,7 +32,7 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
     e.preventDefault();
     const classId = e.dataTransfer.getData('classId');
     const isCopy = e.ctrlKey;
-    if (classId && onRescheduleClass && userRole !== UserRole.STUDENT) {
+    if (classId && onRescheduleClass && (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR)) {
       const newDate = format(day, 'yyyy-MM-dd');
       onRescheduleClass(classId, newDate, isCopy);
     }
@@ -125,10 +125,10 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({ classes, onSelec
                   return (
                     <button
                       key={c.id}
-                      draggable={userRole !== UserRole.STUDENT}
-                      onDragStart={(e) => userRole !== UserRole.STUDENT ? handleDragStart(e, c.id) : null}
+                      draggable={userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR}
+                      onDragStart={(e) => (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) ? handleDragStart(e, c.id) : null}
                       onClick={() => onSelectClass?.(c)}
-                      className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border ${userRole !== UserRole.STUDENT ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${studentColor.bg} ${studentColor.border} ${studentColor.text} ${studentColor.hover} ${
+                      className={`w-full text-left p-1.5 rounded-md text-[9px] font-bold uppercase transition-all truncate border ${(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${studentColor.bg} ${studentColor.border} ${studentColor.text} ${studentColor.hover} ${
                         c.status === 'COMPLETED' ? 'opacity-60 grayscale-[0.3]' : ''
                       }`}
                     >

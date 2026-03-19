@@ -205,7 +205,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
       {/* Header com Abas e Ações */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl">
         <div className="flex items-center gap-4 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-          {userRole !== UserRole.STUDENT && (
+          {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
             <button 
               onClick={() => setActiveTab('my_simulados')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'my_simulados' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
@@ -219,7 +219,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
           >
             <Clock size={14} /> {userRole === UserRole.STUDENT ? 'Minhas Atividades' : 'Atribuições'}
           </button>
-          {userRole !== UserRole.STUDENT && (
+          {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
             <button 
               onClick={() => setActiveTab('results')}
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'results' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
@@ -240,7 +240,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
-           {userRole !== UserRole.STUDENT && (
+           {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
              <button 
                 onClick={() => { setEditingSimulado(null); setShowCreator(true); }}
                 className="flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
@@ -322,7 +322,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     <BookOpen size={24} />
                   </div>
                   <div className="flex flex-col gap-1">
-                    {userRole !== UserRole.STUDENT && (
+                    {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
                       <div className="flex gap-1">
                         <button 
                           onClick={() => { setEditingSimulado(s); setShowCreator(true); }}

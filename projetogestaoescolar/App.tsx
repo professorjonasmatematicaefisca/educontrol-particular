@@ -200,7 +200,11 @@ function App() {
         if (view === 'WHITEBOARD' && context) setActiveWhiteboardContext(context);
         handleViewChange(view);
       }} />;
-      case 'FINANCIAL': return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+      case 'FINANCIAL': 
+        if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
+          return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+        }
+        return <Dashboard onNavigateToStudent={() => {}} />;
       case 'SIMULADO': return <SimuladoView 
         onShowToast={showToast} 
         userEmail={userEmail} 

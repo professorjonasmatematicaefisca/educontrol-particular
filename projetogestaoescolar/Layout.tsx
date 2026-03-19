@@ -103,7 +103,7 @@ export const Layout: React.FC<LayoutProps> = ({
     [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'WHITEBOARD', 'SETTINGS'],
     [UserRole.MONITOR]: ['DASHBOARD', 'SETTINGS'],
     [UserRole.STUDENT]: ['DASHBOARD', 'SIMULADO', 'CALENDAR', 'COURSES', 'SETTINGS'],
-    [UserRole.PARENT]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'COURSES', 'SETTINGS'],
+    [UserRole.PARENT]: ['DASHBOARD', 'CALENDAR', 'COURSES', 'SETTINGS'],
     [UserRole.GAME_STUDENT]: ['SIMULADO'],
   };
 
