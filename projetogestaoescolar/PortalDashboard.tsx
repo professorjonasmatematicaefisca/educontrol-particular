@@ -204,15 +204,21 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                         <span className="text-[10px] font-black text-white uppercase truncate">
                                             {a.simulado?.title || 'Atividade'}
                                         </span>
-                                        <span className={`text-[8px] font-bold uppercase tracking-widest ${
+                                        <span className={`text-[8px] font-black uppercase tracking-widest ${
                                             !isPending ? 'text-emerald-500' : overdue ? 'text-rose-500' : 'text-amber-500'
                                         }`}>
-                                            {!isPending ? `Concluída • ${a.score}%` : overdue ? 'Em Atraso' : 'Em Aberto'}
+                                            {!isPending 
+                                                ? `Concluída • ${a.score !== null && a.score !== undefined ? a.score : 0}%` 
+                                                : overdue ? 'Em Atraso' : 'Pendente'}
                                         </span>
                                     </div>
                                     <button 
-                                        onClick={() => onNavigate('SIMULADOS')}
-                                        className="p-1.5 bg-white/5 rounded-lg text-gray-500 group-hover:bg-emerald-500 group-hover:text-white transition-all"
+                                        onClick={() => onNavigate('SIMULADO')}
+                                        className={`p-1.5 transition-all rounded-lg ${
+                                            !isPending ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white' :
+                                            overdue ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' :
+                                            'bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white'
+                                        }`}
                                     >
                                         <ArrowRight size={14} />
                                     </button>

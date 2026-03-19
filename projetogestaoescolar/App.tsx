@@ -223,7 +223,11 @@ function App() {
         initialDisciplineId={activeWhiteboardContext?.disciplineId}
         onClose={() => handleViewChange('CALENDAR')}
       />;
-      default: return <Dashboard onNavigateToStudent={() => {}} />;
+      default: 
+        if (userRole === UserRole.STUDENT || userRole === UserRole.PARENT) {
+          return <PortalDashboard userEmail={userEmail} userRole={userRole} onNavigate={handleViewChange} />;
+        }
+        return <Dashboard onNavigateToStudent={() => {}} />;
     }
   };
 
