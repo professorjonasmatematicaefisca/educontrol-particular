@@ -1992,6 +1992,41 @@ export const SupabaseService = {
         return { success: true };
     },
 
+    async assignSimuladoBulk(data: {
+        simuladoId: string;
+        studentIds: string[];
+        teacherId: string;
+        dueDate?: string;
+    }): Promise<{ success: boolean; error?: string }> {
+        let teacherId: string | null = data.teacherId || null;
+        
+        if (teacherId && teacherId.includes('@')) {
+            try {
+                const user = await this.getUserByEmail(teacherId);
+                teacherId = user?.id || null;
+            } catch {
+                console.warn('Could not resolve teacher UUID from email for bulk assignment');
+                teacherId = null;
+            }
+        }
+
+        const inserts = data.studentIds.map(studentId => ({
+            simulado_id: data.simuladoId,
+            student_id: studentId,
+            teacher_id: teacherId,
+            due_date: data.dueDate || null,
+            status: 'PENDING'
+        }));
+
+        const { error } = await supabase.from('simulado_assignments').insert(inserts);
+
+        if (error) {
+            console.error('assignSimuladoBulk error:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    },
+
     async getSimuladoAttempts(studentId: string): Promise<SimuladoAttempt[]> {
         const { data, error } = await supabase.from('simulado_attempts').select('*').eq('student_id', studentId);
         if (error) throw error;

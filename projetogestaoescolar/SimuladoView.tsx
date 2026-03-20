@@ -65,8 +65,12 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   const [selectedSimulado, setSelectedSimulado] = useState<Simulado | null>(null);
   const [assignData, setAssignData] = useState({
     studentId: '',
+    classId: '',
+    assignMode: 'INDIVIDUAL' as 'INDIVIDUAL' | 'CLASS',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) // 7 days from now
   });
+
+  const uniqueClasses = [...new Set(students.map(s => s.className))].filter(Boolean).sort();
 
   useEffect(() => {
     fetchData();
@@ -76,12 +80,10 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     setLoading(true);
     try {
       if (userRole === UserRole.STUDENT) {
-        // Aluno vê suas atribuições — userEmail contém o UUID do aluno (ver Login.tsx)
         const data = await SupabaseService.getSimuladoAssignments(userEmail);
         setAssignments(data);
         setActiveTab('assignments');
       } else {
-        // Professor vê repositório e atribuições feitas por ele
         const [sims, assigns] = await Promise.all([
           SupabaseService.getSimulados(),
           SupabaseService.getSimuladoAssignments()
@@ -98,27 +100,46 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   };
 
   const handleAssign = async () => {
-    if (!assignData.studentId || !selectedSimulado) {
+    if (assignData.assignMode === 'INDIVIDUAL' && !assignData.studentId) {
       onShowToast('Selecione um aluno para continuar.');
       return;
     }
+    if (assignData.assignMode === 'CLASS' && !assignData.classId) {
+      onShowToast('Selecione uma turma para continuar.');
+      return;
+    }
+    if (!selectedSimulado) return;
 
     // Convert datetime-local value to ISO string
     const dueDateISO = assignData.dueDate 
       ? new Date(assignData.dueDate).toISOString() 
       : undefined;
 
-    const result = await SupabaseService.assignSimulado({
+    const targetStudentIds = assignData.assignMode === 'CLASS' 
+      ? students.filter(s => s.className === assignData.classId).map(s => s.id)
+      : [assignData.studentId];
+
+    if (targetStudentIds.length === 0) {
+      onShowToast('Nenhum aluno encontrado nesta turma.');
+      return;
+    }
+
+    const result = await SupabaseService.assignSimuladoBulk({
       simuladoId: selectedSimulado.id,
-      studentId: assignData.studentId,
-      teacherId: userEmail, // supabaseService will resolve email → UUID
+      studentIds: targetStudentIds,
+      teacherId: userEmail,
       dueDate: dueDateISO
     });
 
     if (result.success) {
       onShowToast('✅ Atribuído com sucesso!');
       setShowAssignModal(false);
-      setAssignData({ studentId: '', dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) });
+      setAssignData({ 
+        studentId: '', 
+        classId: '', 
+        assignMode: 'INDIVIDUAL', 
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16) 
+      });
       fetchData();
     } else {
       onShowToast(`❌ Erro: ${result.error || 'Erro ao atribuir. Tente novamente.'}`);
@@ -129,11 +150,9 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     if (!assignment.simulado) return;
     setActiveAssignment(assignment);
     setActiveSimulado(assignment.simulado);
-    // If completed, we set the viewing mode to true which will launch SimuladoPlayer in REVIEW mode
     setViewingCompleted(assignment.status === 'COMPLETED');
   };
 
-  // Filter assignments for student view
   const filteredAssignments = assignments.filter(a => {
     if (studentFilter === 'PENDING') return a.status !== 'COMPLETED';
     if (studentFilter === 'COMPLETED') return a.status === 'COMPLETED';
@@ -161,7 +180,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   }
 
   if (activeSimulado && activeAssignment) {
-    // If viewing a completed assignment, use SimuladoPlayer in REVIEW mode
     if (viewingCompleted) {
       return (
         <SimuladoPlayer 
@@ -202,7 +220,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header com Abas e Ações */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl">
         <div className="flex items-center gap-4 bg-slate-950 p-2 rounded-2xl border border-slate-800">
           {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
@@ -251,7 +268,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       </div>
 
-      {/* Repo tab selector */}
       {activeTab === 'my_simulados' && (
         <div className="flex justify-start gap-4 mb-4">
           <button 
@@ -269,7 +285,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       )}
 
-      {/* Student filter bar (only in assignments tab for student) */}
       {activeTab === 'assignments' && userRole === UserRole.STUDENT && (
         <div className="flex items-center gap-3">
           <Filter size={14} className="text-slate-500" />
@@ -295,7 +310,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       )}
 
-      {/* Grid de Cards */}
       {loading ? (
         <div className="py-20 text-center opacity-30 animate-pulse">
            <Timer size={64} className="mx-auto mb-4" />
@@ -392,7 +406,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
             </div>
           ))}
 
-          {/* STUDENT: full activity panel */}
           {activeTab === 'assignments' && filteredAssignments.map(a => {
             const isPending = a.status !== 'COMPLETED';
             const overdue = a.dueDate && new Date(a.dueDate) < new Date() && isPending;
@@ -474,10 +487,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
             );
           })}
 
-          {/* Aba de Resultados (Professor) */}
           {activeTab === 'results' && userRole !== UserRole.STUDENT && (
             <div className="col-span-full">
-              {/* Filtros de Resultados */}
               <div className="flex flex-col md:flex-row gap-4 mb-8 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800 backdrop-blur-xl">
                  <div className="flex-1 relative">
                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -518,39 +529,30 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                  </div>
               </div>
 
-              {/* Lista Detalhada em Grid de Cards Compactos */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {assignments
                   .filter(a => {
-                    // Pre-calculate status specifically for overdue check
                     const isPending = a.status !== 'COMPLETED';
                     const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
                     const computedStatus = a.status === 'COMPLETED' ? 'COMPLETED' : overdue ? 'OVERDUE' : 'PENDING';
 
-                    // Name Filter
                     const stName = students.find(s => s.id === a.studentId)?.name?.toLowerCase() || '';
                     if (resultsNameFilter && !stName.includes(resultsNameFilter.toLowerCase())) return false;
 
-                    // Date Filter
                     if (resultsDateFilter !== 'ALL') {
                        const targetDate = a.completedAt ? new Date(a.completedAt) : (a.dueDate ? new Date(a.dueDate) : new Date());
                        const now = new Date();
                        if (resultsDateFilter === 'TODAY' && targetDate.toDateString() !== now.toDateString()) return false;
-                       
                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
                        if (resultsDateFilter === 'WEEK' && targetDate < weekAgo) return false;
                     }
 
-                    // Status Filter
                     if (resultsStatusFilter !== 'ALL' && computedStatus !== resultsStatusFilter) return false;
-
                     return true;
                   })
                   .sort((a, b) => {
-                     // Sort Completed first if showing all, then overdue, then pending
                      if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return -1;
                      if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return 1;
-                     // Sort by latest action
                      const tA = a.completedAt ? new Date(a.completedAt).getTime() : (a.dueDate ? new Date(a.dueDate).getTime() : 0);
                      const tB = b.completedAt ? new Date(b.completedAt).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : 0);
                      return tB - tA;
@@ -561,7 +563,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
                     const stName = students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido';
 
-                    // Formatar tempo
                     const formatTime = (seconds?: number) => {
                        if (!seconds) return '-- : --';
                        const m = Math.floor(seconds / 60);
@@ -625,7 +626,6 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       )}
 
-      {/* Vazio */}
       {!loading && ((activeTab === 'my_simulados' && simulados.length === 0) || (activeTab === 'assignments' && filteredAssignments.length === 0)) && (
         <div className="py-32 text-center opacity-30 select-none bg-slate-900/20 border border-slate-800 border-dashed rounded-[3rem]">
            <BookOpen size={80} className="mx-auto mb-6 text-emerald-500" />
@@ -641,10 +641,9 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         </div>
       )}
 
-      {/* Modal Atribuição */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6">
-           <div className="bg-[#1e293b] w-full max-w-lg rounded-[3rem] border border-white/10 p-12 space-y-8 animate-in zoom-in-95">
+           <div className="bg-[#1e293b] w-full max-w-lg rounded-[3rem] border border-white/10 p-12 space-y-8 animate-in zoom-in-95 leading-relaxed">
               <div className="space-y-2">
                  <h3 className="text-2xl font-black">Atribuir Atividade</h3>
                  <p className="text-slate-400 text-sm italic">
@@ -653,18 +652,52 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               </div>
 
               <div className="space-y-6">
+                 {/* Mode Selector Toggle */}
+                 <div className="flex p-1.5 bg-slate-950 rounded-2xl border border-slate-800">
+                    <button 
+                      onClick={() => setAssignData({...assignData, assignMode: 'INDIVIDUAL'})}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${assignData.assignMode === 'INDIVIDUAL' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                    >
+                      <User size={14} /> Aluno Individual
+                    </button>
+                    <button 
+                      onClick={() => setAssignData({...assignData, assignMode: 'CLASS'})}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${assignData.assignMode === 'CLASS' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                    >
+                      <Plus size={14} /> Turma Inteira
+                    </button>
+                 </div>
+
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Selecione o Aluno</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      {assignData.assignMode === 'INDIVIDUAL' ? 'Selecione o Aluno' : 'Selecione a Turma'}
+                    </label>
                     <div className="relative">
-                       <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                       <select 
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 pl-12 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer"
-                        value={assignData.studentId}
-                        onChange={(e) => setAssignData({...assignData, studentId: e.target.value})}
-                       >
-                         <option value="">Escolher aluno...</option>
-                         {students.sort((a,b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                       </select>
+                       {assignData.assignMode === 'INDIVIDUAL' ? (
+                         <>
+                           <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                           <select 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 pl-12 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer"
+                            value={assignData.studentId}
+                            onChange={(e) => setAssignData({...assignData, studentId: e.target.value})}
+                           >
+                             <option value="">Escolher aluno...</option>
+                             {students.sort((a,b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                           </select>
+                         </>
+                       ) : (
+                         <>
+                           <BookOpen size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                           <select 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 pl-12 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer"
+                            value={assignData.classId}
+                            onChange={(e) => setAssignData({...assignData, classId: e.target.value})}
+                           >
+                             <option value="">Escolher turma...</option>
+                             {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                           </select>
+                         </>
+                       )}
                     </div>
                  </div>
 
