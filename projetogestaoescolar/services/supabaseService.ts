@@ -1876,8 +1876,7 @@ export const SupabaseService = {
                 type: simulado.type,
                 discipline_id: simulado.disciplineId || null,
                 content_topic: simulado.contentTopic || null,
-                duration_minutes: simulado.durationMinutes || 60,
-                updated_at: new Date().toISOString()
+                duration_minutes: simulado.durationMinutes || 60
             })
             .eq('id', id)
             .select()
