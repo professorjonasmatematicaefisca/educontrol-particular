@@ -1853,7 +1853,8 @@ export const SupabaseService = {
                 teacher_email: simulado.teacherEmail || null,
                 type: simulado.type,
                 discipline_id: simulado.disciplineId || null,
-                content_topic: simulado.contentTopic || null
+                content_topic: simulado.contentTopic || null,
+                duration_minutes: simulado.durationMinutes || 60
             }])
             .select()
             .single();
@@ -1875,6 +1876,7 @@ export const SupabaseService = {
                 type: simulado.type,
                 discipline_id: simulado.disciplineId,
                 content_topic: simulado.contentTopic,
+                duration_minutes: simulado.durationMinutes,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
