@@ -57,7 +57,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
 
   // Filtros da aba de Resultados (Professor)
   const [resultsNameFilter, setResultsNameFilter] = useState('');
-  const [resultsDateFilter, setResultsDateFilter] = useState<'ALL' | 'TODAY' | 'WEEK'>('ALL');
+  const [resultsDateFilter, setResultsDateFilter] = useState<'ALL' | 'TODAY' | 'WEEK'>('WEEK');
   const [resultsStatusFilter, setResultsStatusFilter] = useState<'ALL' | 'COMPLETED' | 'PENDING' | 'OVERDUE'>('ALL');
 
   // Atribuição Modal
@@ -315,7 +315,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                      discName.includes(search);
             })
             .map(s => (
-            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
+            <div key={s.id} className="bg-slate-900/40 border border-slate-800 p-4 rounded-2xl backdrop-blur-xl group hover:border-emerald-500/30 transition-all flex flex-col h-full relative">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex gap-2">
                   <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
@@ -401,7 +401,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               <div 
                 key={a.id} 
                 onClick={() => handleOpenAssignment(a)}
-                className={`bg-slate-900/40 border p-3 rounded-2xl backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                className={`bg-slate-900/40 border p-4 rounded-2xl backdrop-blur-xl group transition-all flex flex-col h-full cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                   !isPending 
                     ? 'border-emerald-500/30 hover:border-emerald-500/60' 
                     : overdue
@@ -555,6 +555,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                      const tB = b.completedAt ? new Date(b.completedAt).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : 0);
                      return tB - tA;
                   })
+                  .slice(0, 8)
                   .map(a => {
                     const isPending = a.status !== 'COMPLETED';
                     const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
