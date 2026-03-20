@@ -1847,7 +1847,7 @@ export const SupabaseService = {
             .from('simulados')
             .insert([{
                 title: simulado.title,
-                description: simulado.description,
+                description: simulado.description || null,
                 questions: simulado.questions,
                 teacher_id: teacherId,
                 teacher_email: simulado.teacherEmail || null,
@@ -1871,12 +1871,12 @@ export const SupabaseService = {
             .from('simulados')
             .update({
                 title: simulado.title,
-                description: simulado.description,
+                description: simulado.description || null,
                 questions: simulado.questions,
                 type: simulado.type,
-                discipline_id: simulado.disciplineId,
-                content_topic: simulado.contentTopic,
-                duration_minutes: simulado.durationMinutes,
+                discipline_id: simulado.disciplineId || null,
+                content_topic: simulado.contentTopic || null,
+                duration_minutes: simulado.durationMinutes || 60,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
