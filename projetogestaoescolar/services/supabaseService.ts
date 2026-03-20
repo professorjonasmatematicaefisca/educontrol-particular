@@ -1694,7 +1694,7 @@ export const SupabaseService = {
     },
 
     // --- SCHEDULED CLASSES (CALENDAR) ---
-    async getScheduledClasses(startDate?: string, endDate?: string, studentId?: string): Promise<ScheduledClass[]> {
+    async getScheduledClasses(startDate?: string, endDate?: string, studentId?: string, paymentStatus?: string): Promise<ScheduledClass[]> {
         let query = supabase.from('scheduled_classes').select(`
             *,
             student:students(name, photo_url, class_name, parent_name),
@@ -1704,6 +1704,7 @@ export const SupabaseService = {
         if (startDate) query = query.gte('class_date', startDate);
         if (endDate) query = query.lte('class_date', endDate);
         if (studentId) query = query.eq('student_id', studentId);
+        if (paymentStatus) query = query.eq('payment_status', paymentStatus);
 
         const { data, error } = await query.order('class_date', { ascending: false }).order('start_time', { ascending: false });
         if (error) throw error;

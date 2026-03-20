@@ -4,7 +4,6 @@ import {
   TrendingUp, 
   CreditCard, 
   Search, 
-  Calendar as CalendarIcon, 
   Filter, 
   CheckCircle, 
   XCircle,
@@ -14,7 +13,10 @@ import {
   TrendingDown,
   BarChart3,
   List,
-  ChevronLeft
+  ChevronLeft,
+  Check,
+  Calendar as CalendarIcon,
+  X
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -43,6 +45,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   const [showDailyDetailModal, setShowDailyDetailModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ScheduledClass | null>(null);
   const [selectedStudentClasses, setSelectedStudentClasses] = useState<ScheduledClass[]>([]);
+  const [selectedClassesToPay, setSelectedClassesToPay] = useState<ScheduledClass[]>([]);
   const [selectedDayData, setSelectedDayData] = useState<any[]>([]);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [recebimentoTab, setRecebimentoTab] = useState<'OVERDUE' | 'THIS_WEEK' | 'NEXT_WEEK'>('THIS_WEEK');
@@ -55,13 +58,25 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const startOfMonth = `${filterMonth}-01`;
-      const endOfMonth = `${filterMonth}-31`;
-      const [classesData, accountsData] = await Promise.all([
-        SupabaseService.getScheduledClasses(startOfMonth, endOfMonth),
+      const monthStr = filterMonth; // YYYY-MM
+      const start = `${monthStr}-01`;
+      const end = `${monthStr}-31`;
+
+      const [monthlyData, pendingData, accountsData] = await Promise.all([
+        SupabaseService.getScheduledClasses(start, end),
+        SupabaseService.getScheduledClasses(undefined, undefined, undefined, 'PENDING'),
         SupabaseService.getBankAccounts()
       ]);
-      setClasses(classesData);
+
+      // Merge único: aulas do mês + todas as pendências (mesmo de meses anteriores)
+      const merged = [...monthlyData];
+      pendingData.forEach(p => {
+        if (!merged.some(m => m.id === p.id)) {
+          merged.push(p);
+        }
+      });
+
+      setClasses(merged);
       setBankAccounts(accountsData);
     } catch (error) {
       onShowToast('Erro ao carregar dados financeiros');
@@ -146,12 +161,19 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   });
 
   const handleConfirmPayment = async (accountId: string) => {
-    if (!selectedClass) return;
+    const classIds = selectedClassesToPay.length > 0 
+      ? selectedClassesToPay.map(c => c.id!) 
+      : selectedClass ? [selectedClass.id!] : [];
+
+    if (classIds.length === 0) return;
+
     try {
-      const success = await SupabaseService.confirmPayment(selectedClass.id, accountId, paymentDate);
+      const success = await SupabaseService.confirmMultiplePayments(classIds, accountId, paymentDate);
       if (success) {
-        onShowToast('Pagamento confirmado com sucesso');
+        onShowToast(`${classIds.length === 1 ? 'Pagamento confirmado' : 'Pagamentos confirmados'} com sucesso!`);
         setShowPaymentModal(false);
+        setSelectedClassesToPay([]);
+        setSelectedClass(null);
         fetchData();
       }
     } catch (error) {
@@ -210,58 +232,118 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
     </div>
   );
 
-  const StudentClassesModal = () => (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
-      <div className="bg-[#0f172a] w-full max-w-2xl rounded-[3rem] border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-        <div className="p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-          <div>
-            <h3 className="text-xl font-black text-white mb-1 uppercase tracking-tight">Detalhamento de Aulas</h3>
-            <p className="text-xs text-emerald-500 font-bold uppercase tracking-widest">{selectedStudentClasses[0]?.studentName}</p>
+  const StudentClassesModal = () => {
+    const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(selectedStudentClasses.map(c => c.id!));
+
+    const toggleId = (id: string) => {
+      setLocalSelectedIds(prev => 
+        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+      );
+    };
+
+    const isTotal = localSelectedIds.length === selectedStudentClasses.length;
+    const totalLocal = selectedStudentClasses
+      .filter(c => localSelectedIds.includes(c.id!))
+      .reduce((acc, c) => acc + (c.totalValue || 0), 0);
+
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+        <div className="bg-[#0f172a] w-full max-w-2xl rounded-[3rem] border border-slate-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          <div className="p-8 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+            <div>
+              <h3 className="text-xl font-black text-white mb-1 uppercase tracking-tight">Confirmação de Recebimento</h3>
+              <p className="text-xs text-emerald-500 font-bold uppercase tracking-widest">{selectedStudentClasses[0]?.studentName}</p>
+            </div>
+            <button onClick={() => setShowStudentModal(false)} className="p-2 hover:bg-white/5 rounded-full text-gray-500 transition-colors"><XCircle size={24} /></button>
           </div>
-          <button onClick={() => setShowStudentModal(false)} className="p-2 hover:bg-white/5 rounded-full text-gray-500 transition-colors"><XCircle size={24} /></button>
-        </div>
-        <div className="p-4 max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800">
-                <th className="p-4 border-l-4 border-transparent">Data</th>
-                <th className="p-4">Aula/Matéria</th>
-                <th className="p-4 text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/30">
-              {selectedStudentClasses.map(c => (
-                <tr key={c.id} className="text-sm font-bold text-gray-300">
-                  <td className="p-4 border-l-4 border-emerald-500/20">{new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                  <td className="p-4 uppercase text-xs">
-                    {c.disciplineName || 'Aula Particular'} 
-                    <span className="block text-[9px] text-gray-500 font-normal">{c.startTime} - {c.endTime}</span>
-                  </td>
-                  <td className="p-4 text-right text-emerald-500">R$ {(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-8 bg-slate-900/50 border-t border-slate-800 flex justify-between items-center">
-          <p className="text-xs font-black text-gray-500 uppercase">Total: <span className="text-white ml-2">R$ {selectedStudentClasses.reduce((acc, c) => acc + (c.totalValue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
-          <button 
-            onClick={() => {
-              if (selectedStudentClasses.length > 1) {
-                onShowToast('Selecione uma aula por vez para confirmar o recebimento individual.');
-              } else {
-                setSelectedClass(selectedStudentClasses[0]);
-                setShowPaymentModal(true);
-              }
-            }}
-            className="px-8 py-3 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20"
-          >
-            Confirmar Individual
-          </button>
+          
+          <div className="px-8 py-4 bg-slate-900/30 border-b border-slate-800 flex justify-between items-center">
+            <button 
+              onClick={() => {
+                if (isTotal) setLocalSelectedIds([]);
+                else setLocalSelectedIds(selectedStudentClasses.map(c => c.id!));
+              }}
+              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+            >
+              {isTotal ? 'Desmarcar Todas' : 'Selecionar Todas'}
+            </button>
+            <div className="text-right">
+              <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Valor Selecionado</p>
+              <p className="text-lg font-black text-emerald-500">R$ {totalLocal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+
+          <div className="p-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+            <div className="space-y-2">
+              {selectedStudentClasses.map(c => {
+                const isSelected = localSelectedIds.includes(c.id!);
+                return (
+                  <div 
+                    key={c.id} 
+                    onClick={() => toggleId(c.id!)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isSelected ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                        isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-700 bg-slate-800'
+                      }`}>
+                        {isSelected && <Check size={14} strokeWidth={4} />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <CalendarIcon size={12} className="text-emerald-500" />
+                          <span className="text-sm font-bold text-white">
+                            {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">
+                          {c.disciplineName || 'Aula Particular'} — {c.startTime}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-white">R$ {(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="p-8 bg-slate-900/50 border-t border-slate-800 grid grid-cols-2 gap-4">
+            <button 
+              onClick={() => setShowStudentModal(false)}
+              className="px-8 py-4 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button 
+              disabled={localSelectedIds.length === 0}
+              onClick={() => {
+                const multipleClasses = selectedStudentClasses.filter(c => localSelectedIds.includes(c.id!));
+                if (multipleClasses.length === 1) {
+                  setSelectedClass(multipleClasses[0]);
+                  setShowStudentModal(false);
+                  setShowPaymentModal(true);
+                } else {
+                  // Para múltiplos, precisamos de um fluxo que receba a lista
+                  // Por enquanto vamos setar a lista no state pai para o PaymentModal usar
+                  setSelectedClassesToPay(multipleClasses);
+                  setShowStudentModal(false);
+                  setShowPaymentModal(true);
+                }
+              }}
+              className="px-8 py-4 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              {isTotal ? 'Receber Total' : 'Receber Parcial'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const DailyDetailModal = () => (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[120] flex items-center justify-center p-4">
