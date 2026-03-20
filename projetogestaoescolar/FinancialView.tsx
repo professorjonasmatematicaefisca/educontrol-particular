@@ -85,17 +85,18 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
     if (!acc[key]) {
       acc[key] = {
         studentName: curr.studentName,
-        totalValue: curr.totalValue,
+        totalValue: 0,
         count: 0,
         classes: [],
         latestDate: curr.classDate
       };
     }
     acc[key].count += 1;
+    acc[key].totalValue += (curr.totalValue || 0);
     acc[key].classes.push(curr);
     if (curr.classDate > acc[key].latestDate) acc[key].latestDate = curr.classDate;
     return acc;
-  }, {} as Record<string, { studentName: string | undefined, totalValue: number | undefined, count: number, classes: ScheduledClass[], latestDate: string }>);
+  }, {} as Record<string, { studentName: string | undefined, totalValue: number, count: number, classes: ScheduledClass[], latestDate: string }>);
 
   // Lógica de Filtro por Abas
   const today = new Date();

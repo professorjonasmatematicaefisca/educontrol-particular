@@ -302,7 +302,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
            <p className="text-sm font-black uppercase tracking-widest">Carregando conteúdos...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {activeTab === 'my_simulados' && simulados
             .filter(s => s.type === repoTab)
             .filter(s => {
@@ -393,7 +393,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
           ))}
 
           {/* STUDENT: full activity panel */}
-          {activeTab === 'assignments' && filteredAssignments.map(a => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredAssignments.map(a => {
             const isPending = a.status !== 'COMPLETED';
             const overdue = a.dueDate && new Date(a.dueDate) < new Date() && isPending;
             
