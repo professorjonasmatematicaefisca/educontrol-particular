@@ -22,7 +22,7 @@ interface SimuladoPlayerProps {
   studentId: string;
   onComplete: (score: number) => void;
   onCancel: () => void;
-  initialAnswers?: { questionId: string; selectedOption: string; }[];
+  initialAnswers?: { questionId: string; selectedOption: string; timeSpentSeconds?: number; }[];
   initialMode?: 'PLAYING' | 'RESULT' | 'REVIEW';
 }
 
@@ -41,6 +41,7 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
   const [isFinishing, setIsFinishing] = useState(false);
   const [mode, setMode] = useState<'PLAYING' | 'RESULT' | 'REVIEW'>(initialMode);
   const [score, setScore] = useState(0);
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
 
   // Timer para rastrear tempo total
   const [startTime] = useState(() => Date.now());
@@ -48,7 +49,17 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
   // Iniciar tentativa no banco
   useEffect(() => {
     if (initialMode !== 'PLAYING') {
-      setScore(calculateScore());
+      let calcScore = 0;
+      let correctCount = 0;
+      simulado.questions.forEach(q => {
+        const ans = answers.find(a => a.questionId === q.id);
+        const correctOpt = q.options.find((o: any) => o.isCorrect);
+        if (ans && ans.selectedOption === correctOpt?.id) {
+          correctCount++;
+        }
+      });
+      calcScore = Math.round((correctCount / simulado.questions.length) * 100);
+      setScore(calcScore);
       return;
     }
     const startAttempt = async () => {
@@ -66,7 +77,7 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
     startAttempt();
   }, [simulado.id, studentId, assignmentId]);
 
-  // Timer
+  // Timer decrescente total
   useEffect(() => {
     if (mode !== 'PLAYING') return;
     if (timeLeft <= 0) {
@@ -76,6 +87,22 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
     const timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [timeLeft, mode]);
+
+  // Cronômetro progressivo por questão
+  useEffect(() => {
+    if (mode !== 'PLAYING') return;
+    const currentQuestionId = simulado.questions[currentIdx]?.id;
+    if (!currentQuestionId) return;
+
+    const timer = setInterval(() => {
+      setQuestionTimes(prev => ({
+        ...prev,
+        [currentQuestionId]: (prev[currentQuestionId] || 0) + 1
+      }));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentIdx, mode, simulado.questions]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -116,11 +143,21 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
     const calculatedScore = calculateScore();
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     
+    // Mapear tempos por questão para os answers
+    const finalAnswers = simulado.questions.map(q => {
+      const existingAns = answers.find(a => a.questionId === q.id);
+      return {
+        questionId: q.id,
+        selectedOption: existingAns?.selectedOption || '',
+        timeSpentSeconds: questionTimes[q.id] || 0
+      };
+    });
+    
     try {
       if (assignmentId) {
         await SupabaseService.updateSimuladoAttempt(assignmentId, {
           score: calculatedScore,
-          answers,
+          answers: finalAnswers,
           status: 'COMPLETED',
           completedAt: new Date().toISOString(),
           timeSpentSeconds: timeSpent,

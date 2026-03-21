@@ -253,7 +253,11 @@ export interface SimuladoAssignment {
   score?: number; // Joined from attempts
   completedAt?: string; // Joined from attempts
   timeSpentSeconds?: number; // Joined from attempts
-  answers?: { questionId: string; selectedOption: string; }[]; // Joined from attempts
+  answers?: { 
+    questionId: string; 
+    selectedOption: string; 
+    timeSpentSeconds?: number; 
+  }[]; // Joined from attempts
   simulado?: Simulado; // Joined field
 }
 
@@ -269,6 +273,7 @@ export interface SimuladoAttempt {
   answers: {
     questionId: string;
     selectedOption: string;
+    timeSpentSeconds?: number;
   }[];
   status: 'IN_PROGRESS' | 'COMPLETED';
   timeSpentSeconds?: number;
