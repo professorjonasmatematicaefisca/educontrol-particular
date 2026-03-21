@@ -18,7 +18,8 @@ import {
   Eye,
   Filter,
   XCircle,
-  Copy
+  Copy,
+  ChevronLeft
 } from 'lucide-react';
 import { UserRole, Simulado, SimuladoAssignment, Student, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -57,8 +58,17 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
 
   // Filtros da aba de Resultados (Professor)
   const [resultsNameFilter, setResultsNameFilter] = useState('');
-  const [resultsDateFilter, setResultsDateFilter] = useState<'ALL' | 'TODAY' | 'WEEK'>('WEEK');
+  const [resultsDateFilter, setResultsDateFilter] = useState<'ALL' | 'TODAY' | 'WEEK'>('ALL');
   const [resultsStatusFilter, setResultsStatusFilter] = useState<'ALL' | 'COMPLETED' | 'PENDING' | 'OVERDUE'>('ALL');
+
+  // Navigation states for Results Tab
+  const [expandedClass, setExpandedClass] = useState<string | null>(null);
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExpandedClass(null);
+    setExpandedStudent(null);
+  }, [activeTab]);
 
   // Atribuição Modal
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -489,138 +499,234 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
 
           {activeTab === 'results' && userRole !== UserRole.STUDENT && (
             <div className="col-span-full">
-              <div className="flex flex-col md:flex-row gap-4 mb-8 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800 backdrop-blur-xl">
-                 <div className="flex-1 relative">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Buscar aluno por nome..." 
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
-                      value={resultsNameFilter}
-                      onChange={e => setResultsNameFilter(e.target.value)}
-                    />
+               {!expandedClass ? (
+                 <div className="space-y-6 animate-in fade-in duration-500">
+                    <h3 className="text-xl font-black text-white px-2">Turmas</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {uniqueClasses.map(className => (
+                        <div 
+                          key={className}
+                          onClick={() => setExpandedClass(className)}
+                          className="p-6 bg-slate-900/40 border border-slate-800 rounded-3xl hover:border-emerald-500/50 cursor-pointer transition-all group"
+                        >
+                           <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                                 <BookOpen size={24} />
+                              </div>
+                              <div className="flex flex-col">
+                                 <h4 className="text-lg font-black uppercase text-white">{className}</h4>
+                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                    {students.filter(s => s.className === className).length} Alunos
+                                 </span>
+                              </div>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
                  </div>
-                 
-                 <div className="flex items-center gap-2">
-                    <CalendarIcon size={16} className="text-slate-500 hidden md:block" />
-                    <select 
-                      className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
-                      value={resultsDateFilter}
-                      onChange={e => setResultsDateFilter(e.target.value as any)}
-                    >
-                       <option value="ALL">Todas as Datas</option>
-                       <option value="TODAY">Hoje</option>
-                       <option value="WEEK">Nesta Semana</option>
-                    </select>
+               ) : !expandedStudent ? (
+                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                    <div className="flex items-center gap-4 mb-6">
+                       <button 
+                         onClick={() => setExpandedClass(null)}
+                         className="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all group"
+                       >
+                         <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                       </button>
+                       <h3 className="text-xl font-black text-white">Turma: {expandedClass}</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {students
+                         .filter(s => s.className === expandedClass)
+                         .sort((a, b) => {
+                            const aAssigns = assignments.filter(assign => assign.studentId === a.id);
+                            const bAssigns = assignments.filter(assign => assign.studentId === b.id);
+                            const lastA = Math.max(...aAssigns.map(as => as.completedAt ? new Date(as.completedAt).getTime() : (as.dueDate ? new Date(as.dueDate).getTime() : new Date(as.createdAt || 0).getTime())), 0);
+                            const lastB = Math.max(...bAssigns.map(as => as.completedAt ? new Date(as.completedAt).getTime() : (as.dueDate ? new Date(as.dueDate).getTime() : new Date(as.createdAt || 0).getTime())), 0);
+                            return lastB - lastA;
+                         })
+                         .map(student => {
+                           const studentAssigns = assignments.filter(a => a.studentId === student.id);
+                           const pendingCount = studentAssigns.filter(a => a.status !== 'COMPLETED').length;
+                           return (
+                             <div 
+                               key={student.id}
+                               onClick={() => setExpandedStudent(student.id)}
+                               className="p-5 bg-slate-900/40 border border-slate-800 rounded-2xl hover:border-emerald-500/30 cursor-pointer transition-all group flex items-center justify-between"
+                             >
+                                <div className="flex items-center gap-4">
+                                   <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-500/10 group-hover:text-emerald-500 transition-all">
+                                      <User size={20} />
+                                   </div>
+                                   <div className="flex flex-col">
+                                      <h4 className="text-sm font-black text-white truncate max-w-[120px]" title={student.name}>{student.name}</h4>
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                                         {studentAssigns.length} Atividades
+                                      </span>
+                                   </div>
+                                </div>
+                                {pendingCount > 0 && (
+                                   <span className="px-2 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black rounded-lg border border-amber-500/20 whitespace-nowrap">
+                                      {pendingCount} Pendente{pendingCount !== 1 && 's'}
+                                   </span>
+                                )}
+                             </div>
+                           );
+                         })}
+                    </div>
                  </div>
+               ) : (
+                 <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 border-b border-slate-800/50 pb-6 mb-2">
+                       <div className="flex items-center gap-4">
+                          <button 
+                            onClick={() => setExpandedStudent(null)}
+                            className="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition-all group"
+                          >
+                            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                          </button>
+                          <div>
+                            <h3 className="text-xl font-black text-white">{students.find(s => s.id === expandedStudent)?.name}</h3>
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{expandedClass}</span>
+                          </div>
+                       </div>
+                    </div>
 
-                 <div className="flex items-center gap-2">
-                    <Filter size={16} className="text-slate-500 hidden md:block" />
-                    <select 
-                      className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
-                      value={resultsStatusFilter}
-                      onChange={e => setResultsStatusFilter(e.target.value as any)}
-                    >
-                       <option value="ALL">Todos os Status</option>
-                       <option value="COMPLETED">Concluídos</option>
-                       <option value="PENDING">Pendentes</option>
-                       <option value="OVERDUE">Atrasados</option>
-                    </select>
-                 </div>
-              </div>
+                    {/* Filter Bar */}
+                    <div className="flex flex-col md:flex-row gap-4 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-800 backdrop-blur-xl">
+                       <div className="flex-1 relative">
+                          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                          <input 
+                            type="text" 
+                            placeholder="Buscar atividade por título..." 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                            value={resultsNameFilter}
+                            onChange={e => setResultsNameFilter(e.target.value)}
+                          />
+                       </div>
+                       
+                       <div className="flex items-center gap-2">
+                          <CalendarIcon size={16} className="text-slate-500 hidden md:block" />
+                          <select 
+                            className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                            value={resultsDateFilter}
+                            onChange={e => setResultsDateFilter(e.target.value as any)}
+                          >
+                             <option value="ALL">Todas as Datas</option>
+                             <option value="TODAY">Hoje</option>
+                             <option value="WEEK">Nesta Semana</option>
+                          </select>
+                       </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {assignments
-                  .filter(a => {
-                    const isPending = a.status !== 'COMPLETED';
-                    const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
-                    const computedStatus = a.status === 'COMPLETED' ? 'COMPLETED' : overdue ? 'OVERDUE' : 'PENDING';
+                       <div className="flex items-center gap-2">
+                          <Filter size={16} className="text-slate-500 hidden md:block" />
+                          <select 
+                            className="bg-slate-950 border border-slate-800 rounded-xl py-3 px-4 text-xs font-bold text-white outline-none focus:border-emerald-500/50 transition-all"
+                            value={resultsStatusFilter}
+                            onChange={e => setResultsStatusFilter(e.target.value as any)}
+                          >
+                             <option value="ALL">Todos os Status</option>
+                             <option value="COMPLETED">Concluídos</option>
+                             <option value="PENDING">Pendentes</option>
+                             <option value="OVERDUE">Atrasados</option>
+                          </select>
+                       </div>
+                    </div>
 
-                    const stName = students.find(s => s.id === a.studentId)?.name?.toLowerCase() || '';
-                    if (resultsNameFilter && !stName.includes(resultsNameFilter.toLowerCase())) return false;
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {assignments
+                        .filter(a => a.studentId === expandedStudent)
+                        .filter(a => {
+                          const isPending = a.status !== 'COMPLETED';
+                          const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
+                          const computedStatus = a.status === 'COMPLETED' ? 'COMPLETED' : overdue ? 'OVERDUE' : 'PENDING';
 
-                    if (resultsDateFilter !== 'ALL') {
-                       const targetDate = a.completedAt ? new Date(a.completedAt) : (a.dueDate ? new Date(a.dueDate) : new Date());
-                       const now = new Date();
-                       if (resultsDateFilter === 'TODAY' && targetDate.toDateString() !== now.toDateString()) return false;
-                       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                       if (resultsDateFilter === 'WEEK' && targetDate < weekAgo) return false;
-                    }
+                          const titleMatches = a.simulado?.title?.toLowerCase()?.includes(resultsNameFilter.toLowerCase()) || a.simulado?.contentTopic?.toLowerCase()?.includes(resultsNameFilter.toLowerCase());
+                          if (resultsNameFilter && !titleMatches) return false;
 
-                    if (resultsStatusFilter !== 'ALL' && computedStatus !== resultsStatusFilter) return false;
-                    return true;
-                  })
-                  .sort((a, b) => {
-                     if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return -1;
-                     if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return 1;
-                     const tA = a.completedAt ? new Date(a.completedAt).getTime() : (a.dueDate ? new Date(a.dueDate).getTime() : 0);
-                     const tB = b.completedAt ? new Date(b.completedAt).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : 0);
-                     return tB - tA;
-                  })
-                  .slice(0, 8)
-                  .map(a => {
-                    const isPending = a.status !== 'COMPLETED';
-                    const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
-                    const stName = students.find(s => s.id === a.studentId)?.name || 'Aluno Desconhecido';
+                          if (resultsDateFilter !== 'ALL') {
+                             const targetDate = a.completedAt ? new Date(a.completedAt) : (a.dueDate ? new Date(a.dueDate) : new Date(a.createdAt || 0));
+                             const now = new Date();
+                             if (resultsDateFilter === 'TODAY' && targetDate.toDateString() !== now.toDateString()) return false;
+                             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                             if (resultsDateFilter === 'WEEK' && targetDate < weekAgo) return false;
+                          }
 
-                    const formatTime = (seconds?: number) => {
-                       if (!seconds) return '-- : --';
-                       const m = Math.floor(seconds / 60);
-                       const s = seconds % 60;
-                       return `${m}m ${s}s`;
-                    };
+                          if (resultsStatusFilter !== 'ALL' && computedStatus !== resultsStatusFilter) return false;
+                          return true;
+                        })
+                        .sort((a, b) => {
+                           if (a.status === 'COMPLETED' && b.status !== 'COMPLETED') return -1;
+                           if (a.status !== 'COMPLETED' && b.status === 'COMPLETED') return 1;
+                           const tA = a.completedAt ? new Date(a.completedAt).getTime() : (a.dueDate ? new Date(a.dueDate).getTime() : new Date(a.createdAt || 0).getTime());
+                           const tB = b.completedAt ? new Date(b.completedAt).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : new Date(b.createdAt || 0).getTime());
+                           return tB - tA;
+                        })
+                        .map(a => {
+                          const isPending = a.status !== 'COMPLETED';
+                          const overdue = isPending && a.dueDate && new Date(a.dueDate) < new Date();
 
-                    return (
-                      <div 
-                        key={a.id} 
-                        className={`flex flex-col gap-3 p-4 bg-slate-900/40 border rounded-2xl backdrop-blur-xl group transition-all ${
-                           !isPending 
-                             ? 'border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer' 
-                             : overdue 
-                               ? 'border-rose-500/20' 
-                               : 'border-amber-500/20'
-                        }`}
-                        onClick={() => { if (!isPending) handleOpenAssignment(a); }}
-                      >
-                         <div className="flex items-center justify-between">
-                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md border ${
-                               !isPending ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                               overdue ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
-                               'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                            }`}>
-                               {!isPending ? 'Concluído' : overdue ? 'Atrasado' : 'Pendente'}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                               <Timer size={10} /> 
-                               {!isPending && a.completedAt 
-                                 ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
-                                 : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
-                            </span>
-                         </div>
+                          const formatTime = (seconds?: number) => {
+                             if (!seconds) return '-- : --';
+                             const m = Math.floor(seconds / 60);
+                             const s = seconds % 60;
+                             return `${m}m ${s}s`;
+                          };
 
-                         <div className="flex flex-col">
-                            <span className="text-sm font-black text-white uppercase truncate" title={stName}>{stName}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={a.simulado?.title}>
-                               {a.simulado?.title || 'Atividade Excluída'}
-                            </span>
-                         </div>
-
-                         {!isPending && (
-                            <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800">
-                               <div className="flex flex-col">
-                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Nota</span>
-                                  <span className="text-sm font-black text-emerald-400">{a.score}%</span>
+                          return (
+                            <div 
+                              key={a.id} 
+                              className={`flex flex-col gap-3 p-4 bg-slate-900/40 border rounded-2xl backdrop-blur-xl group transition-all ${
+                                 !isPending 
+                                   ? 'border-emerald-500/20 hover:border-emerald-500/50 cursor-pointer' 
+                                   : overdue 
+                                     ? 'border-rose-500/20' 
+                                     : 'border-amber-500/20'
+                              }`}
+                              onClick={() => { if (!isPending) handleOpenAssignment(a); }}
+                            >
+                               <div className="flex items-center justify-between">
+                                  <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md border ${
+                                     !isPending ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                     overdue ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                     'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                  }`}>
+                                     {!isPending ? 'Concluído' : overdue ? 'Atrasado' : 'Pendente'}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                     <Timer size={10} /> 
+                                     {!isPending && a.completedAt 
+                                       ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
+                                       : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
+                                  </span>
                                </div>
+
                                <div className="flex flex-col">
-                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Tempo</span>
-                                  <span className="text-sm font-black text-sky-400">{formatTime(a.timeSpentSeconds)}</span>
+                                  <span className="text-sm font-black text-white uppercase truncate" title={a.simulado?.title}>{a.simulado?.title || 'Atividade Excluída'}</span>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mt-0.5" title={a.simulado?.contentTopic}>
+                                     {a.simulado?.contentTopic || 'Sem Tópico'}
+                                  </span>
                                </div>
+
+                               {!isPending && (
+                                  <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800">
+                                     <div className="flex flex-col">
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Nota</span>
+                                        <span className="text-sm font-black text-emerald-400">{a.score}%</span>
+                                     </div>
+                                     <div className="flex flex-col">
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Tempo</span>
+                                        <span className="text-sm font-black text-sky-400">{formatTime(a.timeSpentSeconds)}</span>
+                                     </div>
+                                  </div>
+                               )}
                             </div>
-                         )}
-                      </div>
-                    );
-                  })}
-              </div>
+                          );
+                        })}
+                    </div>
+                 </div>
+               )}
             </div>
           )}
         </div>
