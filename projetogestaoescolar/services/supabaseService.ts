@@ -1736,7 +1736,8 @@ export const SupabaseService = {
             paymentStatus: item.payment_status,
             paymentAccountId: item.payment_account_id,
             paidAt: item.paid_at,
-            pdfUrl: item.pdf_url
+            pdfUrl: item.pdf_url,
+            paymentDueDate: item.payment_due_date
         }));
     },
 
@@ -1757,7 +1758,14 @@ export const SupabaseService = {
     async updateScheduledClassStatus(
         id: string, 
         status: ScheduledClass['status'], 
-        extras?: { totalValue?: number, disciplineId?: string, subjectNotes?: string, pdfUrl?: string, paymentStatus?: ScheduledClass['paymentStatus'] }
+        extras?: { 
+            totalValue?: number, 
+            disciplineId?: string, 
+            subjectNotes?: string, 
+            pdfUrl?: string, 
+            paymentStatus?: ScheduledClass['paymentStatus'],
+            paymentDueDate?: string
+        }
     ): Promise<boolean> {
         const updateData: any = { status };
         if (extras?.totalValue !== undefined) updateData.total_value = extras.totalValue;
@@ -1765,8 +1773,41 @@ export const SupabaseService = {
         if (extras?.subjectNotes !== undefined) updateData.subject_notes = extras.subjectNotes;
         if (extras?.pdfUrl !== undefined) updateData.pdf_url = extras.pdfUrl;
         if (extras?.paymentStatus !== undefined) updateData.payment_status = extras.paymentStatus;
+        if (extras?.paymentDueDate !== undefined) updateData.payment_due_date = extras.paymentDueDate;
         
         const { error } = await supabase.from('scheduled_classes').update(updateData).eq('id', id);
+        
+        if (!error && status === 'COMPLETED') {
+            // Criar transação PENDING nas finanças pessoais
+            const { data: authData } = await supabase.auth.getUser();
+            const userId = authData?.user?.id;
+            if (userId) {
+                // Obter detalhes da aula para a descrição
+                const { data: classData } = await supabase
+                    .from('scheduled_classes')
+                    .select('*, students(name)')
+                    .eq('id', id)
+                    .single();
+                
+                if (classData) {
+                    const studentName = Array.isArray(classData.students) 
+                        ? classData.students[0]?.name 
+                        : (classData.students as any)?.name;
+
+                    await this.saveFinanceTransaction({
+                        amount: Number(extras?.totalValue || classData.total_value) || 0,
+                        date: extras?.paymentDueDate || new Date().toISOString().split('T')[0],
+                        category: 'Aulas Particulares',
+                        description: `Aula Particular - ${studentName || 'Aluno'}`,
+                        beneficiary: studentName || 'Aluno',
+                        type: 'INCOME',
+                        status: 'PENDING',
+                        class_id: id // Vinculando a transação à aula
+                    } as any, userId);
+                }
+            }
+        }
+        
         return !error;
     },
 
@@ -2136,7 +2177,7 @@ export const SupabaseService = {
         const userId = authData?.user?.id;
         if (!userId) return false;
 
-        // 1. Obter informações das aulas para o lançamento financeiro
+        // 1. Obter informações das aulas
         const { data: classes, error: classError } = await supabase
             .from('scheduled_classes')
             .select(`
@@ -2160,25 +2201,45 @@ export const SupabaseService = {
 
         if (updateError) return false;
 
-        // 3. Criar lançamento financeiro e atualizar saldo para cada aula
+        // 3. Atualizar ou Criar lançamento financeiro e atualizar saldo
         let totalAmount = 0;
         for (const cls of classes) {
             const amount = Number(cls.total_value) || 0;
             totalAmount += amount;
 
-            const studentName = Array.isArray(cls.students) 
-                ? cls.students[0]?.name 
-                : (cls.students as any)?.name;
+            // Tentar encontrar transação PENDING vinculada a esta aula
+            const { data: existingTx } = await supabase
+                .from('finance_transactions')
+                .select('id')
+                .eq('class_id', cls.id)
+                .eq('status', 'PENDING')
+                .maybeSingle();
 
-            await this.saveFinanceTransaction({
-                accountId: accountId,
-                amount: amount,
-                date: paidAt || new Date().toISOString().split('T')[0],
-                category: 'Aulas Particulares',
-                beneficiary: studentName || 'Aluno',
-                type: 'INCOME',
-                status: 'COMPLETED'
-            }, userId);
+            if (existingTx) {
+                // Atualizar transação existente
+                await supabase.from('finance_transactions').update({
+                    account_id: accountId,
+                    status: 'COMPLETED',
+                    date: paidAt || new Date().toISOString().split('T')[0]
+                }).eq('id', existingTx.id);
+            } else {
+                // Caso não exista (aula concluída antes dessa atualização), criar novo
+                const studentName = Array.isArray(cls.students) 
+                    ? cls.students[0]?.name 
+                    : (cls.students as any)?.name;
+
+                await this.saveFinanceTransaction({
+                    accountId: accountId,
+                    amount: amount,
+                    date: paidAt || new Date().toISOString().split('T')[0],
+                    category: 'Aulas Particulares',
+                    description: `Aula Particular - ${studentName || 'Aluno'}`,
+                    beneficiary: studentName || 'Aluno',
+                    type: 'INCOME',
+                    status: 'COMPLETED',
+                    class_id: cls.id
+                } as any, userId);
+            }
         }
 
         // 4. Atualizar o saldo da conta

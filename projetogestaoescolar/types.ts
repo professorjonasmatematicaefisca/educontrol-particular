@@ -253,6 +253,7 @@ export interface ScheduledClass {
   paymentAccountId?: string; // New: Bank account used
   paidAt?: string; // New: Payment date
   pdfUrl?: string; // New: Attachment associated with the completed class
+  paymentDueDate?: string; // New: Expected date for the payment
   disciplineName?: string; // Join field for UI convenience
 }
 

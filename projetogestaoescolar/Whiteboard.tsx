@@ -201,7 +201,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
         };
     };
 
-    const handleSave = async (isAuto = false) => {
+    const [showFinishModal, setShowFinishModal] = useState(false);
+    const [finalPaymentDueDate, setFinalPaymentDueDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const handleSave = async (isAuto = false, paymentDueDate?: string) => {
         if (!activeClassId) {
             onShowToast('Inicie uma aula para salvar!');
             return false;
@@ -269,7 +272,8 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
             if (pdfUrl) {
                 const success = await SupabaseService.updateScheduledClassStatus(activeClassId, 'COMPLETED', { 
                     pdfUrl,
-                    paymentStatus: 'PENDING'
+                    paymentStatus: 'PENDING',
+                    paymentDueDate: paymentDueDate || new Date().toISOString().split('T')[0]
                 });
                 if (success) {
                     onShowToast('Aula salva e concluída com sucesso!');
@@ -290,11 +294,10 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
     };
 
     const handleFinishClass = async () => {
-        if (confirm('Deseja realmente finalizar a aula? A lousa será salva e vinculada ao aluno automaticamente.')) {
-            const saved = await handleSave(true);
-            if (saved) {
-                onClose();
-            }
+        const saved = await handleSave(true, finalPaymentDueDate);
+        if (saved) {
+            setShowFinishModal(false);
+            onClose();
         }
     };
 
@@ -942,9 +945,9 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
                         <Save size={20} />
                     </button>
                     <button 
-                        onClick={handleFinishClass} 
+                        onClick={() => setShowFinishModal(true)} 
                         title="Finalizar Aula e Salvar"
-                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-white p-4 rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                        className="w-full bg-emerald-500 hover:bg-emerald-400 text-white p-4 rounded-2xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                         <CheckCircle size={24} />
                         <span className="text-[10px] font-black uppercase">Concluir</span>
@@ -1073,6 +1076,49 @@ export const Whiteboard: React.FC<WhiteboardProps> = ({ onShowToast, onClose, us
                         </div>
                         <div className="p-8 bg-slate-900/50 flex justify-end">
                             <button onClick={() => setShowStartModal(false)} className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all">Pular</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showFinishModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+                    <div className="bg-[#0f172a] w-full max-w-md rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 border-b border-slate-800 bg-emerald-500/10">
+                            <h3 className="text-xl font-black text-white mb-1 uppercase tracking-tight flex items-center gap-3">
+                                <CheckCircle className="text-emerald-500" /> Finalizar Aula
+                            </h3>
+                            <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">A lousa será salva e a aula concluída</p>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Previsão de Pagamento</label>
+                                <input 
+                                    type="date"
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                                    value={finalPaymentDueDate}
+                                    onChange={(e) => setFinalPaymentDueDate(e.target.value)}
+                                />
+                            </div>
+                            
+                            <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                                <p className="text-[10px] text-emerald-400 font-bold leading-relaxed text-center uppercase tracking-wide">
+                                    Ao confirmar, um lançamento pendente será criado no seu financeiro pessoal.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-8 flex gap-4">
+                            <button 
+                                onClick={() => setShowFinishModal(false)}
+                                className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleFinishClass}
+                                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                            >
+                                Confirmar
+                            </button>
                         </div>
                     </div>
                 </div>

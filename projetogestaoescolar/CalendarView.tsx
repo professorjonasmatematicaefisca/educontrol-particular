@@ -150,6 +150,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const [completionData, setCompletionData] = useState({
     disciplineId: '',
     subjectNotes: '',
+    paymentDueDate: new Date().toISOString().split('T')[0],
     pdfFile: null as File | null,
     uploading: false
   });
@@ -261,10 +262,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   };
 
   const openCompletionModal = (item: ScheduledClass) => {
+    const student = students.find(s => s.id === item.studentId);
+    let defaultDueDate = new Date().toISOString().split('T')[0];
+    
+    // Se o aluno tiver um dia de faturamento, tentar prever o vencimento
+    if (student?.billing_day) {
+      const now = new Date();
+      const dueDate = new Date(now.getFullYear(), now.getMonth(), student.billing_day);
+      if (dueDate < now) dueDate.setMonth(dueDate.getMonth() + 1);
+      defaultDueDate = dueDate.toISOString().split('T')[0];
+    }
+
     setSelectedClass(item);
     setCompletionData({
       disciplineId: item.disciplineId || '',
       subjectNotes: item.subjectNotes || '',
+      paymentDueDate: defaultDueDate,
       pdfFile: null,
       uploading: false
     });
@@ -298,7 +311,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         disciplineId: completionData.disciplineId,
         subjectNotes: completionData.subjectNotes,
         pdfUrl: pdfUrl || undefined,
-        paymentStatus: 'PENDING'
+        paymentStatus: 'PENDING',
+        paymentDueDate: completionData.paymentDueDate
       });
 
       if (success) {
@@ -1564,10 +1578,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">O que foi ministrado? (Observações)</label>
                 <textarea 
-                  className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 h-32"
+                  className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 h-24"
                   placeholder="Descreva o conteúdo da aula..."
                   value={completionData.subjectNotes}
                   onChange={(e) => setCompletionData({ ...completionData, subjectNotes: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Previsão de Pagamento</label>
+                <input 
+                  type="date"
+                  className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                  value={completionData.paymentDueDate}
+                  onChange={(e) => setCompletionData({ ...completionData, paymentDueDate: e.target.value })}
                 />
               </div>
 

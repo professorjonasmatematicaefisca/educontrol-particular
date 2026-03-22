@@ -106,15 +106,18 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
         totalValue: 0,
         count: 0,
         classes: [],
-        latestDate: curr.classDate
+        latestDate: curr.classDate,
+        latestDueDate: curr.paymentDueDate || curr.classDate
       };
     }
     acc[key].count += 1;
     acc[key].totalValue += (curr.totalValue || 0);
     acc[key].classes.push(curr);
     if (curr.classDate > acc[key].latestDate) acc[key].latestDate = curr.classDate;
+    const currentDueDate = curr.paymentDueDate || curr.classDate;
+    if (currentDueDate > acc[key].latestDueDate) acc[key].latestDueDate = currentDueDate;
     return acc;
-  }, {} as Record<string, { studentName: string | undefined, totalValue: number, count: number, classes: ScheduledClass[], latestDate: string }>);
+  }, {} as Record<string, { studentName: string | undefined, totalValue: number, count: number, classes: ScheduledClass[], latestDate: string, latestDueDate: string }>);
 
   // Lógica de Filtro por Abas
   const today = new Date();
@@ -125,12 +128,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   afterNextWeek.setDate(nextWeek.getDate() + 7);
 
   const filteredPendingList = Object.values(groupedPending).filter(item => {
-    const itemDate = new Date(item.latestDate + 'T00:00:00');
+    const itemDate = new Date(item.latestDueDate + 'T00:00:00');
     if (recebimentoTab === 'OVERDUE') return itemDate < today;
     if (recebimentoTab === 'THIS_WEEK') return itemDate >= today && itemDate < nextWeek;
     if (recebimentoTab === 'NEXT_WEEK') return itemDate >= nextWeek && itemDate < afterNextWeek;
     return true;
-  }).sort((a, b) => a.latestDate.localeCompare(b.latestDate));
+  }).sort((a, b) => a.latestDueDate.localeCompare(b.latestDueDate));
 
   // Paginação
   const cardsPerPage = 12;

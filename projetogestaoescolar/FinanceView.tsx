@@ -416,6 +416,20 @@ const getGoalIconComponent = (iconId?: string) => {
               </div>
             ) : activeTab === 'TRANSACTIONS' ? (
               <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl">
+                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Recebido (Mês)</div>
+                    <div className="text-xl font-black text-white">
+                      {formatCurrency(transactions.filter(t => t.type === 'INCOME' && t.status === 'COMPLETED').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
+                    </div>
+                  </div>
+                  <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl">
+                    <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Previsão de Recebimento (Pendente)</div>
+                    <div className="text-xl font-black text-white">
+                      {formatCurrency(transactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
+                    </div>
+                  </div>
+                </div>
                 {transactions.length === 0 ? (
                   <div className="text-center py-10 text-gray-500 text-sm">Nenhum lançamento registrado.</div>
                 ) : (
@@ -447,7 +461,12 @@ const getGoalIconComponent = (iconId?: string) => {
                                     {isIncome ? <ArrowUpRight size={16} /> : t.type === 'TRANSFER' ? <ArrowRightLeft size={16} /> : <ArrowDownRight size={16} />}
                                   </div>
                                   <div>
-                                    <div className="text-white font-medium text-sm">{t.description}</div>
+                                    <div className="text-white font-medium text-sm flex items-center gap-2">
+                                      {t.description}
+                                      {t.status === 'PENDING' && (
+                                        <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase rounded border border-amber-500/20">A Receber</span>
+                                      )}
+                                    </div>
                                     {t.beneficiary && <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isIncome ? 'De:' : 'Para:'} {t.beneficiary}</div>}
                                   </div>
                                 </div>
