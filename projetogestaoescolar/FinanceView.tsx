@@ -32,8 +32,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   
   const [newTransaction, setNewTransaction] = useState<Partial<FinanceTransaction>>({
-    amount: undefined, date: new Date().toISOString().split('T')[0], description: '', category: '', subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
+    amount: undefined, date: new Date().toISOString().split('T')[0], subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
   });
+  const [customCategory, setCustomCategory] = useState('');
+  const [customSubcategory, setCustomSubcategory] = useState('');
 
   const [newGoal, setNewGoal] = useState<Partial<FinanceGoal>>({
     name: '', targetAmount: undefined, currentAmount: 0, color: '#10b981', icon: 'Target', deadline: ''
@@ -212,7 +214,17 @@ const getGoalIconComponent = (iconId?: string) => {
       return;
     }
     
-    const transactionToSave = { ...newTransaction, userId };
+    const finalCategory = newTransaction.category === 'CUSTOM' ? customCategory : newTransaction.category;
+    const finalSubcategory = newTransaction.subcategory === 'CUSTOM' ? customSubcategory : newTransaction.subcategory;
+
+    const transactionToSave: Partial<FinanceTransaction> = {
+      ...newTransaction,
+      category: finalCategory || 'Outros',
+      subcategory: finalSubcategory,
+      description: finalCategory || 'Lançamento', // Fallback para descrição no banco
+      userId
+    };
+
     const success = await SupabaseService.saveFinanceTransaction(transactionToSave, userId);
     
     if (success) {
@@ -236,8 +248,10 @@ const getGoalIconComponent = (iconId?: string) => {
       setIsTransactionModalOpen(false);
       setNewTransaction({
         accountId: accounts[0]?.id || '', amount: undefined, date: new Date().toISOString().split('T')[0],
-        description: '', category: '', type: 'EXPENSE', status: 'COMPLETED'
+        category: '', subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
       });
+      setCustomCategory('');
+      setCustomSubcategory('');
       loadFinanceData();
     } else {
       onShowToast("Erro ao registrar lançamento.");
@@ -711,7 +725,6 @@ const getGoalIconComponent = (iconId?: string) => {
                       <ArrowUpRight size={18} /> Receita
                     </label>
                     <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors ${newTransaction.type === 'EXPENSE' ? 'border-red-500 bg-red-500/10 text-red-400 font-bold' : 'border-gray-800 text-gray-400 hover:border-gray-700'}`}>
-                      <input type="radio" className="hidden" name="type" checked={newTransaction.type === 'EXPENSE'} onChange={() => setNewTransaction({...newTransaction, type: 'EXPENSE'})} />
                       <ArrowDownRight size={18} /> Despesa
                     </label>
                   </div>
@@ -731,18 +744,13 @@ const getGoalIconComponent = (iconId?: string) => {
                         </div>
                       </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Descrição</label>
-                      <input required type="text" value={newTransaction.description} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado..." />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{newTransaction.type === 'INCOME' ? 'Recebido de' : 'Beneficiado / Pagamento para'}</label>
-                      <input type="text" value={newTransaction.beneficiary || ''} onChange={e => setNewTransaction({...newTransaction, beneficiary: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Nome da pessoa ou empresa" />
-                    </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{newTransaction.type === 'INCOME' ? 'Recebido de' : 'Pagamento para (Beneficiário)'}</label>
+                    <input type="text" value={newTransaction.beneficiary || ''} onChange={e => setNewTransaction({...newTransaction, beneficiary: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado, Cliente X..." />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Categoria</label>
                         <select required value={newTransaction.category} onChange={e => setNewTransaction({...newTransaction, category: e.target.value, subcategory: ''})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
@@ -750,31 +758,41 @@ const getGoalIconComponent = (iconId?: string) => {
                           {(newTransaction.type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
                             <option key={cat.name} value={cat.name}>{cat.name}</option>
                           ))}
+                          <option value="CUSTOM">+ Outra (Personalizada)</option>
                         </select>
+                        {newTransaction.category === 'CUSTOM' && (
+                          <input required type="text" value={customCategory} onChange={e => setCustomCategory(e.target.value)} className="w-full mt-2 bg-gray-900/50 border border-emerald-500/50 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" placeholder="Digite a nova categoria..." />
+                        )}
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Subcategoria</label>
                         <select value={newTransaction.subcategory} onChange={e => setNewTransaction({...newTransaction, subcategory: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none disabled:opacity-50" disabled={!newTransaction.category}>
-                          <option value="">Outros</option>
-                          {(newTransaction.type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)
+                          <option value="">Padrão / Outros</option>
+                          {newTransaction.category !== 'CUSTOM' && (newTransaction.type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)
                             .find(c => c.name === newTransaction.category)?.subcategories.map(sub => (
                             <option key={sub} value={sub}>{sub}</option>
                           ))}
+                          <option value="CUSTOM">+ Outra (Personalizada)</option>
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta</label>
-                        <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                          <option value="">Selecionar...</option>
-                          {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
-                          ))}
-                        </select>
+                        {newTransaction.subcategory === 'CUSTOM' && (
+                          <input required type="text" value={customSubcategory} onChange={e => setCustomSubcategory(e.target.value)} className="w-full mt-2 bg-gray-900/50 border border-emerald-500/50 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" placeholder="Digite a subcategoria..." />
+                        )}
                       </div>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta / Origem</label>
+                    <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
+                      <option value="">Selecionar...</option>
+                      {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="pt-4 flex gap-3 border-t border-gray-800">
                     <button type="button" onClick={() => setIsTransactionModalOpen(false)} className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-700 transition-colors">Cancelar</button>
-                    <button type="submit" className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-colors">Lançar</button>
+                    <button type="submit" className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-colors">Confirmar Lançamento</button>
                   </div>
                 </>
               )}
