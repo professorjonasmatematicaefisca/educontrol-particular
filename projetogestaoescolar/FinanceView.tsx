@@ -464,7 +464,7 @@ const getGoalIconComponent = (iconId?: string) => {
 
                           return (
                             <tr key={t.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group">
-                              <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                              <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">{new Date(t.date.split(' ')[0] + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                               <td className="py-4 px-4">
                                 <div className="flex items-center gap-2">
                                   <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : t.type === 'TRANSFER' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>

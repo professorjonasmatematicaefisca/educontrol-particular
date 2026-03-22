@@ -2222,7 +2222,7 @@ export const SupabaseService = {
                     date: paidAt || new Date().toISOString().split('T')[0],
                     category: 'Aula Particular',
                     subcategory: (cls as any).disciplines?.name || 'Geral',
-                    description: `Recebido de ${studentName || 'Aluno'}`,
+                    description: studentName || 'Aluno',
                     beneficiary: studentName || 'Aluno',
                     type: 'INCOME',
                     status: 'COMPLETED',
@@ -2240,9 +2240,15 @@ export const SupabaseService = {
 
         if (!accError && account) {
             const newBalance = Number(account.balance) + totalAmount;
-            await supabase.from('finance_accounts')
+            const { error: balanceUpdateError } = await supabase.from('finance_accounts')
                 .update({ balance: newBalance })
                 .eq('id', accountId);
+            
+            if (balanceUpdateError) {
+                console.error("Error updating account balance:", balanceUpdateError);
+            }
+        } else if (accError) {
+            console.error("Error fetching account for balance update:", accError);
         }
 
         return true;
