@@ -1842,6 +1842,22 @@ export const SupabaseService = {
         return true;
     },
 
+    async cancelScheduledClass(id: string, reason: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('scheduled_classes')
+            .update({ 
+                status: 'CANCELLED',
+                notes: reason ? `Cancelado: ${reason}` : 'Cancelado pelo professor'
+            })
+            .eq('id', id);
+        
+        if (error) {
+            console.error("Error cancelling scheduled class:", error);
+            return false;
+        }
+        return true;
+    },
+
     // --- SIMULADOS ---
     // Helper to map DB record to Simulado interface
     mapSimulado(item: any): Simulado {
@@ -2413,6 +2429,7 @@ export const SupabaseService = {
             name: item.name,
             type: item.type,
             balance: item.balance,
+            initialBalance: item.initial_balance || 0,
             userId: item.user_id,
             createdAt: item.created_at,
             creditLimit: item.credit_limit,
@@ -2433,6 +2450,7 @@ export const SupabaseService = {
             name: account.name,
             type: account.type,
             balance: account.balance,
+            initial_balance: account.initialBalance || account.balance || 0,
             user_id: effectiveUserId,
             credit_limit: account.creditLimit,
             due_date: account.dueDate,

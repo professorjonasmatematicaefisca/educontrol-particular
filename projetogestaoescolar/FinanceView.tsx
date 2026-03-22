@@ -28,7 +28,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
 
   // Forms state
    const [newAccount, setNewAccount] = useState<Partial<FinanceAccount>>({ 
-    name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' 
+    name: '', type: 'CHECKING', balance: 0, initialBalance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' 
   });
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   
@@ -206,7 +206,7 @@ const getGoalIconComponent = (iconId?: string) => {
       onShowToast(editingAccountId ? "Conta atualizada!" : "Conta cadastrada!");
       setIsAccountModalOpen(false);
       setEditingAccountId(null);
-      setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' });
+      setNewAccount({ name: '', type: 'CHECKING', balance: 0, initialBalance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' });
       setUseCustomLogo(false);
       loadFinanceData();
     } catch (err: any) {
@@ -237,6 +237,7 @@ const getGoalIconComponent = (iconId?: string) => {
       name: account.name,
       type: account.type,
       balance: account.balance,
+      initialBalance: account.initialBalance,
       creditLimit: account.creditLimit || 0,
       dueDate: account.dueDate || 1,
       closingDate: account.closingDate || 1,
@@ -703,9 +704,15 @@ const getGoalIconComponent = (iconId?: string) => {
                               </button>
                             </>
                           ) : (
-                            <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-end">
-                              <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Saldo Atual</div>
-                              <div className="text-2xl font-bold text-white">{formatCurrency(acc.balance)}</div>
+                            <div className="mt-4 pt-4 border-t border-gray-800 space-y-2">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-gray-500 uppercase tracking-wider font-semibold">Mensal/Inicial</span>
+                                <span className="text-gray-400 font-bold">{formatCurrency(acc.initialBalance)}</span>
+                              </div>
+                              <div className="flex justify-between items-end">
+                                <div className="text-xs text-emerald-500 uppercase tracking-wider font-black mb-1">Saldo Atual</div>
+                                <div className="text-2xl font-black text-white">{formatCurrency(acc.balance)}</div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -790,7 +797,7 @@ const getGoalIconComponent = (iconId?: string) => {
                 <Wallet className={editingAccountId ? "text-blue-400" : "text-emerald-400"} /> 
                 {editingAccountId ? "Editar Conta" : "Nova Conta"}
               </h3>
-              <button onClick={() => { setIsAccountModalOpen(false); setEditingAccountId(null); setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' }); }} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
+              <button onClick={() => { setIsAccountModalOpen(false); setEditingAccountId(null); setNewAccount({ name: '', type: 'CHECKING', balance: 0, initialBalance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' }); }} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
             </div>
 
             <div className="overflow-y-auto p-6 flex-1">
@@ -871,9 +878,23 @@ const getGoalIconComponent = (iconId?: string) => {
                     </div>
                   </>
                 ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Saldo Inicial</label>
-                    <input required type="number" step="0.01" value={newAccount.balance || ''} onChange={e => setNewAccount({...newAccount, balance: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="0.00" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Saldo Inicial</label>
+                      <input required type="number" step="0.01" value={newAccount.initialBalance || ''} onChange={e => {
+                        const val = Number(e.target.value);
+                        // Se for nova conta, o saldo atual acompanha o inicial
+                        if (!editingAccountId) {
+                          setNewAccount({...newAccount, initialBalance: val, balance: val});
+                        } else {
+                          setNewAccount({...newAccount, initialBalance: val});
+                        }
+                      }} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="0.00" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-emerald-500 uppercase tracking-wider mb-2">Saldo Atual</label>
+                      <input required type="number" step="0.01" value={newAccount.balance || ''} onChange={e => setNewAccount({...newAccount, balance: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-emerald-500/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-bold" placeholder="0.00" />
+                    </div>
                   </div>
                 )}
               </form>

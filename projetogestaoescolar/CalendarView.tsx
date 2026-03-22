@@ -170,15 +170,36 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const handleDeleteClass = async () => {
     if (!selectedDeleteId) return;
     try {
-      await SupabaseService.deleteScheduledClass(selectedDeleteId);
-      setClasses(prev => prev.filter(c => c.id !== selectedDeleteId));
-      onShowToast('Aula excluída com sucesso!');
+      if (registerDeleteHistory) {
+        const success = await SupabaseService.cancelScheduledClass(selectedDeleteId, deleteReason);
+        if (success) {
+          setClasses(prev => prev.map(c => 
+            c.id === selectedDeleteId 
+              ? { ...c, status: 'CANCELLED' as const, notes: deleteReason ? `Cancelado: ${deleteReason}` : 'Cancelado pelo professor' } 
+              : c
+          ));
+          onShowToast('Aula cancelada e registrada no histórico!');
+        } else {
+          onShowToast('Erro ao cancelar aula no banco de dados.');
+          return;
+        }
+      } else {
+        const success = await SupabaseService.deleteScheduledClass(selectedDeleteId);
+        if (success) {
+          setClasses(prev => prev.filter(c => c.id !== selectedDeleteId));
+          onShowToast('Aula excluída com sucesso!');
+        } else {
+          onShowToast('Erro ao excluir aula no banco de dados.');
+          return;
+        }
+      }
       setShowDeleteModal(false);
       setSelectedDeleteId(null);
       setDeleteReason('');
+      setRegisterDeleteHistory(false); // Reseta para o padrão (ou mantém conforme preferência, aqui eu reseto)
     } catch (err) {
       console.error(err);
-      onShowToast('Erro ao excluir aula.');
+      onShowToast('Erro ao processar exclusão.');
     }
   };
 

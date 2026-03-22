@@ -15,6 +15,7 @@ export interface FinanceAccount {
   name: string;
   type: 'WALLET' | 'CHECKING' | 'SAVINGS' | 'BROKERAGE' | 'CREDIT'; // 'WALLET', 'CHECKING', 'SAVINGS', 'BROKERAGE', 'CREDIT'
   balance: number;
+  initialBalance: number;
   userId: string;
   createdAt?: string;
 
