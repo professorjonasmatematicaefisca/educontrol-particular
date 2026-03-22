@@ -482,12 +482,22 @@ const getGoalIconComponent = (iconId?: string) => {
                                 </div>
                               </td>
                               <td className="py-4 px-4">
-                                <div className="flex flex-col">
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 w-fit">
-                                    <Tag size={12} /> {t.category}
-                                  </span>
-                                  {t.subcategory && <span className="text-[10px] text-gray-500 mt-1 ml-1">{t.subcategory}</span>}
-                                </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 w-fit">
+                                      <Tag size={12} /> {t.category}
+                                    </span>
+                                    {t.subcategory && (
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit ${
+                                        t.subcategory.toLowerCase().includes('matemática') 
+                                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' 
+                                          : t.subcategory.toLowerCase().includes('física')
+                                            ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                      }`}>
+                                        {t.subcategory}
+                                      </span>
+                                    )}
+                                  </div>
                               </td>
                               <td className="py-4 px-4 text-gray-400 text-sm">
                                 <div className="flex items-center gap-2">

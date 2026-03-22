@@ -51,6 +51,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [recebimentoTab, setRecebimentoTab] = useState<'OVERDUE' | 'THIS_WEEK' | 'NEXT_WEEK'>('THIS_WEEK');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -206,24 +207,37 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             />
           </div>
         </div>
-        <div className="p-8 space-y-4">
+        <div className="p-8 space-y-3">
           {bankAccounts.length > 0 ? (
             bankAccounts.map(account => (
               <button
                 key={account.id}
-                onClick={() => handleConfirmPayment(account.id)}
-                className="w-full p-4 bg-slate-800/40 hover:bg-emerald-500/10 border border-slate-700/50 hover:border-emerald-500/50 rounded-2xl flex items-center gap-4 transition-all group"
+                onClick={() => setSelectedAccountId(account.id)}
+                className={`w-full p-4 rounded-2xl flex items-center gap-4 transition-all group border ${
+                  selectedAccountId === account.id 
+                    ? 'bg-emerald-500/20 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
+                    : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60'
+                }`}
               >
-                <div className="w-12 h-12 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center overflow-hidden">
+                <div className={`w-12 h-12 rounded-xl border flex items-center justify-center overflow-hidden transition-all ${
+                  selectedAccountId === account.id ? 'bg-emerald-500 border-emerald-400' : 'bg-white/5 border-white/10 text-slate-500'
+                }`}>
                   {account.imageUrl ? (
                     <img src={account.imageUrl} className="w-full h-full object-contain" alt="" />
                   ) : (
-                    <DollarSign size={20} className="text-slate-500" />
+                    <DollarSign size={20} className={selectedAccountId === account.id ? 'text-white' : 'text-slate-500'} />
                   )}
                 </div>
                 <div className="text-left">
-                  <p className="text-white font-black uppercase text-sm group-hover:text-emerald-400 transition-colors">{account.name}</p>
+                  <p className={`font-black uppercase text-sm transition-colors ${
+                    selectedAccountId === account.id ? 'text-emerald-400' : 'text-white'
+                  }`}>{account.name}</p>
                 </div>
+                {selectedAccountId === account.id && (
+                  <div className="ml-auto bg-emerald-500 text-white rounded-full p-1">
+                    <Check size={12} strokeWidth={4} />
+                  </div>
+                )}
               </button>
             ))
           ) : (
@@ -232,8 +246,20 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             </div>
           )}
         </div>
-        <div className="p-8 bg-slate-900/50 flex justify-end">
-          <button onClick={() => setShowPaymentModal(false)} className="px-6 py-2 text-xs font-black text-gray-500 uppercase tracking-widest hover:text-white transition-colors">Fechar</button>
+        <div className="p-8 bg-slate-900/50 border-t border-slate-800 grid grid-cols-2 gap-4">
+          <button 
+            onClick={() => { setShowPaymentModal(false); setSelectedAccountId(null); }} 
+            className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-white transition-colors border border-slate-700 rounded-2xl"
+          >
+            Cancelar
+          </button>
+          <button 
+            disabled={!selectedAccountId}
+            onClick={() => handleConfirmPayment(selectedAccountId!)}
+            className="px-6 py-4 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          >
+            Confirmar (OK)
+          </button>
         </div>
       </div>
     </div>

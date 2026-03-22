@@ -2184,7 +2184,7 @@ export const SupabaseService = {
         const { error: updateError } = await supabase.from('scheduled_classes').update({
             payment_status: 'PAID',
             payment_account_id: accountId,
-            paid_at: paidAt || new Date().toISOString()
+            paid_at: paidAt // Usar a data exata informada
         }).in('id', classIds);
 
         if (updateError) return false;
@@ -2222,7 +2222,7 @@ export const SupabaseService = {
                     date: paidAt || new Date().toISOString().split('T')[0],
                     category: 'Aula Particular',
                     subcategory: (cls as any).disciplines?.name || 'Geral',
-                    description: `Aula Particular - ${studentName || 'Aluno'}`,
+                    description: `Recebido de ${studentName || 'Aluno'}`,
                     beneficiary: studentName || 'Aluno',
                     type: 'INCOME',
                     status: 'COMPLETED',
