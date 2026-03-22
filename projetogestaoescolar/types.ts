@@ -13,10 +13,15 @@ export type AppModule = 'TUTORING' | 'PERSONAL_FINANCE';
 export interface FinanceAccount {
   id: string;
   name: string;
-  type: string; // 'WALLET', 'CHECKING', 'SAVINGS', 'BROKERAGE', 'CREDIT'
+  type: 'WALLET' | 'CHECKING' | 'SAVINGS' | 'BROKERAGE' | 'CREDIT'; // 'WALLET', 'CHECKING', 'SAVINGS', 'BROKERAGE', 'CREDIT'
   balance: number;
   userId: string;
   createdAt?: string;
+
+  // Credit Card specific fields
+  creditLimit?: number;
+  dueDate?: number;
+  closingDate?: number;
 }
 
 export interface FinanceTransaction {

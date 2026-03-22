@@ -2296,7 +2296,10 @@ export const SupabaseService = {
             type: item.type,
             balance: item.balance,
             userId: item.user_id,
-            createdAt: item.created_at
+            createdAt: item.created_at,
+            creditLimit: item.credit_limit,
+            dueDate: item.due_date,
+            closingDate: item.closing_date
         }));
     },
 
@@ -2311,6 +2314,9 @@ export const SupabaseService = {
                 name: account.name,
                 type: account.type,
                 balance: account.balance,
+                credit_limit: account.creditLimit,
+                due_date: account.dueDate,
+                closing_date: account.closingDate,
                 user_id: user.id
             });
 
