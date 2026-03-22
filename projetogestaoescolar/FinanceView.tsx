@@ -104,16 +104,6 @@ const getGoalIconComponent = (iconId?: string) => {
       setTransactions(trans);
       setGoals(fetchedGoals);
       setClasses(fetchedClasses);
-
-      // Auto-revert Inácio's test class as requested by user
-      const inacioClass = fetchedClasses.find(c => c.studentName?.toLowerCase().includes('inácio') && c.status === 'COMPLETED');
-      if (inacioClass) {
-        console.log('Reverting Inacio class to SCHEDULED...');
-        await SupabaseService.updateScheduledClassStatus(inacioClass.id, 'SCHEDULED');
-        // Refresh classes after revert
-        const refreshedClasses = await SupabaseService.getScheduledClasses(undefined, undefined, undefined);
-        setClasses(refreshedClasses);
-      }
       
       if (accs.length > 0 && !newTransaction.accountId) {
         setNewTransaction(prev => ({ ...prev, accountId: accs[0].id }));
@@ -124,6 +114,25 @@ const getGoalIconComponent = (iconId?: string) => {
       onShowToast("Erro ao carregar dados. Verifique sua conexão ou migrations pendentes.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRevertInacio = async () => {
+    try {
+      const inacioClass = classes.find(c => c.studentName?.toLowerCase().includes('inácio') && c.status === 'COMPLETED');
+      if (inacioClass) {
+        const success = await SupabaseService.updateScheduledClassStatus(inacioClass.id, 'SCHEDULED');
+        if (success) {
+          onShowToast("Aula do Inácio revertida com sucesso!");
+          loadFinanceData();
+        } else {
+          onShowToast("Erro ao reverter aula.");
+        }
+      } else {
+        onShowToast("Nenhuma aula concluída do Inácio encontrada.");
+      }
+    } catch (e) {
+      onShowToast("Erro na operação.");
     }
   };
 
@@ -370,6 +379,12 @@ const getGoalIconComponent = (iconId?: string) => {
                 <p className="text-gray-400 mt-1">Gestão de Lançamentos e Metas</p>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={handleRevertInacio}
+                  className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-lg transition-colors border border-amber-500/20 font-medium text-sm flex items-center gap-2"
+                >
+                  <ArrowRightLeft size={16} /> Reverter Aula Inácio
+                </button>
                 <button
                   onClick={() => setIsTransactionModalOpen(true)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors shadow-lg shadow-emerald-900/20 font-medium flex items-center gap-2"
