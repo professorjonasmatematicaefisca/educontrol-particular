@@ -496,7 +496,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
     try {
-      const success = await SupabaseService.confirmMultiplePayments(selectedClassesForPayment, accountId, paymentDate);
+      const success = await SupabaseService.confirmMultiplePayments(selectedClassesForPayment, accountId, paymentDate, userId);
       if (success) {
         onShowToast('Pagamento(s) confirmado(s) com sucesso');
         setShowPaymentModal(false);

@@ -175,7 +175,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     if (classIds.length === 0) return;
 
     try {
-      const success = await SupabaseService.confirmMultiplePayments(classIds, accountId, paymentDate);
+      const success = await SupabaseService.confirmMultiplePayments(classIds, accountId, paymentDate, userId);
       if (success) {
         onShowToast(`${classIds.length === 1 ? 'Pagamento confirmado' : 'Pagamentos confirmados'} com sucesso!`);
         setShowPaymentModal(false);

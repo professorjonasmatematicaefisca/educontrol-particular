@@ -2160,10 +2160,9 @@ export const SupabaseService = {
         return this.confirmMultiplePayments([classId], accountId, paidAt);
     },
 
-    async confirmMultiplePayments(classIds: string[], accountId: string, paidAt?: string): Promise<boolean> {
-        const { data: authData } = await supabase.auth.getUser();
-        const userId = authData?.user?.id;
-        if (!userId) return false;
+    async confirmMultiplePayments(classIds: string[], accountId: string, paidAt?: string, userId?: string): Promise<boolean> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return false;
 
         // 1. Obter informações das aulas
         const { data: classes, error: classError } = await supabase
@@ -2225,8 +2224,8 @@ export const SupabaseService = {
                     beneficiary: studentName || 'Aluno',
                     type: 'INCOME',
                     status: 'COMPLETED',
-                    class_id: cls.id
-                } as any, userId);
+                    classId: cls.id
+                }, effectiveUserId);
             }
         }
 
@@ -2524,7 +2523,7 @@ export const SupabaseService = {
                 status: transaction.status,
                 user_id: effectiveUserId,
                 receipts: transaction.receipts,
-                class_id: (transaction as any).class_id
+                class_id: transaction.classId
             });
 
         if (error) {
