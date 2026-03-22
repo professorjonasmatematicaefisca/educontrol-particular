@@ -214,7 +214,7 @@ function App() {
           return <PortalDashboard userEmail={userEmail} userRole={userRole} onNavigate={handleViewChange} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
-      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} onViewChange={(view, context) => {
+      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} onViewChange={(view, context) => {
         if (view === 'WHITEBOARD' && context) setActiveWhiteboardContext(context);
         handleViewChange(view);
       }} />;

@@ -458,7 +458,7 @@ const getGoalIconComponent = (iconId?: string) => {
                     <div className="text-xl font-black text-white">
                       {(() => {
                         const pendingFromTransactions = transactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0);
-                        const pendingFromClasses = classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING' && !transactions.some(t => t.class_id === c.id)).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+                        const pendingFromClasses = classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING' && !transactions.some(t => t.classId === c.id)).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
                         return formatCurrency(pendingFromTransactions + pendingFromClasses);
                       })()}
                     </div>

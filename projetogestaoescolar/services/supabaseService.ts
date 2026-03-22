@@ -2130,28 +2130,16 @@ export const SupabaseService = {
 
     // --- BANK ACCOUNTS ---
     async getBankAccounts(): Promise<BankAccount[]> {
-        const { data: authData } = await supabase.auth.getUser();
-        const effectiveUserId = authData?.user?.id;
-        if (!effectiveUserId) return [];
-
-        const { data: accounts, error } = await supabase
-            .from('finance_accounts')
-            .select('*')
-            .eq('user_id', effectiveUserId)
-            .eq('status', 'ACTIVE')
-            .order('name', { ascending: true });
-
-        if (error) {
-            console.error("Error fetching bank accounts from finance_accounts:", error);
-            return [];
-        }
-
-        return accounts.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            imageUrl: item.logo_url,
-            createdAt: item.created_at
-        }));
+        const accounts = await this.getFinanceAccounts();
+        // Retornar contas que não estão explicitamente INATIVAS
+        return accounts
+            .filter(acc => acc.status !== 'INACTIVE')
+            .map(acc => ({
+                id: acc.id,
+                name: acc.name,
+                imageUrl: acc.logoUrl,
+                createdAt: acc.createdAt || ''
+            }));
     },
 
     async saveBankAccount(account: Partial<BankAccount>): Promise<boolean> {
@@ -2423,7 +2411,8 @@ export const SupabaseService = {
             creditLimit: item.credit_limit,
             dueDate: item.due_date,
             closingDate: item.closing_date,
-            logoUrl: item.logo_url
+            logoUrl: item.logo_url,
+            status: item.status
         }));
     },
 
@@ -2509,6 +2498,7 @@ export const SupabaseService = {
             type: item.type,
             status: item.status,
             userId: item.user_id,
+            classId: item.class_id,
             receipts: item.receipts,
             createdAt: item.created_at
         }));

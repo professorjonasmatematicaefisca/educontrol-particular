@@ -39,6 +39,7 @@ export interface FinanceTransaction {
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   status: 'PENDING' | 'COMPLETED';
   userId: string;
+  classId?: string;
   receipts?: string[];
   createdAt?: string;
 }

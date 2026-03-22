@@ -96,11 +96,12 @@ const getCardColor = (id: string) => {
 interface CalendarViewProps {
   onShowToast: (msg: string) => void;
   userEmail: string;
+  userId: string;
   userRole: UserRole;
   onViewChange?: (view: 'WHITEBOARD', context?: { classId: string; disciplineId: string }) => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userRole, onViewChange }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userId, userRole, onViewChange }) => {
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -192,6 +193,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
   const fetchBankAccounts = async () => {
     try {
+      // Usar o userId vindo das props para maior consistência
       const data = await SupabaseService.getBankAccounts();
       setBankAccounts(data);
     } catch (error) {
