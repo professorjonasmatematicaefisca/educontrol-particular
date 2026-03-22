@@ -311,6 +311,18 @@ const getGoalIconComponent = (iconId?: string) => {
     loadFinanceData();
   };
 
+  const handleDeleteGoal = async (id: string, name: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir a caixinha "${name}"?`)) {
+      const success = await SupabaseService.deleteFinanceGoal(id);
+      if (success) {
+        onShowToast("Caixinha excluída!");
+        loadFinanceData();
+      } else {
+        onShowToast("Erro ao excluir caixinha.");
+      }
+    }
+  };
+
   const handleSaveGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoal.name || !newGoal.targetAmount) return;
@@ -464,7 +476,7 @@ const getGoalIconComponent = (iconId?: string) => {
 
                           return (
                             <tr key={t.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group">
-                              <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">{new Date(t.date.split(' ')[0] + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                              <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">{new Date((t.date.includes('T') ? t.date.split('T')[0] : t.date.split(' ')[0]) + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                               <td className="py-4 px-4">
                                 <div className="flex items-center gap-2">
                                   <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : t.type === 'TRANSFER' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>
@@ -605,7 +617,16 @@ const getGoalIconComponent = (iconId?: string) => {
                                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: `${goal.color || '#10b981'}20`, color: goal.color || '#10b981' }}>
                                     {getGoalIconComponent(goal.icon)}
                                  </div>
-                                 {isComplete && <div className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Target size={12}/> Metida Atingida!</div>}
+                                 <div className="flex items-center gap-2">
+                                   {isComplete && <div className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Target size={12}/> Meta Atingida!</div>}
+                                   <button 
+                                     onClick={(e) => { e.stopPropagation(); handleDeleteGoal(goal.id, goal.name); }}
+                                     className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                     title="Excluir Caixinha"
+                                   >
+                                     <Trash2 size={16} />
+                                   </button>
+                                 </div>
                               </div>
                               <h3 className="text-white font-bold text-lg">{goal.name}</h3>
                               <p className="text-xs text-gray-500 mt-1">{goal.deadline ? `Agendado para ${new Date(goal.deadline).toLocaleDateString('pt-BR')}` : 'Sem prazo definido'}</p>
@@ -764,6 +785,7 @@ const getGoalIconComponent = (iconId?: string) => {
                       <ArrowUpRight size={18} /> Receita
                     </label>
                     <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors ${newTransaction.type === 'EXPENSE' ? 'border-red-500 bg-red-500/10 text-red-400 font-bold' : 'border-gray-800 text-gray-400 hover:border-gray-700'}`}>
+                      <input type="radio" className="hidden" name="type" checked={newTransaction.type === 'EXPENSE'} onChange={() => setNewTransaction({...newTransaction, type: 'EXPENSE'})} />
                       <ArrowDownRight size={18} /> Despesa
                     </label>
                   </div>
