@@ -6,12 +6,13 @@ import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, Credi
 interface FinanceViewProps {
   userEmail: string;
   userRole: UserRole;
+  userId: string;
   onShowToast: (msg: string) => void;
 }
 
 const UPLOAD_MAX_SIZE = 500 * 1024; // 500kb max para PNG base64
 
-export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, onShowToast }) => {
+export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, userId, onShowToast }) => {
   const [activeTab, setActiveTab] = useState<'TRANSACTIONS' | 'ACCOUNTS' | 'GOALS'>('TRANSACTIONS');
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
@@ -68,9 +69,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     setIsLoading(true);
     try {
       const [accs, trans, fetchedGoals] = await Promise.all([
-        SupabaseService.getFinanceAccounts(),
-        SupabaseService.getFinanceTransactions(),
-        SupabaseService.getFinanceGoals()
+        SupabaseService.getFinanceAccounts(userId),
+        SupabaseService.getFinanceTransactions(undefined, userId),
+        SupabaseService.getFinanceGoals(userId)
       ]);
       setAccounts(accs);
       setTransactions(trans);
@@ -123,7 +124,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     }
 
     try {
-      await SupabaseService.saveFinanceAccount(accountToSave);
+      await SupabaseService.saveFinanceAccount({ ...accountToSave, userId }, userId);
       onShowToast("Conta cadastrada com sucesso!");
       setIsAccountModalOpen(false);
       setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '' });
@@ -158,8 +159,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
       return;
     }
     
-    const transactionToSave = { ...newTransaction };
-    const success = await SupabaseService.saveFinanceTransaction(transactionToSave);
+    const transactionToSave = { ...newTransaction, userId };
+    const success = await SupabaseService.saveFinanceTransaction(transactionToSave, userId);
     
     if (success) {
       const account = accounts.find(a => a.id === transactionToSave.accountId);
@@ -175,7 +176,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
           else if (transactionToSave.type === 'EXPENSE') newBalance -= amountNum;
         }
             
-        await SupabaseService.saveFinanceAccount({ ...account, balance: newBalance });
+        await SupabaseService.saveFinanceAccount({ ...account, balance: newBalance }, userId);
       }
 
       onShowToast("Lançamento registrado!");
@@ -215,9 +216,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
         return;
       }
       
-      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance - amount });
-      await SupabaseService.saveFinanceTransaction({ accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Guarda na Caixinha: ${goal.name}`, category: 'Investimento/Metas', type: 'EXPENSE', status: 'COMPLETED' });
-      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) + amount });
+      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance - amount }, userId);
+      await SupabaseService.saveFinanceTransaction({ accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Guarda na Caixinha: ${goal.name}`, category: 'Investimento/Metas', type: 'EXPENSE', status: 'COMPLETED', userId }, userId);
+      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) + amount }, userId);
       
       onShowToast("Dinheiro guardado na caixinha!");
     } else {
@@ -226,9 +227,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
         return;
       }
 
-      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) - amount });
-      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance + amount });
-      await SupabaseService.saveFinanceTransaction({ accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Resgate da Caixinha: ${goal.name}`, category: 'Investimento/Metas', type: 'INCOME', status: 'COMPLETED' });
+      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) - amount }, userId);
+      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance + amount }, userId);
+      await SupabaseService.saveFinanceTransaction({ accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Resgate da Caixinha: ${goal.name}`, category: 'Investimento/Metas', type: 'INCOME', status: 'COMPLETED', userId }, userId);
 
       onShowToast("Dinheiro resgatado com sucesso!");
     }
@@ -241,10 +242,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     e.preventDefault();
     if (!newGoal.name || !newGoal.targetAmount) return;
 
-    const goalToSave = { ...newGoal, targetAmount: Number(newGoal.targetAmount) };
+    const goalToSave = { ...newGoal, targetAmount: Number(newGoal.targetAmount), userId };
     if (!goalToSave.deadline) delete goalToSave.deadline; 
 
-    const success = await SupabaseService.saveFinanceGoal(goalToSave);
+    const success = await SupabaseService.saveFinanceGoal(goalToSave, userId);
     if (success) {
       onShowToast("Caixinha criada!");
       setIsGoalModalOpen(false);

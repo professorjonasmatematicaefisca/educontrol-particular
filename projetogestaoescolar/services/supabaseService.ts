@@ -1114,7 +1114,7 @@ export const SupabaseService = {
     },
 
     // --- AUTH ---
-    async loginUser(email: string, password: string): Promise<{ success: boolean; role?: UserRole; name?: string; email?: string; photoUrl?: string }> {
+    async loginUser(email: string, password: string): Promise<{ success: boolean; role?: UserRole; name?: string; email?: string; photoUrl?: string; id?: string }> {
         const { data, error } = await supabase
             .from('users')
             .select('*')
@@ -1132,7 +1132,8 @@ export const SupabaseService = {
             role: data.role as UserRole,
             name: data.name,
             email: data.email,
-            photoUrl: data.photo_url
+            photoUrl: data.photo_url,
+            id: data.id
         };
     },
 
@@ -2275,14 +2276,14 @@ export const SupabaseService = {
 
     // --- PERSONAL FINANCE MODULE (MVP) ---
 
-    async getFinanceAccounts(): Promise<FinanceAccount[]> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+    async getFinanceAccounts(userId?: string): Promise<FinanceAccount[]> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return [];
 
         const { data, error } = await supabase
             .from('finance_accounts')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', effectiveUserId)
             .order('name', { ascending: true });
 
         if (error) {
@@ -2304,9 +2305,9 @@ export const SupabaseService = {
         }));
     },
 
-    async saveFinanceAccount(account: Partial<FinanceAccount>): Promise<boolean> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+    async saveFinanceAccount(account: Partial<FinanceAccount>, userId?: string): Promise<boolean> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) {
             throw new Error("Usuário não autenticado");
         }
 
@@ -2314,7 +2315,11 @@ export const SupabaseService = {
             name: account.name,
             type: account.type,
             balance: account.balance,
-            user_id: user.id
+            user_id: effectiveUserId,
+            credit_limit: account.creditLimit,
+            due_date: account.dueDate,
+            closing_date: account.closingDate,
+            logo_url: account.logoUrl
         };
 
         if (account.id) payload.id = account.id;
@@ -2348,14 +2353,14 @@ export const SupabaseService = {
         return true;
     },
 
-    async getFinanceTransactions(accountId?: string): Promise<FinanceTransaction[]> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+    async getFinanceTransactions(accountId?: string, userId?: string): Promise<FinanceTransaction[]> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return [];
 
         let query = supabase
             .from('finance_transactions')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', effectiveUserId)
             .order('date', { ascending: false });
 
         if (accountId) {
@@ -2386,9 +2391,9 @@ export const SupabaseService = {
         }));
     },
 
-    async saveFinanceTransaction(transaction: Partial<FinanceTransaction>): Promise<boolean> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
+    async saveFinanceTransaction(transaction: Partial<FinanceTransaction>, userId?: string): Promise<boolean> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return false;
 
         const { error } = await supabase
             .from('finance_transactions')
@@ -2403,7 +2408,7 @@ export const SupabaseService = {
                 tags: transaction.tags,
                 type: transaction.type,
                 status: transaction.status,
-                user_id: user.id,
+                user_id: effectiveUserId,
                 receipts: transaction.receipts
             });
 
@@ -2427,14 +2432,14 @@ export const SupabaseService = {
         return true;
     },
 
-    async getFinanceGoals(): Promise<FinanceGoal[]> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
+    async getFinanceGoals(userId?: string): Promise<FinanceGoal[]> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return [];
 
         const { data, error } = await supabase
             .from('finance_goals')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', effectiveUserId)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -2455,9 +2460,9 @@ export const SupabaseService = {
         }));
     },
 
-    async saveFinanceGoal(goal: Partial<FinanceGoal>): Promise<boolean> {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
+    async saveFinanceGoal(goal: Partial<FinanceGoal>, userId?: string): Promise<boolean> {
+        const effectiveUserId = userId || (await supabase.auth.getUser()).data.user?.id;
+        if (!effectiveUserId) return false;
 
         const { error } = await supabase
             .from('finance_goals')
@@ -2469,7 +2474,7 @@ export const SupabaseService = {
                 deadline: goal.deadline,
                 color: goal.color,
                 icon: goal.icon,
-                user_id: user.id
+                user_id: effectiveUserId
             });
 
         if (error) {

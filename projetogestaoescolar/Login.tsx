@@ -6,7 +6,7 @@ import { User, Lock, ArrowRight, Eye, EyeOff, Zap, TrendingUp, Rocket, Mail, Che
 import { LoadingSpinner } from './components/LoadingSpinner';
 
 interface LoginProps {
-    onLogin: (role: UserRole, email: string, name?: string, photoUrl?: string) => void;
+    onLogin: (role: UserRole, email: string, name?: string, photoUrl?: string, id?: string) => void;
 }
 
 type LoginView = 'LOGIN' | 'FORGOT_PASSWORD' | 'SUCCESS_SENT';
@@ -70,7 +70,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 }
 
                 if (found) {
-                    onLogin(UserRole.STUDENT, found.id, found.name);
+                    onLogin(UserRole.STUDENT, found.id, found.name, undefined, found.id);
                     return;
                 }
             }
@@ -79,7 +79,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             const result = await SupabaseService.loginUser(email, password);
 
             if (result.success && result.role && result.email) {
-                onLogin(result.role, result.email, result.name, result.photoUrl);
+                onLogin(result.role, result.email, result.name, result.photoUrl, (result as any).id);
             } else {
                 // Fallback para as credenciais padrão se o login falhar
                 if (email === 'coordenador@gmail.com' && password === '2026') {

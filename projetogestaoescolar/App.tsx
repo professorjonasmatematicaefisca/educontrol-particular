@@ -27,6 +27,7 @@ function App() {
   const [activeModule, setActiveModule] = useState<AppModule>('TUTORING');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [userId, setUserId] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [userPhoto, setUserPhoto] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -47,6 +48,7 @@ function App() {
     // 2. Session Restore from LocalStorage
     const storedRole = localStorage.getItem('educontrol_role');
     const storedEmail = localStorage.getItem('educontrol_email');
+    const storedId = localStorage.getItem('educontrol_user_id');
     const storedName = localStorage.getItem('educontrol_name');
     const storedPhoto = localStorage.getItem('educontrol_photo');
     const storedView = localStorage.getItem('educontrol_view');
@@ -55,6 +57,7 @@ function App() {
     if (storedRole && storedEmail) {
       setUserRole(storedRole as UserRole);
       setUserEmail(storedEmail);
+      if (storedId) setUserId(storedId);
       if (storedName) setUserName(storedName);
       if (storedPhoto) setUserPhoto(storedPhoto);
       setIsAuthenticated(true);
@@ -150,9 +153,10 @@ function App() {
     };
   }, [isAuthenticated]);
 
-  const handleLogin = (role: UserRole, email: string, name?: string, photoUrl?: string) => {
+  const handleLogin = (role: UserRole, email: string, name?: string, photoUrl?: string, id?: string) => {
     setUserRole(role);
     setUserEmail(email);
+    if (id) setUserId(id);
     if (name) setUserName(name);
     if (photoUrl) setUserPhoto(photoUrl);
     setIsAuthenticated(true);
@@ -160,6 +164,7 @@ function App() {
     // Persist Session
     localStorage.setItem('educontrol_role', role);
     localStorage.setItem('educontrol_email', email);
+    if (id) localStorage.setItem('educontrol_user_id', id);
     if (name) localStorage.setItem('educontrol_name', name);
     if (photoUrl) localStorage.setItem('educontrol_photo', photoUrl);
 
@@ -197,6 +202,7 @@ function App() {
     localStorage.removeItem('educontrol_email');
     localStorage.removeItem('educontrol_name');
     localStorage.removeItem('educontrol_photo');
+    localStorage.removeItem('educontrol_user_id');
     localStorage.removeItem('educontrol_view');
     localStorage.removeItem('educontrol_module');
   };
@@ -219,7 +225,7 @@ function App() {
         return <Dashboard onNavigateToStudent={() => {}} />;
       case 'FINANCE_HOME':
         if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
-          return <FinanceView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+          return <FinanceView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userId={userId} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
       case 'SIMULADO': return <SimuladoView 
