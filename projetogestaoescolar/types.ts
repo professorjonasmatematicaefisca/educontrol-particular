@@ -34,6 +34,7 @@ export interface FinanceTransaction {
   description: string;
   category: string;
   subcategory?: string;
+  beneficiary?: string;
   tags?: string[];
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   status: 'PENDING' | 'COMPLETED';

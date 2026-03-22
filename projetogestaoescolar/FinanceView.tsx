@@ -32,7 +32,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   
   const [newTransaction, setNewTransaction] = useState<Partial<FinanceTransaction>>({
-    amount: undefined, date: new Date().toISOString().split('T')[0], description: '', category: '', type: 'EXPENSE', status: 'COMPLETED'
+    amount: undefined, date: new Date().toISOString().split('T')[0], description: '', category: '', subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
   });
 
   const [newGoal, setNewGoal] = useState<Partial<FinanceGoal>>({
@@ -55,7 +55,27 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
     { id: 'GraduationCap', icon: <GraduationCap size={20} /> }
   ];
 
-  const getGoalIconComponent = (iconId?: string) => {
+const INCOME_CATEGORIES = [
+  { name: 'Salário', subcategories: ['Mensal', 'Bônus', '13º Salário'] },
+  { name: 'Investimentos', subcategories: ['Dividendos', 'Juros sobre Capital', 'Rendimento FII'] },
+  { name: 'Vendas', subcategories: ['Produtos', 'Serviços', 'Desapego/Usados'] },
+  { name: 'Empréstimos', subcategories: ['Recebimento de Empréstimo', 'Amortização'] },
+  { name: 'Outros', subcategories: ['Presente', 'Reembolso', 'Prêmio', 'Ajuste'] }
+];
+
+const EXPENSE_CATEGORIES = [
+  { name: 'Alimentação', subcategories: ['Supermercado', 'Restaurante', 'Lanches', 'Padaria', 'Feira'] },
+  { name: 'Moradia', subcategories: ['Aluguel/Parcela Casa', 'Condomínio', 'Energia', 'Água', 'Gás', 'Internet', 'Seguro Residencia', 'Manutenção Casa'] },
+  { name: 'Transporte', subcategories: ['Combustível', 'Estacionamento', 'Manutenção Veículo', 'Uber/Taxi', 'Seguro Veículo', 'IPVA/Licenciamento'] },
+  { name: 'Lazer', subcategories: ['Viagem', 'Passeio', 'Streamings/Assinaturas', 'Cinema', 'Festas'] },
+  { name: 'Saúde', subcategories: ['Medicamentos', 'Consultas', 'Plano de Saúde', 'Academia', 'Exames'] },
+  { name: 'Educação', subcategories: ['Curso/Faculdade', 'Livros', 'Mensalidade Escolar', 'Material Escolar'] },
+  { name: 'Financeiro', subcategories: ['Dívidas', 'Empréstimos Pagos', 'Multas/Juros', 'Tarifa Bancária', 'Impostos'] },
+  { name: 'Compras/Pessoal', subcategories: ['Vestuário', 'Beleza/Higiene', 'Eletrônicos', 'Presentes', 'Pet Shop'] },
+  { name: 'Outros', subcategories: ['Ajuste de Saldo', 'Diversos'] }
+];
+
+const getGoalIconComponent = (iconId?: string) => {
     const defaultIcon = <Target size={20} />;
     if (!iconId) return defaultIcon;
     const found = GOAL_ICONS.find(g => g.id === iconId);
@@ -386,13 +406,13 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                   <div className="text-center py-10 text-gray-500 text-sm">Nenhum lançamento registrado.</div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-800">
                           <th className="pb-3 px-4 font-semibold">Data</th>
-                          <th className="pb-3 px-4 font-semibold">Descrição</th>
+                          <th className="pb-3 px-4 font-semibold">Descrição / Beneficiário</th>
                           <th className="pb-3 px-4 font-semibold">Categoria</th>
-                          <th className="pb-3 px-4 font-semibold">Conta / Origem</th>
+                          <th className="pb-3 px-4 font-semibold">Conta</th>
                           <th className="pb-3 px-4 font-semibold text-right">Valor</th>
                         </tr>
                       </thead>
@@ -406,21 +426,31 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
 
                           return (
                             <tr key={t.id} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group">
-                              <td className="py-4 px-4 text-gray-300 text-sm">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
-                              <td className="py-4 px-4 text-white font-medium text-sm flex items-center gap-2">
-                                <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : t.type === 'TRANSFER' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>
-                                  {isIncome ? <ArrowUpRight size={16} /> : t.type === 'TRANSFER' ? <ArrowRightLeft size={16} /> : <ArrowDownRight size={16} />}
+                              <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : t.type === 'TRANSFER' ? 'bg-blue-500/10 text-blue-400' : 'bg-red-500/10 text-red-400'}`}>
+                                    {isIncome ? <ArrowUpRight size={16} /> : t.type === 'TRANSFER' ? <ArrowRightLeft size={16} /> : <ArrowDownRight size={16} />}
+                                  </div>
+                                  <div>
+                                    <div className="text-white font-medium text-sm">{t.description}</div>
+                                    {t.beneficiary && <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isIncome ? 'De:' : 'Para:'} {t.beneficiary}</div>}
+                                  </div>
                                 </div>
-                                <span className="truncate max-w-[150px] md:max-w-none block">{t.description}</span>
                               </td>
                               <td className="py-4 px-4">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700">
-                                  <Tag size={12} /> {t.category}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 w-fit">
+                                    <Tag size={12} /> {t.category}
+                                  </span>
+                                  {t.subcategory && <span className="text-[10px] text-gray-500 mt-1 ml-1">{t.subcategory}</span>}
+                                </div>
                               </td>
-                              <td className="py-4 px-4 text-gray-400 text-sm flex items-center gap-2">
-                                {acc ? getAccountIcon(acc) : <Wallet size={16}/>}
-                                <span className="truncate max-w-[100px] block">{acc?.name || 'Caixinha Externa'}</span>
+                              <td className="py-4 px-4 text-gray-400 text-sm">
+                                <div className="flex items-center gap-2">
+                                  {acc ? getAccountIcon(acc) : <Wallet size={16}/>}
+                                  <span className="truncate max-w-[80px] md:max-w-none block">{acc?.name || 'Caixinha'}</span>
+                                </div>
                               </td>
                               <td className={`py-4 px-4 font-bold text-sm text-right ${amountColor} whitespace-nowrap`}>
                                 {prefixStr}{formatCurrency(t.amount)}
@@ -701,23 +731,41 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                         </div>
                       </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Descrição</label>
-                    <input required type="text" value={newTransaction.description} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado..." />
-                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Descrição</label>
+                      <input required type="text" value={newTransaction.description} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado..." />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{newTransaction.type === 'INCOME' ? 'Recebido de' : 'Beneficiado / Pagamento para'}</label>
+                      <input type="text" value={newTransaction.beneficiary || ''} onChange={e => setNewTransaction({...newTransaction, beneficiary: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Nome da pessoa ou empresa" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Categoria</label>
-                        <div className="relative">
-                          <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                          <input required type="text" value={newTransaction.category} onChange={e => setNewTransaction({...newTransaction, category: e.target.value})} className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500" placeholder="Alimentação..." />
-                        </div>
+                        <select required value={newTransaction.category} onChange={e => setNewTransaction({...newTransaction, category: e.target.value, subcategory: ''})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
+                          <option value="">Selecionar...</option>
+                          {(newTransaction.type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
+                            <option key={cat.name} value={cat.name}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Subcategoria</label>
+                        <select value={newTransaction.subcategory} onChange={e => setNewTransaction({...newTransaction, subcategory: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none disabled:opacity-50" disabled={!newTransaction.category}>
+                          <option value="">Outros</option>
+                          {(newTransaction.type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES)
+                            .find(c => c.name === newTransaction.category)?.subcategories.map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta</label>
-                        <hr className="hidden" />
                         <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                          <option value="">Selecionar Conta</option>
+                          <option value="">Selecionar...</option>
                           {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
                             <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
                           ))}

@@ -2406,6 +2406,7 @@ export const SupabaseService = {
                 description: transaction.description,
                 category: transaction.category,
                 subcategory: transaction.subcategory,
+                beneficiary: transaction.beneficiary,
                 tags: transaction.tags,
                 type: transaction.type,
                 status: transaction.status,
