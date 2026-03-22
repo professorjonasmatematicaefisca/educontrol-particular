@@ -2275,11 +2275,14 @@ export const SupabaseService = {
 
     // --- PERSONAL FINANCE MODULE (MVP) ---
 
-    async getFinanceAccounts(userId: string): Promise<FinanceAccount[]> {
+    async getFinanceAccounts(): Promise<FinanceAccount[]> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
         const { data, error } = await supabase
             .from('finance_accounts')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', user.id)
             .order('name', { ascending: true });
 
         if (error) {
@@ -2298,6 +2301,9 @@ export const SupabaseService = {
     },
 
     async saveFinanceAccount(account: Partial<FinanceAccount>): Promise<boolean> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
         const { error } = await supabase
             .from('finance_accounts')
             .upsert({
@@ -2305,7 +2311,7 @@ export const SupabaseService = {
                 name: account.name,
                 type: account.type,
                 balance: account.balance,
-                user_id: account.userId
+                user_id: user.id
             });
 
         if (error) {
@@ -2328,11 +2334,14 @@ export const SupabaseService = {
         return true;
     },
 
-    async getFinanceTransactions(userId: string, accountId?: string): Promise<FinanceTransaction[]> {
+    async getFinanceTransactions(accountId?: string): Promise<FinanceTransaction[]> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
         let query = supabase
             .from('finance_transactions')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', user.id)
             .order('date', { ascending: false });
 
         if (accountId) {
@@ -2364,6 +2373,9 @@ export const SupabaseService = {
     },
 
     async saveFinanceTransaction(transaction: Partial<FinanceTransaction>): Promise<boolean> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
         const { error } = await supabase
             .from('finance_transactions')
             .upsert({
@@ -2377,7 +2389,7 @@ export const SupabaseService = {
                 tags: transaction.tags,
                 type: transaction.type,
                 status: transaction.status,
-                user_id: transaction.userId,
+                user_id: user.id,
                 receipts: transaction.receipts
             });
 
