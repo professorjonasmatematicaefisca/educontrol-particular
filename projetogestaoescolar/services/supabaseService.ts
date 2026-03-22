@@ -2170,7 +2170,8 @@ export const SupabaseService = {
             .select(`
                 id, 
                 total_value,
-                students (name)
+                students (name),
+                disciplines (name)
             `)
             .in('id', classIds);
 
@@ -2219,7 +2220,8 @@ export const SupabaseService = {
                     accountId: accountId,
                     amount: amount,
                     date: paidAt || new Date().toISOString().split('T')[0],
-                    category: 'Aulas Particulares',
+                    category: 'Aula Particular',
+                    subcategory: (cls as any).disciplines?.name || 'Geral',
                     description: `Aula Particular - ${studentName || 'Aluno'}`,
                     beneficiary: studentName || 'Aluno',
                     type: 'INCOME',
