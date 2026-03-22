@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, FinanceAccount, FinanceTransaction, FinanceGoal } from './types';
 import { SupabaseService } from './services/supabaseService';
 import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
@@ -117,6 +117,51 @@ const getGoalIconComponent = (iconId?: string) => {
     }
   };
 
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, typeof transactions> = {};
+    const ungrouped: typeof transactions = [];
+
+    transactions.forEach(t => {
+      const isParticular = t.category.toLowerCase().includes('aula particular');
+      if (isParticular && t.beneficiary && t.subcategory) {
+        const dateKey = t.date.includes('T') ? t.date.split('T')[0] : t.date.split(' ')[0];
+        const key = `${t.beneficiary}|${t.category}|${t.subcategory}|${dateKey}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(t);
+      } else {
+        ungrouped.push(t);
+      }
+    });
+
+    const displayItems: any[] = [];
+    
+    // Add ungrouped items first (they will be sorted anyway)
+    ungrouped.forEach(item => displayItems.push(item));
+
+    Object.entries(groups).forEach(([key, items]) => {
+      if (items.length > 1) {
+        const sum = items.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+        displayItems.push({
+          isGroup: true,
+          key,
+          items,
+          baseTransaction: items[0],
+          totalAmount: sum
+        });
+      } else {
+        displayItems.push(items[0]);
+      }
+    });
+
+    return displayItems.sort((a, b) => {
+      const DateA = a.isGroup ? a.baseTransaction.date : a.date;
+      const DateB = b.isGroup ? b.baseTransaction.date : b.date;
+      return new Date(DateB).getTime() - new Date(DateA).getTime();
+    });
+  }, [transactions]);
 
   const calculateTotalBalance = () => {
     return accounts
@@ -467,7 +512,84 @@ const getGoalIconComponent = (iconId?: string) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {transactions.map(t => {
+                        {groupedTransactions.map((item: any) => {
+                          if (item.isGroup) {
+                            const t = item.baseTransaction;
+                            const isIncome = t.type === 'INCOME';
+                            const amountColor = isIncome ? 'text-emerald-400' : 'text-red-400';
+                            const prefixStr = isIncome ? '+ ' : '- ';
+                            const isExpanded = expandedGroups[item.key];
+                            
+                            return (
+                              <React.Fragment key={item.key}>
+                                <tr onClick={() => setExpandedGroups({...expandedGroups, [item.key]: !isExpanded})} className="border-b border-gray-800/50 hover:bg-gray-800/40 bg-[#161530] transition-colors group cursor-pointer relative">
+                                  <td className="py-4 px-4 text-gray-300 text-sm whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`transition-transform duration-300 text-gray-500 scale-75 ${isExpanded ? 'rotate-90' : ''}`}><ArrowUpRight size={16} /></div>
+                                      {new Date((t.date.includes('T') ? t.date.split('T')[0] : t.date.split(' ')[0]) + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        <ArrowRightLeft size={16} />
+                                      </div>
+                                      <div>
+                                        <div className="text-white font-medium text-sm flex items-center gap-2">
+                                          {item.items.length} Recebimentos Agrupados
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{isIncome ? 'De:' : 'Para:'} {t.beneficiary}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4">
+                                    <div className="flex flex-col gap-1.5">
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700 w-fit">
+                                        <Tag size={12} /> {t.category}
+                                      </span>
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border w-fit ${
+                                        t.subcategory.toLowerCase().includes('matemática') ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : t.subcategory.toLowerCase().includes('física') ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                      }`}>
+                                        {t.subcategory}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4 text-gray-500 text-sm italic">
+                                    Várias contas
+                                  </td>
+                                  <td className={`py-4 px-4 font-bold text-sm text-right ${amountColor} whitespace-nowrap`}>
+                                    {prefixStr}{formatCurrency(item.totalAmount)}
+                                  </td>
+                                </tr>
+                                {isExpanded && item.items.map((child: any) => {
+                                  const childAcc = accounts.find(a => a.id === child.accountId);
+                                  return (
+                                    <tr key={child.id} className="border-b border-gray-800/20 bg-black/20 hover:bg-gray-800/30 transition-colors">
+                                      <td className="py-3 px-4 pl-8 text-gray-500 text-xs whitespace-nowrap flex items-center gap-2"><div className="w-4 border-b border-l h-4 rounded-bl border-gray-700 -mt-2"></div> {new Date((child.date.includes('T') ? child.date.split('T')[0] : child.date.split(' ')[0]) + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                      <td className="py-3 px-4 text-gray-400 text-xs">
+                                        <div className="flex items-center gap-2">
+                                          {child.description}
+                                          {child.status === 'PENDING' && <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase rounded border border-amber-500/20">A Receber</span>}
+                                        </div>
+                                      </td>
+                                      <td className="py-3 px-4 text-gray-500 text-xs">-</td>
+                                      <td className="py-3 px-4 text-gray-500 text-xs text-left">
+                                        <div className="flex items-center gap-2">
+                                          {childAcc ? getAccountIcon(childAcc) : <Wallet size={12}/>}
+                                          <span className="truncate max-w-[80px] md:max-w-none block">{childAcc?.name || 'Caixinha'}</span>
+                                        </div>
+                                      </td>
+                                      <td className={`py-3 px-4 font-bold text-xs text-right ${amountColor} whitespace-nowrap opacity-80`}>
+                                        {prefixStr}{formatCurrency(child.amount)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </React.Fragment>
+                            );
+                          }
+
+                          const t = item;
                           const acc = accounts.find(a => a.id === t.accountId);
                           const isIncome = t.type === 'INCOME';
                           
