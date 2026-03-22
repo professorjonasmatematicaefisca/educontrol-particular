@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole, FinanceAccount, FinanceTransaction, FinanceGoal } from './types';
 import { SupabaseService } from './services/supabaseService';
-import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2 } from 'lucide-react';
+import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 
 interface FinanceViewProps {
   userEmail: string;
@@ -26,9 +26,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [isTransferGoalModalOpen, setIsTransferGoalModalOpen] = useState(false);
 
   // Forms state
-  const [newAccount, setNewAccount] = useState<Partial<FinanceAccount>>({ 
-    name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '' 
+   const [newAccount, setNewAccount] = useState<Partial<FinanceAccount>>({ 
+    name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' 
   });
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   
   const [newTransaction, setNewTransaction] = useState<Partial<FinanceTransaction>>({
     amount: undefined, date: new Date().toISOString().split('T')[0], description: '', category: '', type: 'EXPENSE', status: 'COMPLETED'
@@ -124,10 +125,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
     }
 
     try {
-      await SupabaseService.saveFinanceAccount({ ...accountToSave, userId }, userId);
-      onShowToast("Conta cadastrada com sucesso!");
+      const accountData = { ...accountToSave, userId };
+      if (editingAccountId) {
+        accountData.id = editingAccountId;
+      }
+      await SupabaseService.saveFinanceAccount(accountData, userId);
+      onShowToast(editingAccountId ? "Conta atualizada!" : "Conta cadastrada!");
       setIsAccountModalOpen(false);
-      setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '' });
+      setEditingAccountId(null);
+      setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' });
       setUseCustomLogo(false);
       loadFinanceData();
     } catch (err: any) {
@@ -150,6 +156,33 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
       setNewAccount({...newAccount, logoUrl: reader.result as string});
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleEditAccount = (account: FinanceAccount) => {
+    setEditingAccountId(account.id);
+    setNewAccount({
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      creditLimit: account.creditLimit || 0,
+      dueDate: account.dueDate || 1,
+      closingDate: account.closingDate || 1,
+      logoUrl: account.logoUrl || '',
+      status: account.status || 'ACTIVE'
+    });
+    setIsAccountModalOpen(true);
+  };
+
+  const handleDeleteAccount = async (id: string, name: string) => {
+    if (window.confirm(`Tem certeza que deseja excluir a conta "${name}"? Todas as transações ligadas a ela poderão ser afetadas.`)) {
+      const success = await SupabaseService.deleteFinanceAccount(id);
+      if (success) {
+        onShowToast("Conta excluída!");
+        loadFinanceData();
+      } else {
+        onShowToast("Erro ao excluir conta.");
+      }
+    }
   };
 
   const handleSaveTransaction = async (e: React.FormEvent) => {
@@ -414,7 +447,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                       const usedPercentage = isCreditCard && acc.creditLimit ? Math.min((acc.balance / acc.creditLimit) * 100, 100) : 0;
                       
                       return (
-                        <div key={acc.id} className="bg-[#111029] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors relative overflow-hidden">
+                        <div key={acc.id} className={`bg-[#111029] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors relative overflow-hidden group ${acc.status === 'INACTIVE' ? 'opacity-60' : ''}`}>
                           {isCreditCard && (
                             <div className="absolute top-0 right-0 w-2 h-full" style={{ backgroundColor: 'rgba(52, 211, 153, 0.1)' }}>
                               <div className={`absolute bottom-0 w-full ${usedPercentage > 85 ? 'bg-red-500' : usedPercentage > 60 ? 'bg-amber-400' : 'bg-emerald-500'} transition-all`} style={{ height: `${usedPercentage}%` }}></div>
@@ -426,9 +459,16 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                                 {getAccountIcon(acc)}
                               </div>
                               <div>
-                                <h3 className="text-white font-bold">{acc.name}</h3>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-white font-bold">{acc.name}</h3>
+                                  {acc.status === 'INACTIVE' && <span className="bg-red-500/10 text-red-500 text-[10px] font-bold px-1.5 py-0.5 rounded border border-red-500/20 uppercase">Inativa</span>}
+                                </div>
                                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{acc.type}</p>
                               </div>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => handleEditAccount(acc)} className="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-lg border border-gray-700 shadow-lg" title="Editar Conta"><Edit2 size={14} /></button>
+                              <button onClick={() => handleDeleteAccount(acc.id, acc.name)} className="p-2 bg-gray-800 hover:bg-red-900/30 text-red-400 rounded-lg border border-gray-700 shadow-lg" title="Excluir Conta"><Trash2 size={14} /></button>
                             </div>
                           </div>
                           {isCreditCard ? (
@@ -520,8 +560,11 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1a1936] rounded-2xl w-full max-w-md border border-gray-800 shadow-2xl overflow-hidden shadow-emerald-900/10 flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-800 flex justify-between items-center shrink-0">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2"><Wallet className="text-emerald-400" /> Nova Conta</h3>
-              <button onClick={() => setIsAccountModalOpen(false)} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Wallet className={editingAccountId ? "text-blue-400" : "text-emerald-400"} /> 
+                {editingAccountId ? "Editar Conta" : "Nova Conta"}
+              </h3>
+              <button onClick={() => { setIsAccountModalOpen(false); setEditingAccountId(null); setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '', status: 'ACTIVE' }); }} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
             </div>
 
             <div className="overflow-y-auto p-6 flex-1">
@@ -536,9 +579,25 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                     <option value="CHECKING">Conta Corrente</option>
                     <option value="WALLET">Carteira (Dinheiro)</option>
                     <option value="SAVINGS">Poupança</option>
+                    <option value="BROKERAGE">Investimentos / Corretora</option>
                     <option value="CREDIT">Cartão de Crédito</option>
                   </select>
                 </div>
+
+                {/* STATUS TOGGLE */}
+                {editingAccountId && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Status da Conta</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setNewAccount({...newAccount, status: 'ACTIVE'})} className={`flex-1 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${newAccount.status === 'ACTIVE' ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-gray-900/50 border-gray-800 text-gray-500'}`}>
+                        <CheckCircle2 size={18} /> Ativa
+                      </button>
+                      <button type="button" onClick={() => setNewAccount({...newAccount, status: 'INACTIVE'})} className={`flex-1 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${newAccount.status === 'INACTIVE' ? 'bg-red-500/10 border-red-500 text-red-400' : 'bg-gray-900/50 border-gray-800 text-gray-500'}`}>
+                        <XCircle size={18} /> Inativa
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* LOGO UPLOADER */}
                 <div>
@@ -658,7 +717,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta</label>
                         <hr className="hidden" />
                         <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                          {accounts.map(acc => (
+                          <option value="">Selecionar Conta</option>
+                          {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
                             <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
                           ))}
                         </select>
@@ -747,7 +807,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">De qual conta corrente?</label>
                 <select required value={goalTransfer.accountId} onChange={e => setGoalTransfer({...goalTransfer, accountId: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500">
                   <option value="" disabled>Selecione uma conta...</option>
-                  {accounts.filter(a => a.type !== 'CREDIT').map(acc => (
+                  {accounts.filter(a => a.type !== 'CREDIT' && a.status !== 'INACTIVE').map(acc => (
                     <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
                   ))}
                 </select>

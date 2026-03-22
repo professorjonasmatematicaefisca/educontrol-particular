@@ -23,6 +23,7 @@ export interface FinanceAccount {
   dueDate?: number;
   closingDate?: number;
   logoUrl?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface FinanceTransaction {

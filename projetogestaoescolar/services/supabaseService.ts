@@ -2319,7 +2319,8 @@ export const SupabaseService = {
             credit_limit: account.creditLimit,
             due_date: account.dueDate,
             closing_date: account.closingDate,
-            logo_url: account.logoUrl
+            logo_url: account.logoUrl,
+            status: account.status || 'ACTIVE'
         };
 
         if (account.id) payload.id = account.id;
