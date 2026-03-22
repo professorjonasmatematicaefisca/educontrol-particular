@@ -10,15 +10,15 @@ interface FinanceViewProps {
 }
 
 const BANK_LOGOS = [
-  { name: 'Nubank', url: 'https://logodownload.org/wp-content/uploads/2019/08/nubank-logo-3.png' },
-  { name: 'Itaú', url: 'https://logodownload.org/wp-content/uploads/2014/05/itau-logo-1.png' },
-  { name: 'Bradesco', url: 'https://logodownload.org/wp-content/uploads/2014/05/bradesco-logo-1.png' },
-  { name: 'Santander', url: 'https://logodownload.org/wp-content/uploads/2014/05/santander-logo-1.png' },
-  { name: 'Banco do Brasil', url: 'https://logodownload.org/wp-content/uploads/2014/05/banco-do-brasil-logo-1.png' },
-  { name: 'Caixa', url: 'https://logodownload.org/wp-content/uploads/2014/02/caixa-economica-federal-logo-1.png' },
-  { name: 'Inter', url: 'https://logodownload.org/wp-content/uploads/2017/09/banco-inter-logo-1.png' },
-  { name: 'C6 Bank', url: 'https://logodownload.org/wp-content/uploads/2019/10/c6-bank-logo-1.png' },
-  { name: 'Sicredi', url: 'https://logodownload.org/wp-content/uploads/2017/11/sicredi-logo-1.png' },
+  { name: 'Nubank', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Nubank_logo_2021.svg/800px-Nubank_logo_2021.svg.png' },
+  { name: 'Itaú', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Ita%C3%BA_Unibanco_logo.svg/800px-Ita%C3%BA_Unibanco_logo.svg.png' },
+  { name: 'Bradesco', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Bradesco_logo.svg/800px-Bradesco_logo.svg.png' },
+  { name: 'Santander', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Banco_Santander_Logotipo.svg/800px-Banco_Santander_Logotipo.svg.png' },
+  { name: 'Banco do Brasil', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Banco_do_Brasil_logo.svg/800px-Banco_do_Brasil_logo.svg.png' },
+  { name: 'Caixa', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Caixa_Econ%C3%B4mica_Federal_logo.svg/1024px-Caixa_Econ%C3%B4mica_Federal_logo.svg.png' },
+  { name: 'Inter', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Banco_Inter_logo.png/800px-Banco_Inter_logo.png' },
+  { name: 'C6 Bank', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/C6_Bank_Logotipo.png/800px-C6_Bank_Logotipo.png' },
+  { name: 'Sicredi', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Sicredi_logo.svg/800px-Sicredi_logo.svg.png' },
 ];
 
 export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, onShowToast }) => {
@@ -133,18 +133,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     }
 
     try {
-      const success = await SupabaseService.saveFinanceAccount(accountToSave);
-      if (success) {
-        onShowToast("Conta cadastrada com sucesso!");
-        setIsAccountModalOpen(false);
-        setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '' });
-        setUseCustomLogo(false);
-        loadFinanceData();
-      } else {
-        onShowToast("Erro do Servidor. Verificou a tabela de Conta/Migração sql no supabase?");
-      }
+      await SupabaseService.saveFinanceAccount(accountToSave);
+      onShowToast("Conta cadastrada com sucesso!");
+      setIsAccountModalOpen(false);
+      setNewAccount({ name: '', type: 'CHECKING', balance: 0, creditLimit: 0, dueDate: 1, closingDate: 1, logoUrl: '' });
+      setUseCustomLogo(false);
+      loadFinanceData();
     } catch (err: any) {
-       onShowToast("Erro SQL: Faltam as migrações requeridas v2/v4 no Supabase.");
+      console.error(err);
+      onShowToast(`Erro no Banco: ${err.message}. Você rodou o SQL V4 no Supabase?`);
     }
   };
 
@@ -553,8 +550,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                         <span className="text-xs font-bold text-gray-500">Nenhum</span>
                       </button>
                       {BANK_LOGOS.map((bank, i) => (
-                        <button key={i} title={bank.name} type="button" onClick={() => setNewAccount({...newAccount, logoUrl: bank.url})} className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 overflow-hidden transition-all bg-white ${newAccount.logoUrl === bank.url ? 'border-emerald-500 scale-105 shadow-lg shadow-emerald-500/50' : 'border-gray-800 hover:border-gray-600'}`}>
-                          <img src={bank.url} alt={bank.name} className="w-8 h-8 object-contain" />
+                        <button key={i} title={bank.name} type="button" onClick={() => setNewAccount({...newAccount, logoUrl: bank.url})} className={`w-12 h-12 flex items-center justify-center rounded-xl border-2 px-1 transition-all bg-white ${newAccount.logoUrl === bank.url ? 'border-emerald-500 scale-105 shadow-lg shadow-emerald-500/50' : 'border-gray-800 hover:border-gray-600'}`}>
+                          <img src={bank.url} alt={bank.name} className="w-full h-full object-contain" />
                         </button>
                       ))}
                     </div>

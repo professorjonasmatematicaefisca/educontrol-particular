@@ -2306,16 +2306,18 @@ export const SupabaseService = {
 
     async saveFinanceAccount(account: Partial<FinanceAccount>): Promise<boolean> {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
+        if (!user) {
+            throw new Error("Usuário não autenticado");
+        }
 
         const payload: any = {
-            id: account.id,
             name: account.name,
             type: account.type,
             balance: account.balance,
             user_id: user.id
         };
 
+        if (account.id) payload.id = account.id;
         if (account.creditLimit !== undefined) payload.credit_limit = account.creditLimit;
         if (account.dueDate !== undefined) payload.due_date = account.dueDate;
         if (account.closingDate !== undefined) payload.closing_date = account.closingDate;
@@ -2327,8 +2329,9 @@ export const SupabaseService = {
 
         if (error) {
             console.error("Error saving finance account:", error);
-            return false;
+            throw new Error(error.message);
         }
+
         return true;
     },
 
