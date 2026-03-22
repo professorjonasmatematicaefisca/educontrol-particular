@@ -85,8 +85,10 @@ const getGoalIconComponent = (iconId?: string) => {
   };
 
   useEffect(() => {
-    loadFinanceData();
-  }, []);
+    if (userId) {
+      loadFinanceData();
+    }
+  }, [userId]);
 
   const loadFinanceData = async () => {
     setIsLoading(true);

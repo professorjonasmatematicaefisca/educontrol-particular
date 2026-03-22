@@ -95,7 +95,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   const totalRevenue = paidClasses.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
   const pendingRevenue = pendingClasses.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
   const scheduledRevenue = scheduledClasses.reduce((acc, curr) => acc + (Number(curr.totalValue) || (Number(curr.hourlyRate) * 1) || 0), 0);
-  const totalForecast = totalRevenue + pendingRevenue + scheduledRevenue;
+  const totalForecast = totalRevenue + pendingRevenue;
 
   // Agrupamento para a tabela de recebimentos
   const groupedPending = pendingClasses.reduce((acc, curr) => {
