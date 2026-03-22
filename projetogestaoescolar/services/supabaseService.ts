@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAssignment, SimuladoAttempt, BankAccount, Course, CourseItem } from '../types';
+import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAssignment, SimuladoAttempt, BankAccount, Course, CourseItem, FinanceAccount, FinanceTransaction } from '../types';
 import { SEED_STUDENTS, SEED_CLASSES, SEED_TEACHERS, SEED_OCCURRENCES } from './mockData';
 import { offlineService } from './offlineService';
 
@@ -2268,6 +2268,134 @@ export const SupabaseService = {
 
         if (error) {
             console.error("Error deleting course item:", error);
+            return false;
+        }
+        return true;
+    },
+
+    // --- PERSONAL FINANCE MODULE (MVP) ---
+
+    async getFinanceAccounts(userId: string): Promise<FinanceAccount[]> {
+        const { data, error } = await supabase
+            .from('finance_accounts')
+            .select('*')
+            .eq('user_id', userId)
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error("Error fetching finance accounts:", error);
+            return [];
+        }
+
+        return data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            balance: item.balance,
+            userId: item.user_id,
+            createdAt: item.created_at
+        }));
+    },
+
+    async saveFinanceAccount(account: Partial<FinanceAccount>): Promise<boolean> {
+        const { error } = await supabase
+            .from('finance_accounts')
+            .upsert({
+                id: account.id,
+                name: account.name,
+                type: account.type,
+                balance: account.balance,
+                user_id: account.userId
+            });
+
+        if (error) {
+            console.error("Error saving finance account:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async deleteFinanceAccount(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('finance_accounts')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting finance account:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async getFinanceTransactions(userId: string, accountId?: string): Promise<FinanceTransaction[]> {
+        let query = supabase
+            .from('finance_transactions')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false });
+
+        if (accountId) {
+            query = query.eq('account_id', accountId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error("Error fetching finance transactions:", error);
+            return [];
+        }
+
+        return data.map((item: any) => ({
+            id: item.id,
+            accountId: item.account_id,
+            amount: item.amount,
+            date: item.date,
+            description: item.description,
+            category: item.category,
+            subcategory: item.subcategory,
+            tags: item.tags,
+            type: item.type,
+            status: item.status,
+            userId: item.user_id,
+            receipts: item.receipts,
+            createdAt: item.created_at
+        }));
+    },
+
+    async saveFinanceTransaction(transaction: Partial<FinanceTransaction>): Promise<boolean> {
+        const { error } = await supabase
+            .from('finance_transactions')
+            .upsert({
+                id: transaction.id,
+                account_id: transaction.accountId,
+                amount: transaction.amount,
+                date: transaction.date,
+                description: transaction.description,
+                category: transaction.category,
+                subcategory: transaction.subcategory,
+                tags: transaction.tags,
+                type: transaction.type,
+                status: transaction.status,
+                user_id: transaction.userId,
+                receipts: transaction.receipts
+            });
+
+        if (error) {
+            console.error("Error saving finance transaction:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async deleteFinanceTransaction(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('finance_transactions')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting finance transaction:", error);
             return false;
         }
         return true;

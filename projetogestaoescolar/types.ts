@@ -8,6 +8,33 @@ export enum UserRole {
   GAME_STUDENT = 'GAME_STUDENT'
 }
 
+export type AppModule = 'TUTORING' | 'PERSONAL_FINANCE';
+
+export interface FinanceAccount {
+  id: string;
+  name: string;
+  type: string; // 'WALLET', 'CHECKING', 'SAVINGS', 'BROKERAGE', 'CREDIT'
+  balance: number;
+  userId: string;
+  createdAt?: string;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  accountId: string;
+  amount: number;
+  date: string;
+  description: string;
+  category: string;
+  subcategory?: string;
+  tags?: string[];
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
+  status: 'PENDING' | 'COMPLETED';
+  userId: string;
+  receipts?: string[];
+  createdAt?: string;
+}
+
 export interface TeacherClassAssignment {
   classId: string; // The name of the class (e.g., "9º Ano A")
   subject: string; // The name of the subject
@@ -279,7 +306,7 @@ export interface SimuladoAttempt {
   timeSpentSeconds?: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES' | 'WHITEBOARD';
+export type ViewState = 'DASHBOARD' | 'STUDENTS' | 'CALENDAR' | 'ADMIN' | 'SETTINGS' | 'FINANCIAL' | 'SIMULADO' | 'COURSES' | 'WHITEBOARD' | 'FINANCE_HOME';
 
 export interface RequestItem {
   id: string;

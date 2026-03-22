@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserRole, ViewState } from './types';
+import { UserRole, ViewState, AppModule } from './types';
 import {
   LayoutDashboard,
   GraduationCap,
@@ -39,6 +39,8 @@ interface LayoutProps {
   userPhoto?: string;
   userName?: string;
   unreadMessagesCount?: number;
+  activeModule: AppModule;
+  onModuleChange: (module: AppModule) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -49,7 +51,9 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   userPhoto,
   userName,
-  unreadMessagesCount = 0
+  unreadMessagesCount = 0,
+  activeModule,
+  onModuleChange
 }) => {
   const [isSidebarOpen, setSidebarOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState(navigator.onLine);
@@ -98,7 +102,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
   // Define allowed views per role
-  const rolePermissions: Record<UserRole, ViewState[]> = {
+  const tutoringRolePermissions: Record<UserRole, ViewState[]> = {
     [UserRole.COORDINATOR]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'WHITEBOARD', 'ADMIN', 'SETTINGS'],
     [UserRole.TEACHER]: ['DASHBOARD', 'CALENDAR', 'FINANCIAL', 'SIMULADO', 'COURSES', 'WHITEBOARD', 'SETTINGS'],
     [UserRole.MONITOR]: ['DASHBOARD', 'SETTINGS'],
@@ -107,7 +111,12 @@ export const Layout: React.FC<LayoutProps> = ({
     [UserRole.GAME_STUDENT]: ['SIMULADO'],
   };
 
-  const menuItems = [
+  const financeRolePermissions: Partial<Record<UserRole, ViewState[]>> = {
+    [UserRole.COORDINATOR]: ['FINANCE_HOME', 'SETTINGS'],
+    [UserRole.TEACHER]: ['FINANCE_HOME', 'SETTINGS'],
+  };
+
+  const tutoringMenuItems = [
     { view: 'DASHBOARD', icon: LayoutDashboard, label: 'Dashboard' },
     { view: 'CALENDAR', icon: Calendar, label: 'Calendário' },
     { view: 'FINANCIAL', icon: DollarSign, label: 'Financeiro' },
@@ -116,7 +125,15 @@ export const Layout: React.FC<LayoutProps> = ({
     { view: 'WHITEBOARD', icon: FileText, label: 'Lousa Digital' },
   ] as const;
 
-  const allowedViews = rolePermissions[role] || [];
+  const financeMenuItems = [
+    { view: 'FINANCE_HOME', icon: DollarSign, label: 'Lançamentos' },
+  ] as const;
+
+  const allowedViews = activeModule === 'TUTORING' 
+    ? (tutoringRolePermissions[role] || []) 
+    : (financeRolePermissions[role] || []);
+
+  const menuItems = activeModule === 'TUTORING' ? tutoringMenuItems : financeMenuItems;
 
   return (
     <div className="min-h-screen flex bg-gray-900 text-gray-100 font-sans selection:bg-emerald-500 selection:text-white">
@@ -144,7 +161,23 @@ export const Layout: React.FC<LayoutProps> = ({
               <h1 className="text-xl font-extrabold text-white tracking-tight leading-none">
                 JF EduControl
               </h1>
-              <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Aulas Particulares</span>
+              <div className="mt-1 flex items-center gap-1">
+                {(role === UserRole.COORDINATOR || role === UserRole.TEACHER) ? (
+                  <select
+                    value={activeModule}
+                    onChange={(e) => {
+                      onModuleChange(e.target.value as AppModule);
+                      onViewChange(e.target.value === 'TUTORING' ? 'DASHBOARD' : 'FINANCE_HOME');
+                    }}
+                    className="bg-emerald-500/10 text-[10px] font-bold text-emerald-400 tracking-[0.1em] uppercase border border-emerald-500/20 rounded-md px-1 py-0.5 outline-none cursor-pointer hover:bg-emerald-500/20 transition-colors w-full max-w-[140px]"
+                  >
+                    <option value="TUTORING" className="bg-slate-900">Aulas Particulares</option>
+                    <option value="PERSONAL_FINANCE" className="bg-slate-900">Finanças Pessoais</option>
+                  </select>
+                ) : (
+                  <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Aulas Particulares</span>
+                )}
+              </div>
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white">

@@ -12,7 +12,8 @@ import { FinancialView } from './FinancialView';
 import { SimuladoView } from './SimuladoView';
 import { CoursesView } from './CoursesView';
 import { Whiteboard } from './Whiteboard';
-import { UserRole, ViewState } from './types';
+import { FinanceView } from './FinanceView';
+import { UserRole, ViewState, AppModule } from './types';
 import { ErrorBoundary } from './ErrorBoundary';
 
 import { supabase } from './supabaseClient';
@@ -23,6 +24,7 @@ function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
+  const [activeModule, setActiveModule] = useState<AppModule>('TUTORING');
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
@@ -48,6 +50,7 @@ function App() {
     const storedName = localStorage.getItem('educontrol_name');
     const storedPhoto = localStorage.getItem('educontrol_photo');
     const storedView = localStorage.getItem('educontrol_view');
+    const storedModule = localStorage.getItem('educontrol_module');
 
     if (storedRole && storedEmail) {
       setUserRole(storedRole as UserRole);
@@ -57,6 +60,9 @@ function App() {
       setIsAuthenticated(true);
 
       // Restore view if stored, otherwise use role-based default
+      if (storedModule) {
+        setActiveModule(storedModule as AppModule);
+      }
       if (storedView) {
         setCurrentView(storedView as ViewState);
       } else {
@@ -174,6 +180,11 @@ function App() {
     localStorage.setItem('educontrol_view', view);
   };
 
+  const handleModuleChange = (module: AppModule) => {
+    setActiveModule(module);
+    localStorage.setItem('educontrol_module', module);
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null); // Reset to null
@@ -187,6 +198,7 @@ function App() {
     localStorage.removeItem('educontrol_name');
     localStorage.removeItem('educontrol_photo');
     localStorage.removeItem('educontrol_view');
+    localStorage.removeItem('educontrol_module');
   };
 
   const renderView = () => {
@@ -203,6 +215,11 @@ function App() {
       case 'FINANCIAL': 
         if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
           return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+        }
+        return <Dashboard onNavigateToStudent={() => {}} />;
+      case 'FINANCE_HOME':
+        if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
+          return <FinanceView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
       case 'SIMULADO': return <SimuladoView 
@@ -264,6 +281,8 @@ function App() {
           userPhoto={userPhoto}
           userName={userName}
           unreadMessagesCount={unreadCount}
+          activeModule={activeModule}
+          onModuleChange={handleModuleChange}
         >
           {renderView()}
         </Layout>
