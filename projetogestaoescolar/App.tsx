@@ -220,7 +220,7 @@ function App() {
       }} />;
       case 'FINANCIAL': 
         if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
-          return <FinancialView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} />;
+          return <FinancialView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
       case 'FINANCE_HOME':

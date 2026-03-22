@@ -194,7 +194,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   const fetchBankAccounts = async () => {
     try {
       // Usar o userId vindo das props para maior consistência
-      const data = await SupabaseService.getBankAccounts();
+      const data = await SupabaseService.getBankAccounts(userId);
       setBankAccounts(data);
     } catch (error) {
       console.error('Error fetching bank accounts:', error);

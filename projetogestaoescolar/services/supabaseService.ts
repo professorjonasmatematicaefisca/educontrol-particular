@@ -2129,8 +2129,8 @@ export const SupabaseService = {
     },
 
     // --- BANK ACCOUNTS ---
-    async getBankAccounts(): Promise<BankAccount[]> {
-        const accounts = await this.getFinanceAccounts();
+    async getBankAccounts(userId?: string): Promise<BankAccount[]> {
+        const accounts = await this.getFinanceAccounts(userId);
         // Retornar contas que não estão explicitamente INATIVAS
         return accounts
             .filter(acc => acc.status !== 'INACTIVE')

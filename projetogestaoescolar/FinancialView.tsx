@@ -30,10 +30,11 @@ import { SupabaseService } from './services/supabaseService';
 interface FinancialViewProps {
   onShowToast: (msg: string) => void;
   userEmail: string;
+  userId: string;
   userRole: UserRole;
 }
 
-export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => {
+export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userEmail, userId, userRole }) => {
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
       const [monthlyData, pendingData, accountsData] = await Promise.all([
         SupabaseService.getScheduledClasses(start, end),
         SupabaseService.getScheduledClasses(undefined, undefined, undefined, 'PENDING'),
-        SupabaseService.getBankAccounts()
+        SupabaseService.getBankAccounts(userId)
       ]);
 
       // Merge único: aulas do mês + todas as pendências (mesmo de meses anteriores)
