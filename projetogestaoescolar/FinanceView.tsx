@@ -17,6 +17,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [goals, setGoals] = useState<FinanceGoal[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals state
@@ -93,14 +94,26 @@ const getGoalIconComponent = (iconId?: string) => {
   const loadFinanceData = async () => {
     setIsLoading(true);
     try {
-      const [accs, trans, fetchedGoals] = await Promise.all([
+      const [accs, trans, fetchedGoals, fetchedClasses] = await Promise.all([
         SupabaseService.getFinanceAccounts(userId),
         SupabaseService.getFinanceTransactions(undefined, userId),
-        SupabaseService.getFinanceGoals(userId)
+        SupabaseService.getFinanceGoals(userId),
+        SupabaseService.getScheduledClasses(undefined, undefined, undefined)
       ]);
       setAccounts(accs);
       setTransactions(trans);
       setGoals(fetchedGoals);
+      setClasses(fetchedClasses);
+
+      // Auto-revert Inácio's test class as requested by user
+      const inacioClass = fetchedClasses.find(c => c.studentName?.toLowerCase().includes('inácio') && c.status === 'COMPLETED');
+      if (inacioClass) {
+        console.log('Reverting Inacio class to SCHEDULED...');
+        await SupabaseService.updateScheduledClassStatus(inacioClass.id, 'SCHEDULED');
+        // Refresh classes after revert
+        const refreshedClasses = await SupabaseService.getScheduledClasses(undefined, undefined, undefined);
+        setClasses(refreshedClasses);
+      }
       
       if (accs.length > 0 && !newTransaction.accountId) {
         setNewTransaction(prev => ({ ...prev, accountId: accs[0].id }));
@@ -428,7 +441,11 @@ const getGoalIconComponent = (iconId?: string) => {
                   <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl">
                     <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Previsão de Recebimento (Pendente)</div>
                     <div className="text-xl font-black text-white">
-                      {formatCurrency(transactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
+                      {(() => {
+                        const pendingFromTransactions = transactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                        const pendingFromClasses = classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING' && !transactions.some(t => t.class_id === c.id)).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+                        return formatCurrency(pendingFromTransactions + pendingFromClasses);
+                      })()}
                     </div>
                   </div>
                 </div>

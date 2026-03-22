@@ -2533,7 +2533,8 @@ export const SupabaseService = {
                 type: transaction.type,
                 status: transaction.status,
                 user_id: effectiveUserId,
-                receipts: transaction.receipts
+                receipts: transaction.receipts,
+                class_id: (transaction as any).class_id
             });
 
         if (error) {
