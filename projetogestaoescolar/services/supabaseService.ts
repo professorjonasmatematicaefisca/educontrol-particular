@@ -2299,7 +2299,8 @@ export const SupabaseService = {
             createdAt: item.created_at,
             creditLimit: item.credit_limit,
             dueDate: item.due_date,
-            closingDate: item.closing_date
+            closingDate: item.closing_date,
+            logoUrl: item.logo_url
         }));
     },
 
@@ -2307,18 +2308,22 @@ export const SupabaseService = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return false;
 
+        const payload: any = {
+            id: account.id,
+            name: account.name,
+            type: account.type,
+            balance: account.balance,
+            user_id: user.id
+        };
+
+        if (account.creditLimit !== undefined) payload.credit_limit = account.creditLimit;
+        if (account.dueDate !== undefined) payload.due_date = account.dueDate;
+        if (account.closingDate !== undefined) payload.closing_date = account.closingDate;
+        if (account.logoUrl !== undefined) payload.logo_url = account.logoUrl;
+
         const { error } = await supabase
             .from('finance_accounts')
-            .upsert({
-                id: account.id,
-                name: account.name,
-                type: account.type,
-                balance: account.balance,
-                credit_limit: account.creditLimit,
-                due_date: account.dueDate,
-                closing_date: account.closingDate,
-                user_id: user.id
-            });
+            .upsert(payload);
 
         if (error) {
             console.error("Error saving finance account:", error);

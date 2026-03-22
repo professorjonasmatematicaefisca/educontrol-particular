@@ -22,6 +22,7 @@ export interface FinanceAccount {
   creditLimit?: number;
   dueDate?: number;
   closingDate?: number;
+  logoUrl?: string;
 }
 
 export interface FinanceTransaction {
