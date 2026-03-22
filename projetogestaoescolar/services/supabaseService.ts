@@ -2089,52 +2089,113 @@ export const SupabaseService = {
 
     // --- BANK ACCOUNTS ---
     async getBankAccounts(): Promise<BankAccount[]> {
-        const { data, error } = await supabase.from('bank_accounts').select('*').order('name', { ascending: true });
-        if (error) throw error;
-        return data.map((item: any) => ({
+        const { data: authData } = await supabase.auth.getUser();
+        const effectiveUserId = authData?.user?.id;
+        if (!effectiveUserId) return [];
+
+        const { data: accounts, error } = await supabase
+            .from('finance_accounts')
+            .select('*')
+            .eq('user_id', effectiveUserId)
+            .eq('status', 'ACTIVE')
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error("Error fetching bank accounts from finance_accounts:", error);
+            return [];
+        }
+
+        return accounts.map((item: any) => ({
             id: item.id,
             name: item.name,
-            imageUrl: item.image_url,
+            imageUrl: item.logo_url,
             createdAt: item.created_at
         }));
     },
 
     async saveBankAccount(account: Partial<BankAccount>): Promise<boolean> {
-        const payload: any = {
+        // Redireciona para o novo sistema de finanças
+        return this.saveFinanceAccount({
+            id: account.id,
             name: account.name,
-            image_url: account.imageUrl
-        };
-        if (account.id) payload.id = account.id;
-        
-        const { error } = await supabase.from('bank_accounts').upsert(payload);
-        if (error) {
-            console.error("Error saving bank account:", error);
-            return false;
-        }
-        return true;
+            logoUrl: account.imageUrl,
+            type: 'CHECKING' // Default para contas legadas
+        });
     },
 
     async deleteBankAccount(id: string): Promise<boolean> {
-        const { error } = await supabase.from('bank_accounts').delete().eq('id', id);
-        return !error;
+        return this.deleteFinanceAccount(id);
     },
 
     async confirmPayment(classId: string, accountId: string, paidAt?: string): Promise<boolean> {
-        const { error } = await supabase.from('scheduled_classes').update({
-            payment_status: 'PAID',
-            payment_account_id: accountId,
-            paid_at: paidAt || new Date().toISOString()
-        }).eq('id', classId);
-        return !error;
+        return this.confirmMultiplePayments([classId], accountId, paidAt);
     },
 
     async confirmMultiplePayments(classIds: string[], accountId: string, paidAt?: string): Promise<boolean> {
-        const { error } = await supabase.from('scheduled_classes').update({
+        const { data: authData } = await supabase.auth.getUser();
+        const userId = authData?.user?.id;
+        if (!userId) return false;
+
+        // 1. Obter informações das aulas para o lançamento financeiro
+        const { data: classes, error: classError } = await supabase
+            .from('scheduled_classes')
+            .select(`
+                id, 
+                total_value,
+                students (name)
+            `)
+            .in('id', classIds);
+
+        if (classError || !classes) {
+            console.error("Error fetching classes for payment:", classError);
+            return false;
+        }
+
+        // 2. Atualizar status das aulas
+        const { error: updateError } = await supabase.from('scheduled_classes').update({
             payment_status: 'PAID',
             payment_account_id: accountId,
             paid_at: paidAt || new Date().toISOString()
         }).in('id', classIds);
-        return !error;
+
+        if (updateError) return false;
+
+        // 3. Criar lançamento financeiro e atualizar saldo para cada aula
+        let totalAmount = 0;
+        for (const cls of classes) {
+            const amount = Number(cls.total_value) || 0;
+            totalAmount += amount;
+
+            const studentName = Array.isArray(cls.students) 
+                ? cls.students[0]?.name 
+                : (cls.students as any)?.name;
+
+            await this.saveFinanceTransaction({
+                accountId: accountId,
+                amount: amount,
+                date: paidAt || new Date().toISOString().split('T')[0],
+                category: 'Aulas Particulares',
+                beneficiary: studentName || 'Aluno',
+                type: 'INCOME',
+                status: 'COMPLETED'
+            }, userId);
+        }
+
+        // 4. Atualizar o saldo da conta
+        const { data: account, error: accError } = await supabase
+            .from('finance_accounts')
+            .select('balance')
+            .eq('id', accountId)
+            .single();
+
+        if (!accError && account) {
+            const newBalance = Number(account.balance) + totalAmount;
+            await supabase.from('finance_accounts')
+                .update({ balance: newBalance })
+                .eq('id', accountId);
+        }
+
+        return true;
     },
 
     async uploadPDF(file: File): Promise<string | null> {

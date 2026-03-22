@@ -90,9 +90,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
   const paidClasses = completedClasses.filter(c => 
     c.paymentStatus === 'PAID' && (filterAccount === 'ALL' || c.paymentAccountId === filterAccount)
   );
+  const scheduledClasses = classes.filter(c => c.status === 'SCHEDULED');
 
   const totalRevenue = paidClasses.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
   const pendingRevenue = pendingClasses.reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+  const scheduledRevenue = scheduledClasses.reduce((acc, curr) => acc + (Number(curr.totalValue) || (Number(curr.hourlyRate) * 1) || 0), 0);
+  const totalForecast = totalRevenue + pendingRevenue + scheduledRevenue;
 
   // Agrupamento para a tabela de recebimentos
   const groupedPending = pendingClasses.reduce((acc, curr) => {
@@ -411,22 +414,27 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast }) => 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
         <div className="md:col-span-1 bg-slate-900/40 border border-slate-800 p-6 rounded-3xl backdrop-blur-xl relative overflow-hidden group">
-          <p className="text-emerald-500 font-black uppercase text-[9px] tracking-[0.2em] mb-1">Faturamento Recebido</p>
+          <p className="text-emerald-500 font-black uppercase text-[9px] tracking-[0.2em] mb-1">Recebido</p>
           <h4 className="text-2xl font-black text-white">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
           <p className="text-[9px] text-gray-500 font-bold mt-2 uppercase tracking-widest">{paidClasses.length} aulas confirmadas</p>
         </div>
 
         <div className="md:col-span-1 bg-slate-900/20 border border-slate-800/50 p-5 rounded-3xl backdrop-blur-md relative overflow-hidden group opacity-80">
-          <p className="text-amber-500/70 font-black uppercase text-[8px] tracking-[0.2em] mb-1">Aguardando Pagamento</p>
-          <h4 className="text-lg font-black text-white">R$ {pendingRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
-          <p className="text-[8px] text-gray-600 font-bold mt-1 uppercase tracking-widest">{pendingClasses.length} aulas pendentes</p>
+          <p className="text-amber-500/70 font-black uppercase text-[8px] tracking-[0.2em] mb-1">Pendente / Agendado</p>
+          <div className="flex flex-col">
+            <h4 className="text-lg font-black text-white">R$ {(pendingRevenue + scheduledRevenue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
+            <div className="flex gap-2 mt-1">
+              <span className="text-[7px] text-amber-500 font-bold uppercase tracking-widest">R$ {pendingRevenue.toLocaleString('pt-BR')} (feito)</span>
+              <span className="text-[7px] text-sky-500 font-bold uppercase tracking-widest">R$ {scheduledRevenue.toLocaleString('pt-BR')} (agendado)</span>
+            </div>
+          </div>
         </div>
 
         <div className="md:col-span-2 bg-emerald-500 p-6 rounded-3xl shadow-[0_0_30px_rgba(16,185,129,0.2)] relative overflow-hidden group h-full flex flex-col justify-center">
-          <div className="absolute top-0 right-0 p-4 opacity-10"><Search size={80} className="text-white" /></div>
-          <p className="text-emerald-900 font-black uppercase text-[9px] tracking-[0.2em] mb-1">Total do Período</p>
-          <h4 className="text-4xl font-black text-white">R$ {(totalRevenue + pendingRevenue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
-          <p className="text-[9px] text-emerald-900/70 font-bold mt-2 uppercase tracking-widest">{completedClasses.length} aulas totais</p>
+          <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp size={80} className="text-white" /></div>
+          <p className="text-emerald-900 font-black uppercase text-[9px] tracking-[0.2em] mb-1">Previsão Total do Mês</p>
+          <h4 className="text-4xl font-black text-white">R$ {totalForecast.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
+          <p className="text-[9px] text-emerald-900/70 font-bold mt-2 uppercase tracking-widest">Expectativa de faturamento para {filterMonth}</p>
         </div>
       </div>
 
