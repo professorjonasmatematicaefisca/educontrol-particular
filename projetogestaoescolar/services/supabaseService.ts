@@ -1,5 +1,5 @@
 import { supabase } from '../supabaseClient';
-import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAssignment, SimuladoAttempt, BankAccount, Course, CourseItem, FinanceAccount, FinanceTransaction } from '../types';
+import { Student, ClassRoom, Discipline, Teacher, Occurrence, ClassSession, SessionRecord, UserRole, StudentExit, PlanningModule, PlanningSchedule, StudyGuideItem, RequestItem, ScheduledClass, Simulado, SimuladoAssignment, SimuladoAttempt, BankAccount, Course, CourseItem, FinanceAccount, FinanceTransaction, FinanceGoal } from '../types';
 import { SEED_STUDENTS, SEED_CLASSES, SEED_TEACHERS, SEED_OCCURRENCES } from './mockData';
 import { offlineService } from './offlineService';
 
@@ -2414,6 +2414,71 @@ export const SupabaseService = {
 
         if (error) {
             console.error("Error deleting finance transaction:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async getFinanceGoals(): Promise<FinanceGoal[]> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from('finance_goals')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching finance goals:", error);
+            return [];
+        }
+
+        return data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            targetAmount: item.target_amount,
+            currentAmount: item.current_amount,
+            deadline: item.deadline,
+            color: item.color,
+            icon: item.icon,
+            userId: item.user_id,
+            createdAt: item.created_at
+        }));
+    },
+
+    async saveFinanceGoal(goal: Partial<FinanceGoal>): Promise<boolean> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { error } = await supabase
+            .from('finance_goals')
+            .upsert({
+                id: goal.id,
+                name: goal.name,
+                target_amount: goal.targetAmount,
+                current_amount: goal.currentAmount,
+                deadline: goal.deadline,
+                color: goal.color,
+                icon: goal.icon,
+                user_id: user.id
+            });
+
+        if (error) {
+            console.error("Error saving finance goal:", error);
+            return false;
+        }
+        return true;
+    },
+
+    async deleteFinanceGoal(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('finance_goals')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Error deleting finance goal:", error);
             return false;
         }
         return true;

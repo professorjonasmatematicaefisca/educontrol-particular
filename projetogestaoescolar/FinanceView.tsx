@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, FinanceAccount, FinanceTransaction } from './types';
+import { UserRole, FinanceAccount, FinanceTransaction, FinanceGoal } from './types';
 import { SupabaseService } from './services/supabaseService';
-import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, Crosshair, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, ChevronRight } from 'lucide-react';
 
 interface FinanceViewProps {
   userEmail: string;
@@ -10,14 +10,17 @@ interface FinanceViewProps {
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, onShowToast }) => {
-  const [activeTab, setActiveTab] = useState<'TRANSACTIONS' | 'ACCOUNTS'>('TRANSACTIONS');
+  const [activeTab, setActiveTab] = useState<'TRANSACTIONS' | 'ACCOUNTS' | 'GOALS'>('TRANSACTIONS');
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
+  const [goals, setGoals] = useState<FinanceGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [isTransferGoalModalOpen, setIsTransferGoalModalOpen] = useState(false);
 
   // Forms state
   const [newAccount, setNewAccount] = useState<Partial<FinanceAccount>>({ 
@@ -25,13 +28,33 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
   });
   
   const [newTransaction, setNewTransaction] = useState<Partial<FinanceTransaction>>({
-    amount: 0,
-    date: new Date().toISOString().split('T')[0],
-    description: '',
-    category: '',
-    type: 'EXPENSE',
-    status: 'COMPLETED'
+    amount: undefined, date: new Date().toISOString().split('T')[0], description: '', category: '', type: 'EXPENSE', status: 'COMPLETED'
   });
+
+  const [newGoal, setNewGoal] = useState<Partial<FinanceGoal>>({
+    name: '', targetAmount: undefined, currentAmount: 0, color: '#10b981', icon: 'Target', deadline: ''
+  });
+
+  const [goalTransfer, setGoalTransfer] = useState<{ goalId: string, accountId: string, amount: number | '', type: 'DEPOSIT' | 'WITHDRAW' }>({
+    goalId: '', accountId: '', amount: '', type: 'DEPOSIT'
+  });
+
+  const GOAL_ICONS = [
+    { id: 'Target', icon: <Target size={20} /> },
+    { id: 'PiggyBank', icon: <PiggyBank size={20} /> },
+    { id: 'Briefcase', icon: <Briefcase size={20} /> },
+    { id: 'Plane', icon: <Plane size={20} /> },
+    { id: 'Heart', icon: <Heart size={20} /> },
+    { id: 'Home', icon: <Home size={20} /> },
+    { id: 'GraduationCap', icon: <GraduationCap size={20} /> }
+  ];
+
+  const getGoalIconComponent = (iconId?: string) => {
+    const defaultIcon = <Target size={20} />;
+    if (!iconId) return defaultIcon;
+    const found = GOAL_ICONS.find(g => g.id === iconId);
+    return found ? found.icon : defaultIcon;
+  };
 
   useEffect(() => {
     loadFinanceData();
@@ -40,12 +63,18 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
   const loadFinanceData = async () => {
     setIsLoading(true);
     try {
-      const accs = await SupabaseService.getFinanceAccounts();
-      const trans = await SupabaseService.getFinanceTransactions();
+      const [accs, trans, fetchedGoals] = await Promise.all([
+        SupabaseService.getFinanceAccounts(),
+        SupabaseService.getFinanceTransactions(),
+        SupabaseService.getFinanceGoals()
+      ]);
       setAccounts(accs);
       setTransactions(trans);
+      setGoals(fetchedGoals);
+      
       if (accs.length > 0 && !newTransaction.accountId) {
         setNewTransaction(prev => ({ ...prev, accountId: accs[0].id }));
+        setGoalTransfer(prev => ({ ...prev, accountId: accs.filter(a => a.type !== 'CREDIT')[0]?.id || accs[0].id }));
       }
     } catch (e) {
       onShowToast("Erro ao carregar dados financeiros.");
@@ -55,10 +84,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
   };
 
   const calculateTotalBalance = () => {
-    // Exclude CREDIT accounts from cash total. Their balance is actually 'used limit' or invoice value.
+    // Exclude CREDIT accounts (because they are debt/invoices).
     return accounts
       .filter(a => a.type !== 'CREDIT')
       .reduce((acc, curr) => acc + Number(curr.balance), 0);
+  };
+
+  const calculateTotalGoals = () => {
+    return goals.reduce((acc, curr) => acc + Number(curr.currentAmount), 0);
   };
 
   const calculateMonthlyIncome = () => {
@@ -77,13 +110,11 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     e.preventDefault();
     const accountToSave = { ...newAccount };
     
-    // Clear unused fields based on type
     if (accountToSave.type !== 'CREDIT') {
       delete accountToSave.creditLimit;
       delete accountToSave.dueDate;
       delete accountToSave.closingDate;
     } else {
-      // Balance represents initial invoice / outstanding amount for a newly added credit card
       accountToSave.balance = accountToSave.balance || 0;
     }
 
@@ -100,8 +131,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
 
   const handleSaveTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTransaction.accountId) {
-      onShowToast("Selecione uma conta válida.");
+    if (!newTransaction.accountId || !newTransaction.amount) {
+      onShowToast("Preencha todos os campos obrigatórios.");
       return;
     }
     
@@ -109,19 +140,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
     const success = await SupabaseService.saveFinanceTransaction(transactionToSave);
     
     if (success) {
-      // Update account balance
       const account = accounts.find(a => a.id === transactionToSave.accountId);
       if (account) {
         let newBalance = Number(account.balance);
         const amountNum = Number(transactionToSave.amount);
 
         if (account.type === 'CREDIT') {
-          // In a Credit Card, EXPENSE INCREASES the balance (which is the invoice amount owed)
-          // INCOME or TRANSFER (payment) DECREASES the balance owed.
           if (transactionToSave.type === 'EXPENSE') newBalance += amountNum;
           else if (transactionToSave.type === 'INCOME' || transactionToSave.type === 'TRANSFER') newBalance -= amountNum;
         } else {
-          // Standard cash account behavior: INCOME increases, EXPENSE decreases
           if (transactionToSave.type === 'INCOME') newBalance += amountNum;
           else if (transactionToSave.type === 'EXPENSE') newBalance -= amountNum;
         }
@@ -132,17 +159,93 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
       onShowToast("Lançamento registrado!");
       setIsTransactionModalOpen(false);
       setNewTransaction({
-        accountId: accounts[0]?.id || '',
-        amount: 0,
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-        category: '',
-        type: 'EXPENSE',
-        status: 'COMPLETED'
+        accountId: accounts[0]?.id || '', amount: undefined, date: new Date().toISOString().split('T')[0],
+        description: '', category: '', type: 'EXPENSE', status: 'COMPLETED'
       });
       loadFinanceData();
     } else {
       onShowToast("Erro ao registrar lançamento.");
+    }
+  };
+
+  const openTransferGoalModal = (goalId: string, type: 'DEPOSIT' | 'WITHDRAW') => {
+    setGoalTransfer({ goalId, accountId: accounts.filter(a => a.type !== 'CREDIT')[0]?.id || '', amount: '', type });
+    setIsTransferGoalModalOpen(true);
+  };
+
+  const executeGoalTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!goalTransfer.amount || Number(goalTransfer.amount) <= 0) {
+      onShowToast("Digite um valor válido.");
+      return;
+    }
+    
+    const goal = goals.find(g => g.id === goalTransfer.goalId);
+    const originAcc = accounts.find(a => a.id === goalTransfer.accountId);
+    
+    if (!goal || !originAcc) return;
+
+    const amount = Number(goalTransfer.amount);
+
+    if (goalTransfer.type === 'DEPOSIT') {
+      if (originAcc.balance < amount) {
+        onShowToast("Saldo insuficiente na conta de origem.");
+        return;
+      }
+      
+      // Withdraw from Checking Account
+      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance - amount });
+      
+      // Auto-Track Transaction for Cashflow Accuracy
+      await SupabaseService.saveFinanceTransaction({
+        accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Guarda na Caixinha: ${goal.name}`,
+        category: 'Investimento/Metas', type: 'EXPENSE', status: 'COMPLETED'
+      });
+      
+      // Deposit in Goal
+      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) + amount });
+
+      onShowToast("Dinheiro guardado na caixinha!");
+    } else {
+      if (goal.currentAmount < amount) {
+        onShowToast("A caixinha não possui esse saldo.");
+        return;
+      }
+
+      // Withdraw from Goal
+      await SupabaseService.saveFinanceGoal({ ...goal, currentAmount: Number(goal.currentAmount) - amount });
+
+      // Deposit in Checking Account
+      await SupabaseService.saveFinanceAccount({ ...originAcc, balance: originAcc.balance + amount });
+      
+      // Auto-Track Transaction
+      await SupabaseService.saveFinanceTransaction({
+        accountId: originAcc.id, amount, date: new Date().toISOString(), description: `Resgate da Caixinha: ${goal.name}`,
+        category: 'Investimento/Metas', type: 'INCOME', status: 'COMPLETED'
+      });
+
+      onShowToast("Dinheiro resgatado com sucesso!");
+    }
+
+    setIsTransferGoalModalOpen(false);
+    loadFinanceData();
+  };
+
+  const handleSaveGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGoal.name || !newGoal.targetAmount) return;
+
+    const goalToSave = { ...newGoal, targetAmount: Number(newGoal.targetAmount) };
+    if (!goalToSave.deadline) delete goalToSave.deadline; // Optional
+
+    const success = await SupabaseService.saveFinanceGoal(goalToSave);
+    if (success) {
+      onShowToast("Caixinha criada!");
+      setIsGoalModalOpen(false);
+      setNewGoal({ name: '', targetAmount: undefined, currentAmount: 0, color: '#10b981', icon: 'Target', deadline: '' });
+      loadFinanceData();
+    } else {
+      onShowToast("Erro ao criar Caixinha.");
     }
   };
 
@@ -172,15 +275,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                   <DollarSign className="text-emerald-400" size={28} />
                   Finanças Pessoais
                 </h2>
-                <p className="text-gray-400 mt-1">Gestão de Lançamentos</p>
+                <p className="text-gray-400 mt-1">Gestão de Lançamentos e Metas</p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setIsAccountModalOpen(true)}
-                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 font-medium flex items-center gap-2"
-                >
-                  <Wallet size={18} /> Nova Conta
-                </button>
                 <button
                   onClick={() => setIsTransactionModalOpen(true)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors shadow-lg shadow-emerald-900/20 font-medium flex items-center gap-2"
@@ -191,18 +288,25 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
             </div>
 
             {/* Metric Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-[#1a1936] rounded-xl border border-gray-800 p-6 flex flex-col justify-center">
                 <div className="flex items-center gap-2 text-gray-400 mb-2">
                   <Wallet size={16} />
-                  <span className="text-sm font-semibold uppercase tracking-wider">Saldo Líquido</span>
+                  <span className="text-sm font-semibold uppercase tracking-wider">Saldo em Contas</span>
                 </div>
                 <span className="text-3xl font-bold text-white">{formatCurrency(calculateTotalBalance())}</span>
-                <span className="text-xs text-gray-500 mt-1">*Cartões de crédito não inclusos</span>
+              </div>
+              
+              <div className="bg-[#111029] rounded-xl border border-gray-800 p-6 flex flex-col justify-center relative shadow-inner overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-bl-full -mr-4 -mt-4"></div>
+                <div className="flex items-center gap-2 text-purple-400 mb-2">
+                  <PiggyBank size={16} />
+                  <span className="text-sm font-semibold uppercase tracking-wider">Total em Caixinhas</span>
+                </div>
+                <span className="text-3xl font-bold text-purple-400">{formatCurrency(calculateTotalGoals())}</span>
               </div>
               
               <div className="bg-[#1a1936] rounded-xl border border-gray-800 p-6 flex flex-col justify-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-bl-full -mr-4 -mt-4"></div>
                 <div className="flex items-center gap-2 text-emerald-400 mb-2">
                   <ArrowUpRight size={16} />
                   <span className="text-sm font-semibold uppercase tracking-wider">Receitas (Mês)</span>
@@ -211,7 +315,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
               </div>
               
               <div className="bg-[#1a1936] rounded-xl border border-gray-800 p-6 flex flex-col justify-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-bl-full -mr-4 -mt-4"></div>
                 <div className="flex items-center gap-2 text-red-400 mb-2">
                   <ArrowDownRight size={16} />
                   <span className="text-sm font-semibold uppercase tracking-wider">Despesas (Mês)</span>
@@ -223,18 +326,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
 
           {/* Navigation Tabs */}
           <div className="flex border-b border-gray-800">
-            <button
-              onClick={() => setActiveTab('TRANSACTIONS')}
-              className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'TRANSACTIONS' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'}`}
-            >
-              Lançamentos
-            </button>
-            <button
-              onClick={() => setActiveTab('ACCOUNTS')}
-              className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'ACCOUNTS' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'}`}
-            >
-              Minhas Contas
-            </button>
+            <button onClick={() => setActiveTab('TRANSACTIONS')} className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'TRANSACTIONS' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'}`}>Lançamentos</button>
+            <button onClick={() => setActiveTab('ACCOUNTS')} className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'ACCOUNTS' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-300'}`}>Minhas Contas</button>
+            <button onClick={() => setActiveTab('GOALS')} className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'GOALS' ? 'border-purple-500 text-purple-400' : 'border-transparent text-gray-400 hover:text-gray-300'}`}>Caixinhas & Metas</button>
           </div>
 
           {/* Content Area */}
@@ -264,9 +358,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                           const acc = accounts.find(a => a.id === t.accountId);
                           const isIncome = t.type === 'INCOME';
                           
-                          // Handle visual color presentation. 
-                          // If it's a CREDIT CARD, Expense is conceptually bad (-), but it owes money (+ to balance).
-                          // Visually treating Expense as red is always correct.
                           const amountColor = isIncome ? 'text-emerald-400' : t.type === 'TRANSFER' ? 'text-blue-400' : 'text-red-400';
                           const prefixStr = isIncome ? '+ ' : t.type === 'EXPENSE' ? '- ' : '';
 
@@ -286,7 +377,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                               </td>
                               <td className="py-4 px-4 text-gray-400 text-sm flex items-center gap-2">
                                 {acc ? getAccountIcon(acc.type) : <Wallet size={16}/>}
-                                {acc?.name || 'Desconhecida'}
+                                {acc?.name || 'Caixinha Externa'}
                               </td>
                               <td className={`py-4 px-4 font-bold text-sm text-right ${amountColor}`}>
                                 {prefixStr}{formatCurrency(t.amount)}
@@ -299,70 +390,113 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {accounts.length === 0 ? (
-                  <div className="col-span-full text-center py-10 text-gray-500 text-sm">Nenhuma conta cadastrada.</div>
-                ) : (
-                  accounts.map(acc => {
-                    const isCreditCard = acc.type === 'CREDIT';
-                    const usedPercentage = isCreditCard && acc.creditLimit ? Math.min((acc.balance / acc.creditLimit) * 100, 100) : 0;
-                    
-                    return (
-                      <div key={acc.id} className="bg-[#111029] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors relative overflow-hidden">
-                        
-                        {isCreditCard && (
-                          <div className="absolute top-0 right-0 w-2 h-full" style={{ backgroundColor: 'rgba(52, 211, 153, 0.1)' }}>
-                            <div 
-                              className={`absolute bottom-0 w-full ${usedPercentage > 85 ? 'bg-red-500' : usedPercentage > 60 ? 'bg-amber-400' : 'bg-emerald-500'} transition-all`} 
-                              style={{ height: `${usedPercentage}%` }}
-                            ></div>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                              {getAccountIcon(acc.type)}
+            ) : activeTab === 'ACCOUNTS' ? (
+              <div className="space-y-6">
+                <div className="flex justify-end">
+                   <button onClick={() => setIsAccountModalOpen(true)} className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 font-medium flex items-center gap-2 text-sm"><Wallet size={16} /> Nova Conta / Cartão</button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {accounts.length === 0 ? (
+                    <div className="col-span-full text-center py-10 text-gray-500 text-sm">Nenhuma conta cadastrada.</div>
+                  ) : (
+                    accounts.map(acc => {
+                      const isCreditCard = acc.type === 'CREDIT';
+                      const usedPercentage = isCreditCard && acc.creditLimit ? Math.min((acc.balance / acc.creditLimit) * 100, 100) : 0;
+                      
+                      return (
+                        <div key={acc.id} className="bg-[#111029] border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-colors relative overflow-hidden">
+                          {isCreditCard && (
+                            <div className="absolute top-0 right-0 w-2 h-full" style={{ backgroundColor: 'rgba(52, 211, 153, 0.1)' }}>
+                              <div className={`absolute bottom-0 w-full ${usedPercentage > 85 ? 'bg-red-500' : usedPercentage > 60 ? 'bg-amber-400' : 'bg-emerald-500'} transition-all`} style={{ height: `${usedPercentage}%` }}></div>
                             </div>
-                            <div>
-                              <h3 className="text-white font-bold">{acc.name}</h3>
-                              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{acc.type}</p>
+                          )}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">{getAccountIcon(acc.type)}</div>
+                              <div>
+                                <h3 className="text-white font-bold">{acc.name}</h3>
+                                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">{acc.type}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-
-                        {isCreditCard ? (
-                          <>
+                          {isCreditCard ? (
+                            <>
+                              <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-end">
+                                <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Fatura Atual</div>
+                                <div className="text-2xl font-bold text-white">{formatCurrency(acc.balance)}</div>
+                              </div>
+                              <div className="mt-2 flex justify-between text-xs text-gray-500 mb-4">
+                                <span>Limite: {formatCurrency(acc.creditLimit || 0)}</span>
+                                <span>Venc: dia {acc.dueDate || '--'}</span>
+                              </div>
+                              <button onClick={() => { setNewTransaction({ ...newTransaction, type: 'INCOME', accountId: acc.id, description: 'Pagamento de Fatura', category: 'Fatura' }); setIsTransactionModalOpen(true); }} className="w-full py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 font-bold rounded-lg transition-colors text-sm flex justify-center items-center gap-2">
+                                <Wallet size={16} /> Pagar Fatura
+                              </button>
+                            </>
+                          ) : (
                             <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-end">
-                              <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Fatura Atual</div>
+                              <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Saldo Atual</div>
                               <div className="text-2xl font-bold text-white">{formatCurrency(acc.balance)}</div>
                             </div>
-                            <div className="mt-2 flex justify-between text-xs text-gray-500">
-                               <span>Limite: {formatCurrency(acc.creditLimit || 0)}</span>
-                               <span>Venc: dia {acc.dueDate || '--'}</span>
-                            </div>
-                            <button 
-                              onClick={() => {
-                                setNewTransaction({ ...newTransaction, type: 'INCOME', accountId: acc.id, description: 'Pagamento de Fatura', category: 'Fatura' });
-                                setIsTransactionModalOpen(true);
-                              }}
-                              className="mt-4 w-full py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 font-bold rounded-lg transition-colors text-sm flex justify-center items-center gap-2"
-                            >
-                              <Wallet size={16} /> Pagar Fatura
-                            </button>
-                          </>
-                        ) : (
-                          <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-end">
-                            <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Saldo Atual</div>
-                            <div className="text-2xl font-bold text-white">{formatCurrency(acc.balance)}</div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            ) : (
+              // GOALS (Caixinhas) VIEW
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                  <p className="text-gray-400 text-sm max-w-xl">Reserve dinheiro de forma organizada. Crie metas para fundo de emergência, viagens, IPVA ou o que desejar.</p>
+                  <button onClick={() => setIsGoalModalOpen(true)} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors shadow-lg shadow-purple-900/20 font-medium flex items-center gap-2 text-sm"><Plus size={16} /> Nova Caixinha</button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {goals.length === 0 ? (
+                    <div className="col-span-full py-10 bg-gray-900/50 rounded-2xl flex flex-col items-center justify-center text-gray-500 border border-dashed border-gray-800">
+                      <PiggyBank size={48} className="mb-4 opacity-50 text-purple-400" />
+                      <p>Você não criou nenhuma caixinha ainda.</p>
+                    </div>
+                  ) : (
+                    goals.map(goal => {
+                      const pct = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+                      const isComplete = pct === 100;
 
-                      </div>
-                    );
-                  })
-                )}
+                      return (
+                        <div key={goal.id} className="bg-[#111029] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors flex flex-col">
+                           <div className="p-5 flex-1 relative">
+                              <div className="flex justify-between items-start mb-4">
+                                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: `${goal.color || '#10b981'}20`, color: goal.color || '#10b981' }}>
+                                    {getGoalIconComponent(goal.icon)}
+                                 </div>
+                                 {isComplete && <div className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Target size={12}/> Metida Atingida!</div>}
+                              </div>
+                              <h3 className="text-white font-bold text-lg">{goal.name}</h3>
+                              <p className="text-xs text-gray-500 mt-1">{goal.deadline ? `Agendado para ${new Date(goal.deadline).toLocaleDateString('pt-BR')}` : 'Sem prazo definido'}</p>
+
+                              <div className="mt-5">
+                                 <div className="flex justify-between text-sm mb-1">
+                                    <span className="text-white font-bold">{formatCurrency(goal.currentAmount)}</span>
+                                    <span className="text-gray-500">de {formatCurrency(goal.targetAmount)}</span>
+                                 </div>
+                                 <div className="w-full h-3 bg-gray-900 rounded-full overflow-hidden shadow-inner flex">
+                                    <div className="h-full rounded-full transition-all duration-1000 ease-out relative" style={{ width: `${pct}%`, backgroundColor: goal.color || '#10b981' }}>
+                                       <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           
+                           <div className="flex border-t border-gray-800 bg-[#161530]">
+                              <button onClick={() => openTransferGoalModal(goal.id, 'WITHDRAW')} className="flex-1 py-3 text-sm font-semibold text-gray-400 hover:text-white transition-colors border-r border-gray-800 flex items-center justify-center gap-2">Resgatar</button>
+                              <button onClick={() => openTransferGoalModal(goal.id, 'DEPOSIT')} className="flex-1 py-3 text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors flex items-center justify-center gap-2">Guardar</button>
+                           </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -374,14 +508,12 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1a1936] rounded-2xl w-full max-w-md border border-gray-800 shadow-2xl overflow-hidden shadow-emerald-900/10">
             <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Wallet className="text-emerald-400" /> Nova Conta
-              </h3>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><Wallet className="text-emerald-400" /> Nova Conta</h3>
               <button onClick={() => setIsAccountModalOpen(false)} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
             </div>
             <form onSubmit={handleSaveAccount} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nome da Conta / Cartão</label>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nome</label>
                 <input required type="text" value={newAccount.name} onChange={e => setNewAccount({...newAccount, name: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Nubank, Carteira..." />
               </div>
               <div>
@@ -402,18 +534,17 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                      <div>
-                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Vencimento (Dia)</label>
-                       <input required type="number" min="1" max="31" value={newAccount.dueDate || ''} onChange={e => setNewAccount({...newAccount, dueDate: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: 5" />
+                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Vencimento</label>
+                       <input required type="number" min="1" max="31" value={newAccount.dueDate || ''} onChange={e => setNewAccount({...newAccount, dueDate: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" />
                      </div>
                      <div>
-                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Fechamento (Dia)</label>
-                       <input required type="number" min="1" max="31" value={newAccount.closingDate || ''} onChange={e => setNewAccount({...newAccount, closingDate: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: 28" />
+                       <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Fechamento</label>
+                       <input required type="number" min="1" max="31" value={newAccount.closingDate || ''} onChange={e => setNewAccount({...newAccount, closingDate: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" />
                      </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor da Fatura Atual em Aberto</label>
-                    <input type="number" step="0.01" value={newAccount.balance || ''} onChange={e => setNewAccount({...newAccount, balance: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Opcional. Ex: 154,20" />
-                    <p className="text-xs text-gray-500 mt-2">Diferente de conta corrente, em cartões este é o valor devedor (fatura).</p>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Fatura Inicial</label>
+                    <input type="number" step="0.01" value={newAccount.balance || ''} onChange={e => setNewAccount({...newAccount, balance: Number(e.target.value)})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="0.00" />
                   </div>
                 </>
               ) : (
@@ -437,16 +568,12 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#1a1936] rounded-2xl w-full max-w-lg border border-gray-800 shadow-2xl overflow-hidden shadow-emerald-900/10">
             <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#111029]">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus className="text-emerald-400" /> Novo Lançamento
-              </h3>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><Plus className="text-emerald-400" /> Novo Lançamento</h3>
               <button onClick={() => setIsTransactionModalOpen(false)} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
             </div>
             <form onSubmit={handleSaveTransaction} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               {accounts.length === 0 ? (
-                <div className="text-amber-500 bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 text-sm">
-                  ⚠️ Crie uma Conta primeiro antes de registrar um lançamento.
-                </div>
+                <div className="text-amber-500 bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 text-sm">Crie uma Conta primeiro.</div>
               ) : (
                 <>
                   <div className="flex gap-4">
@@ -459,7 +586,6 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                       <ArrowDownRight size={18} /> Despesa
                     </label>
                   </div>
-                  
                   <div className="grid grid-cols-2 gap-4">
                      <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor</label>
@@ -476,12 +602,10 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                         </div>
                       </div>
                   </div>
-
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Descrição</label>
-                    <input required type="text" value={newTransaction.description} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado, Uber, Salário..." />
+                    <input required type="text" value={newTransaction.description} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Mercado..." />
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Categoria</label>
@@ -491,24 +615,116 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, o
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta / Cartão</label>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta</label>
                         <div className="relative">
                           <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                           <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
                             {accounts.map(acc => (
-                              <option key={acc.id} value={acc.id}>{acc.name} ({acc.type === 'CREDIT' ? 'Fatura' : 'Saldo'}: {formatCurrency(acc.balance)})</option>
+                              <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
                             ))}
                           </select>
                         </div>
                       </div>
                   </div>
-                  
                   <div className="pt-4 flex gap-3 border-t border-gray-800">
                     <button type="button" onClick={() => setIsTransactionModalOpen(false)} className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-700 transition-colors">Cancelar</button>
                     <button type="submit" className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-colors">Lançar</button>
                   </div>
                 </>
               )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Modal (Nova Caixinha) */}
+      {isGoalModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1936] rounded-2xl w-full max-w-md border border-gray-800 shadow-2xl overflow-hidden shadow-purple-900/10">
+            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#111029]">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2"><PiggyBank className="text-purple-400" /> Nova Caixinha</h3>
+              <button onClick={() => setIsGoalModalOpen(false)} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
+            </div>
+            <form onSubmit={handleSaveGoal} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto w-full">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Nome do Objetivo</label>
+                <input required type="text" value={newGoal.name} onChange={e => setNewGoal({...newGoal, name: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500" placeholder="Ex: Reserva de Emergência, IPVA..." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor Alvo</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">R$</span>
+                      <input required type="number" step="0.01" value={newGoal.targetAmount || ''} onChange={e => setNewGoal({...newGoal, targetAmount: Number(e.target.value)})} className="w-full pl-11 pr-3 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-purple-500" placeholder="1000" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Prazo (Opcional)</label>
+                    <input type="date" value={newGoal.deadline || ''} onChange={e => setNewGoal({...newGoal, deadline: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]" />
+                  </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Cor de Destaque</label>
+                <div className="flex gap-3">
+                   {['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#ef4444'].map(color => (
+                     <button key={color} type="button" onClick={() => setNewGoal({...newGoal, color})} className={`w-8 h-8 rounded-full border-2 transition-transform ${newGoal.color === color ? 'border-white scale-110' : 'border-transparent'}`} style={{ backgroundColor: color }} />
+                   ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ícone</label>
+                <div className="flex flex-wrap gap-3">
+                   {GOAL_ICONS.map(i => (
+                     <button key={i.id} type="button" onClick={() => setNewGoal({...newGoal, icon: i.id})} className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-colors ${newGoal.icon === i.id ? 'border-purple-500 bg-purple-500/10 text-purple-400' : 'border-gray-800 bg-gray-900/50 text-gray-400'}`}>
+                       {i.icon}
+                     </button>
+                   ))}
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3 border-t border-gray-800">
+                <button type="button" onClick={() => setIsGoalModalOpen(false)} className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-700 transition-colors">Cancelar</button>
+                <button type="submit" className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 transition-colors">Criar Caixinha</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Transfer Modal (Guardar / Resgatar) */}
+      {isTransferGoalModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1936] rounded-2xl w-full max-w-sm border border-gray-800 shadow-2xl overflow-hidden shadow-purple-900/10">
+            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#111029]">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                {goalTransfer.type === 'DEPOSIT' ? <ArrowRightLeft className="text-purple-400" /> : <ArrowRightLeft className="text-emerald-400" />}
+                {goalTransfer.type === 'DEPOSIT' ? 'Guardar' : 'Resgatar'}
+              </h3>
+              <button onClick={() => setIsTransferGoalModalOpen(false)} className="text-gray-400 hover:text-white"><Plus className="rotate-45" size={24} /></button>
+            </div>
+            <form onSubmit={executeGoalTransfer} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">De qual conta corrente?</label>
+                <select required value={goalTransfer.accountId} onChange={e => setGoalTransfer({...goalTransfer, accountId: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500">
+                  <option value="" disabled>Selecione uma conta...</option>
+                  {accounts.filter(a => a.type !== 'CREDIT').map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">R$</span>
+                  <input required type="number" step="0.01" min="0" value={goalTransfer.amount} onChange={e => setGoalTransfer({...goalTransfer, amount: Number(e.target.value)})} className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white font-bold text-lg focus:outline-none focus:border-purple-500" placeholder="0,00" />
+                </div>
+              </div>
+              <div className="pt-4 flex gap-3 border-t border-gray-800">
+                <button type="button" onClick={() => setIsTransferGoalModalOpen(false)} className="flex-1 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-700 transition-colors">Cancelar</button>
+                <button type="submit" className={`flex-1 py-3 font-bold rounded-xl transition-colors text-white ${goalTransfer.type === 'DEPOSIT' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}>Confirmar</button>
+              </div>
             </form>
           </div>
         </div>

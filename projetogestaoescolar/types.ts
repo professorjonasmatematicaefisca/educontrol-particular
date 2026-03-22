@@ -40,6 +40,18 @@ export interface FinanceTransaction {
   createdAt?: string;
 }
 
+export interface FinanceGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline?: string;
+  color?: string;
+  icon?: string;
+  userId: string;
+  createdAt?: string;
+}
+
 export interface TeacherClassAssignment {
   classId: string; // The name of the class (e.g., "9º Ano A")
   subject: string; // The name of the subject
