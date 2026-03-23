@@ -25,7 +25,8 @@ import {
   AlertCircle,
   DollarSign,
   MessageCircle,
-  Share2
+  Share2,
+  Users
 } from 'lucide-react';
 import { 
   format,
@@ -343,6 +344,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       if (success) {
         onShowToast('Aula concluída com sucesso');
         setShowCompletionModal(false);
+        
+        // Automated Notifications
+        if (selectedClass.parentPhone) {
+          handleNotifyParentCompletion(
+            selectedClass.studentId, 
+            selectedClass.studentName || '', 
+            selectedClass.parentPhone, 
+            selectedClass.classDate
+          );
+        }
+        
+        if (selectedClass.studentPhone) {
+          const disciplineName = disciplines.find(d => d.id === (completionData.disciplineId || selectedClass.disciplineId))?.name || 'Aula';
+          const msg = `Olá ${selectedClass.studentName}! Sua aula de ${disciplineName} do dia ${format(new Date(selectedClass.classDate + 'T12:00:00'), 'dd/MM')} foi concluída com sucesso. Bom descanso!`;
+          window.open(`https://wa.me/${selectedClass.studentPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
         fetchData();
       } else {
         onShowToast('Erro ao concluir aula');
@@ -477,13 +495,44 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   };
 
   const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
-    if (!phone) {
-      onShowToast('Telefone não cadastrado para este aluno.');
-      return;
-    }
+    const message = `Olá ${studentName}, tudo bem? Aqui é o Professor Jonas. Passando para confirmar nossa aula de hoje às ${startTime}!`;
     const cleanPhone = phone.replace(/\D/g, '');
-    const message = encodeURIComponent(`Olá ${studentName}, aqui é o Professor Jonas. Estou entrando em contato sobre nossa aula de hoje às ${startTime}.`);
-    window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleNotifyParentCompletion = async (studentId: string, studentName: string, parentPhone: string | undefined, classDate: string) => {
+    const parentMsg = `Olá, aqui é o Professor Jonas. A aula de ${studentName} foi CONCLUÍDA com sucesso hoje! 🚀\n\nAproveito para enviar a agenda das próximas aulas da semana:\n\n`;
+    
+    // Calculate range: from classDate until next Saturday
+    const dateObj = parseISO(classDate);
+    const endOfWeekDate = endOfWeek(dateObj, { weekStartsOn: 0 }); // Saturday is end of week (Sunday start)
+    const startDateStr = classDate;
+    const endDateStr = format(endOfWeekDate, 'yyyy-MM-dd');
+
+    // Fetch weekly schedule for the message
+    const weekClasses = await SupabaseService.getWeeklyScheduleForWhatsApp(startDateStr, endDateStr, studentId);
+    let scheduleText = "";
+    if (weekClasses.length > 0) {
+      weekClasses.forEach(c => {
+        const dateObj = parseISO(c.classDate);
+        const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
+        const dayMonth = format(dateObj, 'dd/MM');
+        scheduleText += `*${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
+      });
+    } else {
+      scheduleText = "Nenhuma aula agendada para o restante da semana.";
+    }
+
+    const finalMsg = parentMsg + scheduleText + `\n\nQualquer dúvida estou à disposição!`;
+    const targetPhone = parentPhone || ''; 
+    
+    if (!targetPhone) {
+        onShowToast("Telefone do pai não cadastrado.");
+        return;
+    }
+
+    const cleanPhone = targetPhone.replace(/\D/g, '');
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
   };
 
   const handleSendWeeklySchedule = async (studentId: string, studentName: string, phone?: string) => {
@@ -1078,6 +1127,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     </div>
   );
 
+  const agendaClasses = classes
+    .filter(c => c.status !== 'CANCELLED' && c.classDate === format(agendaDate, 'yyyy-MM-dd'))
+    .sort((a,b) => a.startTime.localeCompare(b.startTime));
+
+  const historyFiltered = classes.filter(c => 
+    (activeTab === 'agenda' ? true : c.classDate === currentDate) &&
+    (userRole === UserRole.STUDENT ? (
+      c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase())
+    ) : (
+      c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
+    )) &&
+    (!filterDiscipline || c.disciplineId === filterDiscipline) &&
+    (!filterStudent || c.studentId === filterStudent)
+  );
+
+  const historyPaginated = historyFiltered
+    .sort((a,b) => b.classDate.localeCompare(a.classDate) || b.startTime.localeCompare(a.startTime))
+    .slice((activeTab === 'agenda' ? (agendaPage - 1) : (historyPage - 1)) * ITEMS_PER_PAGE, (activeTab === 'agenda' ? agendaPage : historyPage) * ITEMS_PER_PAGE);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-24 px-4 sm:px-6 lg:px-8">
       {/* Header Premium - Fixo no topo */}
@@ -1142,7 +1211,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       <div className="max-w-7xl mx-auto space-y-8">
         {activeTab === 'agenda' ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Sidebar: Status & Próximas - Hidden for Students */}
             {userRole !== UserRole.STUDENT && (
               <div className="lg:col-span-4 space-y-8">
                 <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] backdrop-blur-xl">
@@ -1165,7 +1233,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                         <ChevronRight size={18} />
                       </button>
                       <button 
-                        onClick={() => handleBulkSendWeeklySchedules(filtered)}
+                        onClick={() => handleBulkSendWeeklySchedules(agendaClasses)}
                         className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/30 ml-1"
                         title="Enviar agendas da semana para todos"
                       >
@@ -1173,125 +1241,72 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       </button>
                     </div>
                   </div>
-
+  
                   <div className="space-y-3">
-                    {(() => {
-                      const filtered = classes
-                        .filter(c => 
-                          c.status !== 'CANCELLED' && 
-                          c.classDate === format(agendaDate, 'yyyy-MM-dd')
-                        )
-                        .sort((a,b) => a.startTime.localeCompare(b.startTime));
-                      
-                      return (
-                        <>
-                          <div className="space-y-3">
-                            {filtered.map(c => {
-                              const isStarted = c.status === 'IN_PROGRESS';
-                              const isCompleted = c.status === 'COMPLETED';
-                              const isScheduled = c.status === 'SCHEDULED';
-
-                              let cardStyle = "bg-[#0f172a]/60 border-gray-800/50 hover:border-emerald-500/30";
-                              if (isStarted) cardStyle = "bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 scale-[1.02]";
-                              if (isScheduled) cardStyle = "bg-gradient-to-r from-sky-600/30 to-blue-500/10 border-sky-500/40 shadow-lg shadow-sky-500/10";
-                              if (isCompleted) cardStyle = "bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5 opacity-80";
-
-                              return (
-                              <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${cardStyle}`}>
-                                <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${isStarted ? 'border-orange-500/20' : isScheduled ? 'border-sky-500/20' : 'border-emerald-500/20'}`}>
-                                  <span className={`text-[10px] font-black uppercase tracking-tighter ${isStarted ? 'text-white' : isScheduled ? 'text-sky-200' : 'text-emerald-200'}`}>{c.startTime}</span>
-                                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'} transition-colors`}></div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
-                                    {c.studentPhone && (
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          onClick={() => handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime)}
-                                          className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded-lg transition-colors"
-                                          title="Mensagem Hoje"
-                                        >
-                                          <MessageCircle size={14} fill="currentColor" className="opacity-80" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone)}
-                                          className="p-1 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors"
-                                          title="Agenda da Semana"
-                                        >
-                                          <Share2 size={13} className="opacity-80" />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
-                                      {isStarted ? 'Aula em andamento' : isCompleted ? 'Aula concluída' : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Agendada')}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  {isScheduled && (
-                                    <>
-                                      <button 
-                                        onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
-                                        className="p-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-90 flex items-center justify-center"
-                                        title="Iniciar Aula"
-                                      >
-                                        <Play size={14} fill="currentColor" />
-                                      </button>
-                                      <button 
-                                        onClick={() => openRescheduleModal(c)}
-                                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-90 border border-slate-700/50"
-                                        title="Reagendar"
-                                      >
-                                        <Edit2 size={14} />
-                                      </button>
-                                      <button 
-                                        onClick={() => openDeleteModal(c.id)}
-                                        className="p-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all active:scale-90 border border-rose-500/20"
-                                        title="Cancelar"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </>
-                                  )}
-                                  
-                                  {isStarted && (
-                                    <button 
-                                      onClick={() => openCompletionModal(c)}
-                                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
-                                      title="Concluir Aula"
-                                    >
-                                      <CheckCircle size={14} /> Concluir
-                                    </button>
-                                  )}
-
-                                  {isCompleted && (
-                                    <div className="p-2 text-emerald-500">
-                                      <CheckCircle size={20} />
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )})}
-                          </div>
-                          
-                          {filtered.length === 0 && (
-                            <div className="text-center py-10 opacity-30 select-none">
-                              <CalendarIcon size={48} className="mx-auto mb-2" />
-                              <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
+                    {agendaClasses.map(c => {
+                        const isStarted = c.status === 'IN_PROGRESS';
+                        const isCompleted = c.status === 'COMPLETED';
+                        const isScheduled = c.status === 'SCHEDULED';
+  
+                        let cardStyle = "bg-[#0f172a]/60 border-gray-800/50 hover:border-emerald-500/30";
+                        if (isStarted) cardStyle = "bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 scale-[1.02]";
+                        if (isScheduled) cardStyle = "bg-gradient-to-r from-sky-600/30 to-blue-500/10 border-sky-500/40 shadow-lg shadow-sky-500/10";
+                        if (isCompleted) cardStyle = "bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5 opacity-80";
+  
+                        return (
+                          <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${cardStyle}`}>
+                            <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${isStarted ? 'border-orange-500/20' : isScheduled ? 'border-sky-500/20' : 'border-emerald-500/20'}`}>
+                              <span className={`text-[10px] font-black uppercase tracking-tighter ${isStarted ? 'text-white' : isScheduled ? 'text-sky-200' : 'text-emerald-200'}`}>{c.startTime}</span>
+                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'} transition-colors`}></div>
                             </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                            <div className="flex-1 min-w-0">
+                               <p className="text-[13px] font-black text-white uppercase tracking-tight leading-none mb-1.5 truncate">{c.studentName}</p>
+                               <div className="flex items-center justify-between">
+                                 <p className={`text-[9px] font-bold uppercase tracking-widest ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
+                                   {isStarted ? 'Aula em andamento' : isCompleted ? 'Aula concluída' : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Agendada')}
+                                 </p>
+                                 <div className="flex items-center gap-2">
+                                   {(c.studentPhone || c.parentPhone) && (
+                                     <>
+                                       {c.studentPhone && (
+                                         <>
+                                           <button onClick={() => handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime)} className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded-lg"><MessageCircle size={12} /></button>
+                                           <button onClick={() => handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone!)} className="p-1 hover:bg-blue-500/20 text-blue-400 rounded-lg"><Share2 size={11} /></button>
+                                         </>
+                                       )}
+                                       {c.parentPhone && (
+                                          <button onClick={() => handleNotifyParentCompletion(c.studentId, c.studentName || '', c.parentPhone, c.classDate)} className="p-1 hover:bg-purple-500/20 text-purple-400 rounded-lg"><Users size={12} /></button>
+                                       )}
+                                     </>
+                                   )}
+                                 </div>
+                               </div>
+                             </div>
+                             <div className="flex gap-2">
+                              {isScheduled && (
+                                <>
+                                  <button onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')} className="p-2.5 bg-amber-400 rounded-xl" title="Iniciar Aula"><Play size={14} /></button>
+                                  <button onClick={() => openRescheduleModal(c)} className="p-2.5 bg-slate-800 rounded-xl" title="Editar"><Edit2 size={14} /></button>
+                                  <button onClick={() => openDeleteModal(c.id)} className="p-2.5 bg-rose-500/10 rounded-xl" title="Cancelar"><Trash2 size={14} /></button>
+                                </>
+                              )}
+                              {isStarted && <button onClick={() => openCompletionModal(c)} className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold text-[10px] uppercase">Concluir</button>}
+                              {isCompleted && <CheckCircle size={20} className="text-emerald-500" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {agendaClasses.length === 0 && (
+                      <div className="text-center py-10 opacity-30 select-none">
+                        <CalendarIcon size={48} className="mx-auto mb-2" />
+                        <p className="text-xs font-black uppercase tracking-widest">Sem aulas pendentes</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
-
-            {/* Main Content: Lista de Agendamentos / Histórico */}
+  
             <div className={`${userRole === UserRole.STUDENT ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-6`}>
               <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl">
                 <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex flex-col md:flex-row justify-between items-center gap-6">
@@ -1305,95 +1320,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-1 bg-slate-900 rounded-xl p-1">
-                      <button 
-                        onClick={() => setViewMode('table')}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'table' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        Lista
-                      </button>
-                      <button 
-                        onClick={() => setViewMode('calendar')}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${viewMode === 'calendar' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        Calendário
-                      </button>
+                      <button onClick={() => setViewMode('table')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase ${viewMode === 'table' ? 'bg-emerald-500 text-white' : 'text-gray-500'}`}>Lista</button>
+                      <button onClick={() => setViewMode('calendar')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase ${viewMode === 'calendar' ? 'bg-emerald-500 text-white' : 'text-gray-500'}`}>Calendário</button>
                     </div>
-                    
-                    {userRole === UserRole.STUDENT && (
-                      <div className="flex gap-3 bg-slate-950 p-2 rounded-2xl border border-slate-800">
-                        <div className="relative">
-                          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                          <select 
-                            value={filterDiscipline} 
-                            onChange={(e) => setFilterDiscipline(e.target.value)}
-                            className="bg-[#0f172a] border-none text-white text-[10px] font-black uppercase pl-10 pr-4 py-2 focus:ring-0 w-44 rounded-xl cursor-pointer"
-                          >
-                            <option value="" className="bg-[#0f172a]">Todas Disciplinas</option>
-                            {disciplines.map(d => <option key={d.id} value={d.id} className="bg-[#0f172a]">{d.name}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    )}
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={18} />
-                      <input 
-                        type="text" 
-                        placeholder="Buscar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs font-bold pl-10 pr-4 py-3 focus:ring-emerald-500/50 w-48"
-                      />
+                      <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-2xl text-white text-xs pl-10 pr-4 py-3 w-48" />
                     </div>
                   </div>
                 </div>
-
+  
                 {viewMode === 'calendar' ? (
                   <div className="p-8">
-                    <ModernCalendar 
-                      classes={classes} 
-                      userRole={userRole}
-                      onSelectClass={setSelectedClass}
-                      onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined}
-                    />
+                    <ModernCalendar classes={classes} userRole={userRole} onSelectClass={setSelectedClass} onRescheduleClass={userRole !== UserRole.STUDENT ? handleDragReschedule : undefined} />
                   </div>
                 ) : (
                   <div className="p-8">
-                    {(() => {
-                      const filtered = classes.filter(c => 
-                        (userRole === UserRole.STUDENT 
-                          ? (c.subjectNotes?.toLowerCase().includes(searchTerm.toLowerCase()) || c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()))
-                          : c.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
-                        ) &&
-                        (!filterDiscipline || c.disciplineId === filterDiscipline)
-                      ).sort((a,b) => {
-                        const dateComp = a.classDate.localeCompare(b.classDate);
-                        if (dateComp !== 0) return dateComp;
-                        return a.startTime.localeCompare(b.startTime);
-                      });
-                      
-                      const paginated = filtered.slice((agendaPage - 1) * ITEMS_PER_PAGE, agendaPage * ITEMS_PER_PAGE);
-
-                      return (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                            {paginated.map(c => <AgendaCard key={c.id} c={c} />)}
-                          </div>
-                          
-                          {filtered.length === 0 && (
-                            <div className="text-center py-20 opacity-30 select-none">
-                              <CalendarIcon size={64} className="mx-auto mb-4" />
-                              <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum agendamento ativo</p>
-                            </div>
-                          )}
-
-                          <Pagination 
-                            current={agendaPage} 
-                            total={filtered.length} 
-                            onPageChange={setAgendaPage} 
-                          />
-                        </>
-                      );
-                    })()}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {historyPaginated.map(c => <AgendaCard key={c.id} c={c} />)}
+                    </div>
+                    <Pagination current={agendaPage} total={historyFiltered.length} onPageChange={setAgendaPage} />
                   </div>
                 )}
               </div>
@@ -1402,7 +1348,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
         ) : activeTab === 'finance' && (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) ? (
           <FinanceTab />
         ) : (
-          /* Aba de Histórico e Análises */
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Dashboard de Histórico */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1505,36 +1450,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </div>
 
               <div className="p-8">
-                {(() => {
-                  const filtered = classes.filter(c => 
-                    c.classDate === currentDate &&
-                    (!filterStudent || c.studentId === filterStudent) && 
-                    (!filterDiscipline || c.disciplineId === filterDiscipline)
-                  );
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {historyPaginated.map(c => <HistoryCard key={c.id} c={c} />)}
+                  </div>
                   
-                  const paginated = filtered.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
+                  {historyFiltered.length === 0 && (
+                    <div className="text-center py-20 opacity-30 select-none">
+                      <FileText size={64} className="mx-auto mb-4" />
+                      <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum histórico encontrado</p>
+                    </div>
+                  )}
 
-                  return (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {paginated.map(c => <HistoryCard key={c.id} c={c} />)}
-                      </div>
-                      
-                      {filtered.length === 0 && (
-                        <div className="text-center py-20 opacity-30 select-none">
-                          <FileText size={64} className="mx-auto mb-4" />
-                          <p className="text-xl font-black uppercase tracking-[0.2em]">Nenhum histórico encontrado</p>
-                        </div>
-                      )}
-
-                      <Pagination 
-                        current={historyPage} 
-                        total={filtered.length} 
-                        onPageChange={setHistoryPage} 
-                      />
-                    </>
-                  );
-                })()}
+                  <Pagination 
+                    current={historyPage} 
+                    total={historyFiltered.length} 
+                    onPageChange={setHistoryPage} 
+                  />
               </div>
             </div>
           </div>

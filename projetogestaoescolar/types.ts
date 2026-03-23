@@ -109,6 +109,7 @@ export interface Student {
   billing_period?: 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY' | 'PER_CLASS';
   hourlyRate?: number;
   phone?: string;
+  studentPhone?: string; // Specific student phone (if different from phone/parent)
   className: string;
   status?: string; // 'ACTIVE' | 'INACTIVE'
   inactiveReason?: string;
@@ -258,6 +259,7 @@ export interface ScheduledClass {
   paymentDueDate?: string; // New: Expected date for the payment
   disciplineName?: string; // Join field for UI convenience
   studentPhone?: string; // Join field for WhatsApp contact
+  parentPhone?: string; // Join field for Parent WhatsApp contact
 }
 
 export interface BankAccount {

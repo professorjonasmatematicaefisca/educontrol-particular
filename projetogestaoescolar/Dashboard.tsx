@@ -187,7 +187,25 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         }
     };
 
-    const handleConfirmPayment = (payment: PaymentItem) => {
+    const handleBulkSendWeeklySchedules = async (list: ScheduledClass[]) => {
+        const studentsInList = Array.from(new Set(list.map(c => c.studentId)));
+        
+        if (studentsInList.length === 0) {
+            alert('Nenhum aluno na lista para enviar.');
+            return;
+        }
+
+        if (!confirm(`Deseja abrir as janelas de WhatsApp para os ${studentsInList.length} alunos da lista (agenda semanal)?`)) return;
+
+        for (const sId of studentsInList) {
+            const studentClass = list.find(c => c.studentId === sId);
+            if (studentClass && (studentClass.studentPhone || studentClass.parentPhone)) {
+                await handleSendWeeklySchedule(sId, studentClass.studentName || 'Aluno', studentClass.studentPhone || studentClass.parentPhone, studentClass.classDate);
+            }
+        }
+    };
+
+    const handleConfirmPayment = async (payment: any) => {
         alert(`Pagamento de ${payment.studentName} confirmado!`);
     };
 
@@ -370,9 +388,21 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                             <Clock size={16} className="text-purple-500" />
                             Agenda de Hoje
                         </h3>
-                        <span className="text-[9px] font-black text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 uppercase">
-                          {format(new Date(), "dd MMM", { locale: ptBR })}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 uppercase">
+                            {format(new Date(), "dd MMM", { locale: ptBR })}
+                          </span>
+                          <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleBulkSendWeeklySchedules(upcomingClasses);
+                            }}
+                            className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/30"
+                            title="Enviar agendas da semana para todos"
+                          >
+                            <Share2 size={14} />
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                           {upcomingClasses.map((c, idx) => {
@@ -392,10 +422,17 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                           <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5">
-                                            <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
+                                          <p className="text-[12px] font-black text-white uppercase tracking-tight leading-none mb-1">
+                                            {c.studentName}
+                                          </p>
+                                          
+                                          <div className="flex items-center justify-between mt-1.5">
+                                            <p className={`text-[8px] font-bold uppercase tracking-widest truncate ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
+                                                {isStarted ? 'EM ANDAMENTO' : isCompleted ? 'CONCLUÍDA' : 'AGENDADA'}
+                                            </p>
+
                                             {c.studentPhone && (
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -404,7 +441,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                                         className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded transition-colors"
                                                         title="WhatsApp"
                                                     >
-                                                        <MessageCircle size={10} fill="currentColor" className="opacity-80" />
+                                                        <MessageCircle size={12} fill="currentColor" className="opacity-80" />
                                                     </button>
                                                     <button
                                                         onClick={(e) => {
@@ -414,14 +451,11 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                                         className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors"
                                                         title="Agenda da Semana"
                                                     >
-                                                        <Share2 size={10} className="opacity-80" />
+                                                        <Share2 size={12} className="opacity-80" />
                                                     </button>
                                                 </div>
                                             )}
                                           </div>
-                                          <p className={`text-[8px] font-bold uppercase tracking-widest truncate ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
-                                            {isStarted ? 'EM ANDAMENTO' : isCompleted ? 'CONCLUÍDA' : 'AGENDADA'}
-                                          </p>
                                       </div>
                                       {isCompleted && <Check size={14} className="text-emerald-500" />}
                                   </div>

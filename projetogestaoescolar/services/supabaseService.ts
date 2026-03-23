@@ -424,6 +424,7 @@ export const SupabaseService = {
             billing_period: s.billing_period,
             hourlyRate: s.hourly_rate ? Number(s.hourly_rate) : 0,
             phone: String(s.phone || ''),
+            studentPhone: String(s.student_phone || ''),
             className: String(s.class_name || ''),
             status: String(s.status || 'ACTIVE'),
             inactiveReason: String(s.inactive_reason || ''),
@@ -451,6 +452,7 @@ export const SupabaseService = {
             billing_period: student.billing_period || null,
             hourly_rate: hourlyRateNormalized,
             phone: student.phone || null,
+            student_phone: student.studentPhone || null,
             class_name: student.className,
             status: student.status || 'ACTIVE',
             inactive_reason: student.inactiveReason || null,
@@ -1075,6 +1077,7 @@ export const SupabaseService = {
                 billing_period: student.billing_period || null,
                 hourly_rate: hourlyRateNormalized,
                 phone: student.phone || null,
+                student_phone: student.studentPhone || null,
                 class_name: student.className,
                 status: student.status,
                 inactive_reason: student.inactiveReason || null,
@@ -1698,7 +1701,7 @@ export const SupabaseService = {
     async getScheduledClasses(startDate?: string, endDate?: string, studentId?: string, paymentStatus?: string): Promise<ScheduledClass[]> {
         let query = supabase.from('scheduled_classes').select(`
             *,
-            student:students(name, photo_url, class_name, parent_name, phone),
+            student:students(name, photo_url, class_name, parent_name, phone, student_phone),
             teacher:users(name, photo_url)
         `);
 
@@ -1738,7 +1741,8 @@ export const SupabaseService = {
             paidAt: item.paid_at,
             pdfUrl: item.pdf_url,
             paymentDueDate: item.payment_due_date,
-            studentPhone: item.student?.phone
+            parentPhone: item.student?.phone,
+            studentPhone: item.student?.student_phone
         }));
     },
 
