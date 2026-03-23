@@ -578,11 +578,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               </div>
               
               <div className="flex gap-3 px-3 py-2 bg-slate-800/20 rounded-xl border border-slate-800/50">
-                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
+                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase whitespace-nowrap">
                   <div className="w-2 h-2 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.3)]" /> 
                   A Receber
                 </div>
-                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
+                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase whitespace-nowrap">
                   <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.3)]" /> 
                   Atrasado
                 </div>
@@ -602,14 +602,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               // Lógica estrita: mostra indicadores no dia do VENCIMENTO (paymentDueDate)
               const dayPending = pendingClasses.filter(c => c.paymentDueDate === dayStr);
               
-              const hasToReceive = dayPending.some(c => {
-                 const dueDate = parseISO(c.paymentDueDate + 'T00:00:00');
-                 return !isPastDate || isToday;
-              });
-              
-              const hasOverdue = dayPending.some(c => {
-                 return isPastDate && !isToday;
-              });
+              const hasToReceive = dayPending.length > 0 && !isPastDate;
+              const hasOverdue = dayPending.length > 0 && isPastDate;
 
               return (
                 <div 

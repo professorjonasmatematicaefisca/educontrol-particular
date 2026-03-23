@@ -993,7 +993,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
             <div className="flex gap-3">
               <UserAvatar name={c.studentName || ''} photoUrl={c.studentPhoto} size="md" />
               <div className="min-w-0">
-                <h4 className="text-white font-black uppercase tracking-tight text-sm truncate">
+                <h4 className="text-white font-black uppercase tracking-tight text-sm">
                   {c.studentName}
                 </h4>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest truncate">{c.className}</p>
@@ -1261,7 +1261,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                               <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'} transition-colors`}></div>
                             </div>
                             <div className="flex-1 min-w-0">
-                               <p className="text-[13px] font-black text-white uppercase tracking-tight leading-none mb-1.5 truncate">{c.studentName}</p>
+                               <p className="text-[13px] font-black text-white uppercase tracking-tight leading-tight mb-1.5">{c.studentName}</p>
                                <div className="flex items-center justify-between">
                                  <p className={`text-[9px] font-bold uppercase tracking-widest ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
                                    {isStarted ? 'Aula em andamento' : isCompleted ? 'Aula concluída' : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Agendada')}
