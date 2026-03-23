@@ -1111,7 +1111,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       const filtered = classes
                         .filter(c => 
                           c.status !== 'CANCELLED' && 
-                          c.status !== 'COMPLETED' && 
                           c.classDate === format(agendaDate, 'yyyy-MM-dd')
                         )
                         .sort((a,b) => a.startTime.localeCompare(b.startTime));
@@ -1119,51 +1118,75 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       return (
                         <>
                           <div className="space-y-3">
-                            {filtered.map(c => (
-                              <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10' : 'bg-[#0f172a]/60 hover:bg-[#0f172a] border-gray-800/50 hover:border-emerald-500/30'}`}>
-                                <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${c.status === 'IN_PROGRESS' ? 'border-orange-500/20' : 'border-gray-800/50'}`}>
-                                  <span className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : 'text-gray-500'}`}>{c.startTime}</span>
-                                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-blue-500/50 group-hover:bg-blue-500'} transition-colors`}></div>
+                            {filtered.map(c => {
+                              const isStarted = c.status === 'IN_PROGRESS';
+                              const isCompleted = c.status === 'COMPLETED';
+                              const isScheduled = c.status === 'SCHEDULED';
+
+                              let cardStyle = "bg-[#0f172a]/60 border-gray-800/50 hover:border-emerald-500/30";
+                              if (isStarted) cardStyle = "bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10 scale-[1.02]";
+                              if (isScheduled) cardStyle = "bg-gradient-to-r from-sky-600/30 to-blue-500/10 border-sky-500/40 shadow-lg shadow-sky-500/10";
+                              if (isCompleted) cardStyle = "bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/5 opacity-80";
+
+                              return (
+                              <div key={c.id} className={`group flex items-center gap-4 p-4 rounded-2xl border transition-all ${cardStyle}`}>
+                                <div className={`flex flex-col items-center min-w-[50px] py-1 border-r pr-4 ${isStarted ? 'border-orange-500/20' : isScheduled ? 'border-sky-500/20' : 'border-emerald-500/20'}`}>
+                                  <span className={`text-[10px] font-black uppercase tracking-tighter ${isStarted ? 'text-white' : isScheduled ? 'text-sky-200' : 'text-emerald-200'}`}>{c.startTime}</span>
+                                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'} transition-colors`}></div>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
                                   <div className="flex items-center gap-2">
-                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${c.status === 'IN_PROGRESS' ? 'text-orange-200/60' : 'text-gray-500'}`}>
-                                      {disciplines.find(d => d.id === c.disciplineId)?.name || 'Individual'}
+                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
+                                      {isStarted ? 'Aula em andamento' : isCompleted ? 'Aula concluída' : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Agendada')}
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex gap-1">
-                                  {c.status === 'SCHEDULED' && (
-                                    <button 
-                                      onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
-                                      className="p-2 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-lg transition-all shadow-lg shadow-amber-500/10 active:scale-90"
-                                      title="Iniciar Aula"
-                                    >
-                                      <Play size={12} fill="currentColor" />
-                                    </button>
+                                <div className="flex gap-2">
+                                  {isScheduled && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleUpdateStatus(c.id, 'IN_PROGRESS')}
+                                        className="p-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-90 flex items-center justify-center"
+                                        title="Iniciar Aula"
+                                      >
+                                        <Play size={14} fill="currentColor" />
+                                      </button>
+                                      <button 
+                                        onClick={() => openRescheduleModal(c)}
+                                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-gray-300 rounded-xl transition-all active:scale-90 border border-slate-700/50"
+                                        title="Reagendar"
+                                      >
+                                        <Edit2 size={14} />
+                                      </button>
+                                      <button 
+                                        onClick={() => openDeleteModal(c.id)}
+                                        className="p-2.5 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all active:scale-90 border border-rose-500/20"
+                                        title="Cancelar"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </>
                                   )}
                                   
-                                  {c.status === 'IN_PROGRESS' && (
+                                  {isStarted && (
                                     <button 
                                       onClick={() => openCompletionModal(c)}
-                                      className="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-all shadow-lg shadow-sky-500/10 active:scale-90"
+                                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
                                       title="Concluir Aula"
                                     >
-                                      <CheckCircle size={12} />
+                                      <CheckCircle size={14} /> Concluir
                                     </button>
                                   )}
 
-                                  <button 
-                                    onClick={() => openRescheduleModal(c)}
-                                    className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-all"
-                                    title="Reagendar"
-                                  >
-                                    <Edit2 size={12} />
-                                  </button>
+                                  {isCompleted && (
+                                    <div className="p-2 text-emerald-500">
+                                      <CheckCircle size={20} />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            ))}
+                            )})}
                           </div>
                           
                           {filtered.length === 0 && (

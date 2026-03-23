@@ -341,26 +341,28 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                       </div>
                       <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                           {upcomingClasses.map((c, idx) => {
-                                const colors = [
-                                  'border-emerald-500/20 bg-emerald-500/5 text-emerald-500',
-                                  'border-sky-500/20 bg-sky-500/5 text-sky-500',
-                                  'border-violet-500/20 bg-violet-500/5 text-violet-500',
-                                  'border-amber-500/20 bg-amber-500/5 text-amber-500'
-                                ];
-                                const colorStyle = colors[idx % colors.length];
+                                const isStarted = c.status === 'IN_PROGRESS';
+                                const isCompleted = c.status === 'COMPLETED';
+                                const isScheduled = c.status === 'SCHEDULED';
+
+                                let cardStyle = "bg-[#0f172a]/60 border-gray-800/50 hover:border-emerald-500/30";
+                                if (isStarted) cardStyle = "bg-gradient-to-r from-orange-600/30 to-amber-500/10 border-orange-500/40 shadow-lg shadow-orange-500/10";
+                                if (isScheduled) cardStyle = "bg-gradient-to-r from-sky-600/30 to-blue-500/10 border-sky-500/40 shadow-lg shadow-sky-500/10";
+                                if (isCompleted) cardStyle = "bg-emerald-500/10 border-emerald-500/40 opacity-80";
 
                                 return (
-                                  <div key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] cursor-pointer ${c.status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-orange-600/20 to-amber-500/5 border-orange-500/30' : colorStyle}`}>
-                                      <div className={`text-center min-w-[50px] border-r pr-3 ${c.status === 'IN_PROGRESS' ? 'border-white/10' : 'border-current/10'}`}>
-                                          <p className={`text-[10px] font-black uppercase tracking-tighter ${c.status === 'IN_PROGRESS' ? 'text-white' : ''}`}>{c.startTime}</p>
-                                          <div className={`w-1 h-1 mx-auto rounded-full mt-1 ${c.status === 'IN_PROGRESS' ? 'bg-white animate-pulse' : 'bg-current opacity-40'}`}></div>
+                                  <div key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] ${cardStyle}`}>
+                                      <div className={`text-center min-w-[50px] border-r pr-3 ${isStarted ? 'border-orange-500/20' : isScheduled ? 'border-sky-500/20' : 'border-emerald-500/20'}`}>
+                                          <p className={`text-[10px] font-black uppercase tracking-tighter ${isStarted ? 'text-white' : isScheduled ? 'text-sky-200' : 'text-emerald-200'}`}>{c.startTime}</p>
+                                          <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                                       </div>
                                       <div className="flex-1 min-w-0">
                                           <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
-                                          <p className={`text-[8px] font-bold uppercase opacity-50 tracking-widest truncate`}>
-                                            {c.status === 'IN_PROGRESS' ? 'EM ANDAMENTO' : c.status}
+                                          <p className={`text-[8px] font-bold uppercase tracking-widest truncate ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
+                                            {isStarted ? 'EM ANDAMENTO' : isCompleted ? 'CONCLUÍDA' : 'AGENDADA'}
                                           </p>
                                       </div>
+                                      {isCompleted && <Check size={14} className="text-emerald-500" />}
                                   </div>
                                 );
                             })}
