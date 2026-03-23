@@ -22,7 +22,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, ComposedChart, Area, Cell, Legend
 } from 'recharts';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonths, isSameDay, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { UserRole, ScheduledClass, BankAccount } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -42,6 +42,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [filterAccount, setFilterAccount] = useState('ALL');
   
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showDailyDetailModal, setShowDailyDetailModal] = useState(false);
@@ -147,9 +148,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
 
   // Preparação de dados para os gráficos
   const monthDate = parseISO(filterMonth + '-01');
+  // Preparação de dados para o calendário (usando currentMonth para navegação)
   const daysInMonth = eachDayOfInterval({ 
-    start: startOfMonth(monthDate), 
-    end: endOfMonth(monthDate) 
+    start: startOfMonth(currentMonth), 
+    end: endOfMonth(currentMonth) 
   });
 
   const chartData = daysInMonth.map(day => {
@@ -420,21 +422,27 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[120] flex items-center justify-center p-4">
       <div className="bg-[#0f172a] w-full max-w-lg rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
-          <h3 className="text-lg font-black text-white uppercase tracking-tight">Recebimentos do Dia</h3>
+          <div>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight">Detalhamento do Dia</h3>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Pendências e Recebimentos Previstos</p>
+          </div>
           <button onClick={() => setShowDailyDetailModal(false)} className="p-2 hover:bg-white/5 rounded-full text-gray-500 transition-colors"><XCircle size={24} /></button>
         </div>
         <div className="p-6 space-y-3 max-h-[50vh] overflow-y-auto">
-          {selectedDayData.length > 0 ? selectedDayData.map((d, idx) => (
+          {selectedDayData.length > 0 ? selectedDayData.map((d: ScheduledClass, idx) => (
             <div key={idx} className="flex justify-between items-center p-4 bg-slate-800/20 rounded-2xl border border-slate-700/30">
-              <span className="text-white font-bold text-sm uppercase tracking-tight">{d.studentName}</span>
-              <span className="text-emerald-500 font-black text-sm">R$ {d.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <div className="flex flex-col">
+                <span className="text-white font-black text-[11px] uppercase tracking-tight">{d.studentName}</span>
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Aula: {new Date(d.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+              </div>
+              <span className="text-emerald-500 font-black text-sm">R$ {(d.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
           )) : (
-            <p className="text-center text-xs text-gray-500 py-8 uppercase font-bold tracking-widest italic">Nenhum recebimento registrado.</p>
+            <p className="text-center text-xs text-gray-500 py-8 uppercase font-bold tracking-widest italic">Nenhum registro encontrado.</p>
           )}
         </div>
         <div className="p-6 bg-slate-900/50 border-t border-slate-800 flex justify-end">
-          <p className="text-xs font-black text-gray-500 uppercase">Total do dia: <span className="text-emerald-500 ml-2 text-base">R$ {selectedDayData.reduce((acc, curr) => acc + curr.totalValue, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+          <p className="text-xs font-black text-gray-500 uppercase">Total: <span className="text-emerald-500 ml-2 text-base">R$ {selectedDayData.reduce((acc, curr) => acc + (curr.totalValue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
         </div>
       </div>
     </div>
@@ -540,8 +548,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
           </div>
         </div>
 
-        <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl">
-          <div className="mb-8 flex justify-between items-center">
+        <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl h-full">
+          <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
                 <CalendarIcon size={18} className="text-sky-500" />
@@ -549,27 +557,59 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               </h3>
               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumo diário de recebimentos e pendências</p>
             </div>
-            <div className="flex gap-3">
-               <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div> A Receber</div>
-               <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Atrasado</div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+                <button 
+                  onClick={() => setCurrentMonth(prev => addMonths(prev, -1))}
+                  className="p-1.5 hover:bg-slate-700 rounded-lg text-gray-400 hover:text-white transition-all outline-none"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-[10px] font-black text-white uppercase tracking-widest min-w-[120px] text-center">
+                  {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
+                </span>
+                <button 
+                  onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
+                  className="p-1.5 hover:bg-slate-700 rounded-lg text-gray-400 hover:text-white transition-all outline-none"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              
+              <div className="flex gap-3 px-3 py-2 bg-slate-800/20 rounded-xl border border-slate-800/50">
+                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.3)]" /> 
+                  A Receber
+                </div>
+                <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase">
+                  <div className="w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.3)]" /> 
+                  Atrasado
+                </div>
+              </div>
             </div>
           </div>
           
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-2">
             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
               <div key={d} className="text-center text-[10px] font-black text-gray-600 uppercase mb-2">{d}</div>
             ))}
             {daysInMonth.map((day, idx) => {
               const dayStr = format(day, 'yyyy-MM-dd');
-              const isToday = dayStr === format(new Date(), 'yyyy-MM-dd');
-              const isPast = day < today;
+              const isToday = isSameDay(day, new Date());
+              const isPastDate = day < startOfDay(new Date());
               
-              const dayData = chartData.find(d => d.name === format(day, 'dd'));
-              const hasBilled = dayData && dayData.faturamento > 0;
+              // Lógica estrita: mostra indicadores no dia do VENCIMENTO (paymentDueDate)
+              const dayPending = pendingClasses.filter(c => c.paymentDueDate === dayStr);
               
-              // Verificar atrasos: aulas completadas com pagamento pendente e data de vencimento <= dia (ou classDate)
-              const dayPending = pendingClasses.filter(c => (c.paymentDueDate || c.classDate) === dayStr);
-              const hasOverdue = dayPending.length > 0 && isPast;
+              const hasToReceive = dayPending.some(c => {
+                 const dueDate = parseISO(c.paymentDueDate + 'T00:00:00');
+                 return !isPastDate || isToday;
+              });
+              
+              const hasOverdue = dayPending.some(c => {
+                 return isPastDate && !isToday;
+              });
 
               return (
                 <div 
@@ -581,21 +621,15 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                     }
                   }}
                   className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative p-1 transition-all cursor-pointer ${
-                    isToday ? 'bg-sky-500/10 border-sky-500/50' : 'bg-slate-800/20 border-slate-800/50 hover:bg-slate-800/40'
+                    isToday ? 'bg-sky-500/10 border-sky-500/50 shadow-lg shadow-sky-500/10' : 'bg-slate-800/10 border-slate-800/50 hover:bg-slate-800/30'
                   }`}
                 >
                   <span className={`text-[10px] font-bold ${isToday ? 'text-sky-400' : 'text-gray-500'}`}>{format(day, 'd')}</span>
                   
                   <div className="flex gap-1 mt-1">
-                    {hasBilled && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]" />}
+                    {hasToReceive && <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_5px_rgba(245,158,11,0.5)]" />}
                     {hasOverdue && <div className="w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_5px_rgba(239,68,68,0.5)]" />}
                   </div>
-
-                  {hasBilled && !hasOverdue && (
-                     <div className="absolute bottom-1 right-1">
-                        <p className="text-[7px] font-black text-emerald-500/70">R${dayData.faturamento.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
-                     </div>
-                  )}
                 </div>
               );
             })}
