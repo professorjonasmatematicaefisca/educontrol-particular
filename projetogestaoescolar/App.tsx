@@ -214,15 +214,15 @@ function App() {
           return <PortalDashboard userEmail={userEmail} userRole={userRole} onNavigate={handleViewChange} />;
         }
         return <Dashboard onNavigateToStudent={() => {}} />;
-      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} onViewChange={(view, context) => {
+      case 'CALENDAR': return <CalendarView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} userName={userName} onViewChange={(view, context) => {
         if (view === 'WHITEBOARD' && context) setActiveWhiteboardContext(context);
         handleViewChange(view);
       }} />;
       case 'FINANCIAL': 
         if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
-          return <FinancialView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} />;
+          return <FinancialView onShowToast={showToast} userEmail={userEmail} userId={userId} userRole={userRole!} userName={userName} />;
         }
-        return <Dashboard onNavigateToStudent={() => {}} />;
+        return <Dashboard onNavigateToStudent={() => {}} userName={userName} />;
       case 'FINANCE_HOME':
         if (userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) {
           return <FinanceView onShowToast={showToast} userEmail={userEmail} userRole={userRole!} userId={userId} />;

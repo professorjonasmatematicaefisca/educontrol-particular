@@ -101,10 +101,11 @@ interface CalendarViewProps {
   userEmail: string;
   userId: string;
   userRole: UserRole;
+  userName?: string;
   onViewChange?: (view: 'WHITEBOARD', context?: { classId: string; disciplineId: string }) => void;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userId, userRole, onViewChange }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEmail, userId, userRole, userName = 'Professor Jonas', onViewChange }) => {
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
@@ -495,13 +496,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   };
 
   const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
-    const message = `Olá ${studentName}, tudo bem? Aqui é o Professor Jonas. Passando para confirmar nossa aula de hoje às ${startTime}!`;
+    const message = `Olá ${studentName}, tudo bem? Aqui é o ${userName}. Passando para confirmar nossa aula de hoje às ${startTime}!`;
     const cleanPhone = phone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleNotifyParentCompletion = async (studentId: string, studentName: string, parentPhone: string | undefined, classDate: string) => {
-    const parentMsg = `Olá, aqui é o Professor Jonas. A aula de ${studentName} foi CONCLUÍDA com sucesso hoje! 🚀\n\nAproveito para enviar a agenda das próximas aulas da semana:\n\n`;
+    const parentMsg = `Olá, aqui é o ${userName}. A aula de ${studentName} foi CONCLUÍDA com sucesso hoje! 🚀\n\nAproveito para enviar a agenda das próximas aulas da semana:\n\n`;
     
     // Calculate range: from classDate until next Saturday
     const dateObj = parseISO(classDate);
@@ -551,7 +552,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
 
-    let messageText = `Olá ${studentName}, aqui é o Professor Jonas. Segue sua agenda de aulas para o restante da semana:\n\n`;
+    let messageText = `Olá ${studentName}, aqui é o ${userName}. Segue sua agenda de aulas para o restante da semana:\n\n`;
     
     weekClasses.forEach(c => {
       const dateObj = parseISO(c.classDate);

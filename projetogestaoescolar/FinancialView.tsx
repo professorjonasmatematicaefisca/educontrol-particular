@@ -32,9 +32,10 @@ interface FinancialViewProps {
   userEmail: string;
   userId: string;
   userRole: UserRole;
+  userName: string;
 }
 
-export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userEmail, userId, userRole }) => {
+export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userEmail, userId, userRole, userName }) => {
   const [classes, setClasses] = useState<ScheduledClass[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   const [recebimentoTab, setRecebimentoTab] = useState<'OVERDUE' | 'THIS_WEEK' | 'NEXT_WEEK'>('THIS_WEEK');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [tempDueDate, setTempDueDate] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -187,6 +190,41 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     } catch (error) {
       onShowToast('Erro ao confirmar pagamento');
     }
+  };
+
+  const handleUpdateDueDate = async (groupId: string, classes: ScheduledClass[]) => {
+    if (!tempDueDate) return;
+    const ids = classes.map(c => c.id!);
+    const success = await SupabaseService.updateScheduledClassesDueDate(ids, tempDueDate);
+    if (success) {
+      onShowToast('Vencimento atualizado com sucesso!');
+      setEditingGroupId(null);
+      fetchData();
+    } else {
+      onShowToast('Erro ao atualizar vencimento');
+    }
+  };
+
+  const handleSendBillingReminder = (group: any) => {
+    const parentName = group.classes[0]?.parentName || 'Responsável';
+    const parentPhone = group.classes[0]?.parentPhone || group.classes[0]?.studentPhone;
+    
+    if (!parentPhone) {
+      onShowToast('Telefone não cadastrado para cobrança.');
+      return;
+    }
+
+    let message = `Olá ${parentName}, tudo bem? Aqui é o ${userName}. 📝\n\nPassando para lembrar que o vencimento das aulas está próximo (${new Date(group.latestDueDate + 'T00:00:00').toLocaleDateString('pt-BR')}).\n\n*Detalhamento das aulas:*\n`;
+    
+    group.classes.forEach((c: ScheduledClass) => {
+      const date = new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR');
+      message += `• ${date}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+    });
+
+    message += `\n*Valor Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\nQualquer dúvida, estou à disposição!`;
+    
+    const cleanPhone = parentPhone.replace(/\D/g, '');
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const PaymentModal = () => (
@@ -413,7 +451,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight uppercase">Gestão <span className="text-emerald-500">Financeira</span></h1>
           </div>
-          <p className="text-xs text-gray-400 font-bold ml-10 uppercase tracking-widest">Controle de faturamento e recebimentos</p>
+          <p className="text-xs text-gray-400 font-bold ml-10 uppercase tracking-widest">Olá, {userName} — Controle de faturamento e recebimentos</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-4 bg-slate-900/50 p-2 rounded-2xl border border-slate-800 backdrop-blur-md">
@@ -503,38 +541,64 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
         </div>
 
         <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-xl shadow-2xl">
-          <div className="mb-8">
-            <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
-              <TrendingUp size={18} className="text-sky-500" />
-              Fluxo de Caixa
-            </h3>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Fluxo diário de recebimentos (clique na coluna para ver detalhes)</p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-black text-white flex items-center gap-2 uppercase tracking-tight">
+                <CalendarIcon size={18} className="text-sky-500" />
+                Calendário Financeiro
+              </h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Resumo diário de recebimentos e pendências</p>
+            </div>
+            <div className="flex gap-3">
+               <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase"><div className="w-2 h-2 bg-emerald-500 rounded-full"></div> A Receber</div>
+               <div className="flex items-center gap-1 text-[8px] font-bold text-gray-500 uppercase"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Atrasado</div>
+            </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={chartData} 
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onClick={(data: any) => {
-                  if (data && data.activePayload && data.activePayload.length > 0) {
-                    const dayStr = data.activePayload[0].payload.date;
-                    const payments = completedClasses.filter(c => c.paymentStatus === 'PAID' && c.paidAt?.startsWith(dayStr));
-                    setSelectedDayData(payments);
-                    setShowDailyDetailModal(true);
-                  }
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                <Tooltip 
-                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px' }}
-                  labelStyle={{ color: '#64748b', fontSize: '10px', fontWeight: 'bold' }}
-                />
-                <Bar dataKey="recebido" fill="#0ea5e9" radius={[4, 4, 0, 0]} className="cursor-pointer" />
-              </BarChart>
-            </ResponsiveContainer>
+          
+          <div className="grid grid-cols-7 gap-1">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+              <div key={d} className="text-center text-[10px] font-black text-gray-600 uppercase mb-2">{d}</div>
+            ))}
+            {daysInMonth.map((day, idx) => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const isToday = dayStr === format(new Date(), 'yyyy-MM-dd');
+              const isPast = day < today;
+              
+              const dayData = chartData.find(d => d.name === format(day, 'dd'));
+              const hasBilled = dayData && dayData.faturamento > 0;
+              
+              // Verificar atrasos: aulas completadas com pagamento pendente e data de vencimento <= dia (ou classDate)
+              const dayPending = pendingClasses.filter(c => (c.paymentDueDate || c.classDate) === dayStr);
+              const hasOverdue = dayPending.length > 0 && isPast;
+
+              return (
+                <div 
+                  key={idx} 
+                  onClick={() => {
+                    if (dayPending.length > 0) {
+                      setSelectedDayData(dayPending);
+                      setShowDailyDetailModal(true);
+                    }
+                  }}
+                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative p-1 transition-all cursor-pointer ${
+                    isToday ? 'bg-sky-500/10 border-sky-500/50' : 'bg-slate-800/20 border-slate-800/50 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <span className={`text-[10px] font-bold ${isToday ? 'text-sky-400' : 'text-gray-500'}`}>{format(day, 'd')}</span>
+                  
+                  <div className="flex gap-1 mt-1">
+                    {hasBilled && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]" />}
+                    {hasOverdue && <div className="w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_5px_rgba(239,68,68,0.5)]" />}
+                  </div>
+
+                  {hasBilled && !hasOverdue && (
+                     <div className="absolute bottom-1 right-1">
+                        <p className="text-[7px] font-black text-emerald-500/70">R${dayData.faturamento.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</p>
+                     </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -577,7 +641,33 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                     </div>
                     <div className="text-right">
                       <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Vencimento</p>
-                      <p className="text-xs text-white font-black">{new Date(g.latestDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                      {editingGroupId === `${g.studentName}-${g.totalValue}` ? (
+                        <div className="flex items-center gap-1">
+                          <input 
+                            type="date" 
+                            className="bg-slate-900 border border-amber-500/50 rounded p-1 text-[10px] text-white outline-none"
+                            value={tempDueDate}
+                            onChange={(e) => setTempDueDate(e.target.value)}
+                            autoFocus
+                          />
+                          <button 
+                            onClick={() => handleUpdateDueDate(`${g.studentName}-${g.totalValue}`, g.classes)}
+                            className="p-1 bg-emerald-500 rounded text-white hover:bg-emerald-600 transition-colors"
+                          >
+                            <Check size={10} />
+                          </button>
+                        </div>
+                      ) : (
+                        <p 
+                          className="text-xs text-white font-black cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-1"
+                          onClick={() => {
+                            setEditingGroupId(`${g.studentName}-${g.totalValue}`);
+                            setTempDueDate(g.latestDueDate);
+                          }}
+                        >
+                          {new Date(g.latestDueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </p>
+                      )}
                     </div>
                   </div>
                   
@@ -613,6 +703,24 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                       <CheckCircle size={18} />
                     </button>
                   </div>
+
+                  {/* Botão de Cobrança Prévia */}
+                  {(() => {
+                    const due = new Date(g.latestDueDate + 'T00:00:00');
+                    const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    if (diff <= 2 && diff >= 0) {
+                      return (
+                        <button 
+                          onClick={() => handleSendBillingReminder(g)}
+                          className="mt-3 w-full py-2 bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-sky-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                        >
+                          <TrendingUp size={12} />
+                          Enviar Cobrança
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ))}
             </div>

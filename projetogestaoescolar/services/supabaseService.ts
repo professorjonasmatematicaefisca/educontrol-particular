@@ -1746,6 +1746,19 @@ export const SupabaseService = {
         }));
     },
 
+    async updateScheduledClassesDueDate(ids: string[], dueDate: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('scheduled_classes')
+            .update({ payment_due_date: dueDate })
+            .in('id', ids);
+
+        if (error) {
+            console.error('Error updating due dates:', error);
+            return false;
+        }
+        return true;
+    },
+
     async getWeeklyScheduleForWhatsApp(startDate: string, endDate: string, studentId?: string): Promise<ScheduledClass[]> {
         // Reuse getScheduledClasses with forced ordering for schedule listing
         return this.getScheduledClasses(startDate, endDate, studentId);

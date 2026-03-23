@@ -22,7 +22,8 @@ import {
 import { ptBR } from 'date-fns/locale';
 
 interface DashboardProps {
-    onNavigateToStudent?: (studentId: string) => void;
+  onNavigateToStudent: (id: string) => void;
+  userName?: string;
 }
 
 interface PaymentItem {
@@ -32,7 +33,7 @@ interface PaymentItem {
   type: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = () => {
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userName = 'Professor Jonas' }) => {
     const [stats, setStats] = useState({
         totalStudents: 0,
         monthlyRevenue: 0,
@@ -146,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
 
     const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
         const cleanPhone = phone.replace(/\D/g, '');
-        const message = encodeURIComponent(`Olá ${studentName}, aqui é o Professor Jonas. Estou entrando em contato sobre nossa aula de hoje às ${startTime}.`);
+        const message = encodeURIComponent(`Olá ${studentName}, aqui é o ${userName}. Estou entrando em contato sobre nossa aula de hoje às ${startTime}.`);
         window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
     };
 
@@ -168,7 +169,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 return;
             }
 
-            let messageText = `Olá ${studentName}, aqui é o Professor Jonas. Segue sua agenda de aulas para o restante da semana:\n\n`;
+            let messageText = `Olá ${studentName}, aqui é o ${userName}. Segue sua agenda de aulas para o restante da semana:\n\n`;
             
             weekClasses.forEach(c => {
                 const dateObj = parseISO(c.classDate);
@@ -214,8 +215,9 @@ export const Dashboard: React.FC<DashboardProps> = () => {
     return (
         <div className="max-w-[1600px] mx-auto space-y-4 pb-4">
             {/* Header Fixo com Degradê Moderna */}
+            {/* Header Fixo com Degradê Moderna */}
             <div className="sticky top-0 z-30 -mx-6 px-6 py-4 bg-gradient-to-b from-[#0f172a] via-[#0f172a]/95 to-transparent backdrop-blur-md mb-2">
-                <h2 className="text-2xl font-black text-white">Olá, Professor Jonas</h2>
+                <h2 className="text-2xl font-black text-white">Olá, {userName}</h2>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Painel administrativo centralizado</p>
             </div>
 
