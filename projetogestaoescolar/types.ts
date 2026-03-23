@@ -257,6 +257,7 @@ export interface ScheduledClass {
   pdfUrl?: string; // New: Attachment associated with the completed class
   paymentDueDate?: string; // New: Expected date for the payment
   disciplineName?: string; // Join field for UI convenience
+  studentPhone?: string; // Join field for WhatsApp contact
 }
 
 export interface BankAccount {

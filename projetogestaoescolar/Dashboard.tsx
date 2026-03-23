@@ -3,26 +3,18 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Award,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  Calendar as CalendarIcon,
-  Check
+  UserPlus, Users, School, BookOpen, X, Plus, Camera, Lock, Trash2, GraduationCap, Edit2, RefreshCw, Mail, AlertCircle, CalendarRange, DollarSign, TrendingUp, CreditCard, Search, Calendar as CalendarIcon, Filter, CheckCircle, XCircle, Clock, ChevronDown, ImageIcon, Upload, Save, Banknote, Settings, FileText, CloudOff, Share2, Copy, Check, MessageCircle, Award, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
 import { ScheduledClass } from './types';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  isSameDay, 
-  addWeeks, 
-  startOfWeek, 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  addWeeks,
+  startOfWeek,
   endOfWeek,
   addDays,
   parseISO
@@ -65,11 +57,11 @@ export const Dashboard: React.FC<DashboardProps> = () => {
         try {
             const now = new Date();
             const startOfWeekNow = startOfWeek(now, { weekStartsOn: 1 });
-            
+
             const startM = startOfMonth(baseDate);
             const endM = endOfMonth(baseDate);
             const daysInterval = eachDayOfInterval({ start: startM, end: endM });
-            
+
             const startHistory = format(addWeeks(now, -4), 'yyyy-MM-dd');
             const [students, allSchedule] = await Promise.all([
                 SupabaseService.getStudents(),
@@ -81,7 +73,7 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 const dayValue = allSchedule
                     .filter(c => c.classDate === dayStr && c.status === 'COMPLETED')
                     .reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
-                
+
                 return {
                     name: format(day, 'dd'),
                     valor: dayValue,
@@ -117,8 +109,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 const weeklyPayments: PaymentItem[] = allSchedule
                     .filter(c => {
                         const d = parseISO(c.classDate);
-                        return d >= weekOffsetStart && d <= weekOffsetEnd && 
-                               c.status === 'COMPLETED' && 
+                        return d >= weekOffsetStart && d <= weekOffsetEnd &&
+                               c.status === 'COMPLETED' &&
                                c.paymentStatus !== 'PAID';
                     })
                     .map(c => ({
@@ -132,8 +124,8 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                 const overduePayments: PaymentItem[] = allSchedule
                     .filter(c => {
                         const d = parseISO(c.classDate);
-                        return d < startOfWeekNow && 
-                               c.status === 'COMPLETED' && 
+                        return d < startOfWeekNow &&
+                               c.status === 'COMPLETED' &&
                                c.paymentStatus !== 'PAID';
                     })
                     .map(c => ({
@@ -149,6 +141,49 @@ export const Dashboard: React.FC<DashboardProps> = () => {
             console.error('Error loading dashboard:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
+        const cleanPhone = phone.replace(/\D/g, '');
+        const message = encodeURIComponent(`Olá ${studentName}, aqui é o Professor Jonas. Estou entrando em contato sobre nossa aula de hoje às ${startTime}.`);
+        window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+    };
+
+    const handleSendWeeklySchedule = async (studentId: string, studentName: string, phone?: string, classDate?: string) => {
+        if (!phone) {
+            alert(`Telefone não cadastrado para ${studentName}.`);
+            return;
+        }
+
+        const dateRef = classDate ? parseISO(classDate) : new Date();
+        const start = format(dateRef, 'yyyy-MM-dd');
+        const end = format(endOfWeek(dateRef, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        
+        try {
+            const weekClasses = await SupabaseService.getWeeklyScheduleForWhatsApp(start, end, studentId);
+            
+            if (weekClasses.length === 0) {
+                alert('Nenhuma aula encontrada para o restante da semana.');
+                return;
+            }
+
+            let messageText = `Olá ${studentName}, aqui é o Professor Jonas. Segue sua agenda de aulas para o restante da semana:\n\n`;
+            
+            weekClasses.forEach(c => {
+                const dateObj = parseISO(c.classDate);
+                const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
+                const dayMonth = format(dateObj, 'dd/MM');
+                messageText += `*${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
+            });
+
+            messageText += `\nQualquer dúvida, estou à disposição!`;
+            
+            const cleanPhone = phone.replace(/\D/g, '');
+            window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}`, '_blank');
+        } catch (error) {
+            console.error('Error sending weekly schedule:', error);
+            alert('Erro ao buscar agenda semanal.');
         }
     };
 
@@ -357,7 +392,33 @@ export const Dashboard: React.FC<DashboardProps> = () => {
                                           <div className={`w-1.5 h-1.5 mx-auto rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                                       </div>
                                       <div className="flex-1 min-w-0">
-                                          <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
+                                          <div className="flex items-center gap-1.5">
+                                            <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{c.studentName}</p>
+                                            {c.studentPhone && (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime);
+                                                        }}
+                                                        className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded transition-colors"
+                                                        title="WhatsApp"
+                                                    >
+                                                        <MessageCircle size={10} fill="currentColor" className="opacity-80" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone, c.classDate);
+                                                        }}
+                                                        className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors"
+                                                        title="Agenda da Semana"
+                                                    >
+                                                        <Share2 size={10} className="opacity-80" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                          </div>
                                           <p className={`text-[8px] font-bold uppercase tracking-widest truncate ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
                                             {isStarted ? 'EM ANDAMENTO' : isCompleted ? 'CONCLUÍDA' : 'AGENDADA'}
                                           </p>

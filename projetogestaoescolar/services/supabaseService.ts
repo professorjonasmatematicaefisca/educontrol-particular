@@ -1698,7 +1698,7 @@ export const SupabaseService = {
     async getScheduledClasses(startDate?: string, endDate?: string, studentId?: string, paymentStatus?: string): Promise<ScheduledClass[]> {
         let query = supabase.from('scheduled_classes').select(`
             *,
-            student:students(name, photo_url, class_name, parent_name),
+            student:students(name, photo_url, class_name, parent_name, phone),
             teacher:users(name, photo_url)
         `);
 
@@ -1707,7 +1707,7 @@ export const SupabaseService = {
         if (studentId) query = query.eq('student_id', studentId);
         if (paymentStatus) query = query.eq('payment_status', paymentStatus);
 
-        const { data, error } = await query.order('class_date', { ascending: false }).order('start_time', { ascending: false });
+        const { data, error } = await query.order('class_date', { ascending: true }).order('start_time', { ascending: true });
         if (error) throw error;
 
         return data.map((item: any) => ({
@@ -1737,8 +1737,14 @@ export const SupabaseService = {
             paymentAccountId: item.payment_account_id,
             paidAt: item.paid_at,
             pdfUrl: item.pdf_url,
-            paymentDueDate: item.payment_due_date
+            paymentDueDate: item.payment_due_date,
+            studentPhone: item.student?.phone
         }));
+    },
+
+    async getWeeklyScheduleForWhatsApp(startDate: string, endDate: string, studentId?: string): Promise<ScheduledClass[]> {
+        // Reuse getScheduledClasses with forced ordering for schedule listing
+        return this.getScheduledClasses(startDate, endDate, studentId);
     },
 
     async createScheduledClass(item: Partial<ScheduledClass>): Promise<boolean> {

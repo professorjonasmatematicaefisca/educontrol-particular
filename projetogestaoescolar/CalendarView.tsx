@@ -23,7 +23,9 @@ import {
   Check,
   Trash2,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  MessageCircle,
+  Share2
 } from 'lucide-react';
 import { 
   format,
@@ -471,6 +473,65 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       }
     } catch (error) {
       onShowToast('Erro na operação de remanejamento');
+    }
+  };
+
+  const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
+    if (!phone) {
+      onShowToast('Telefone não cadastrado para este aluno.');
+      return;
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    const message = encodeURIComponent(`Olá ${studentName}, aqui é o Professor Jonas. Estou entrando em contato sobre nossa aula de hoje às ${startTime}.`);
+    window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+  };
+
+  const handleSendWeeklySchedule = async (studentId: string, studentName: string, phone?: string) => {
+    if (!phone) {
+      onShowToast(`Telefone não cadastrado para ${studentName}.`);
+      return;
+    }
+
+    const start = format(agendaDate, 'yyyy-MM-dd');
+    const end = format(endOfWeek(agendaDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    
+    const weekClasses = await SupabaseService.getWeeklyScheduleForWhatsApp(start, end, studentId);
+    
+    if (weekClasses.length === 0) {
+      onShowToast('Nenhuma aula encontrada para o restante da semana.');
+      return;
+    }
+
+    let messageText = `Olá ${studentName}, aqui é o Professor Jonas. Segue sua agenda de aulas para o restante da semana:\n\n`;
+    
+    weekClasses.forEach(c => {
+      const dateObj = parseISO(c.classDate);
+      const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
+      const dayMonth = format(dateObj, 'dd/MM');
+      messageText += `*${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
+    });
+
+    messageText += `\nQualquer dúvida, estou à disposição!`;
+    
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}`, '_blank');
+  };
+
+  const handleBulkSendWeeklySchedules = async (list: ScheduledClass[]) => {
+    const studentsInList = Array.from(new Set(list.map(c => c.studentId)));
+    
+    if (studentsInList.length === 0) {
+      onShowToast('Nenhum aluno na lista para enviar.');
+      return;
+    }
+
+    if (!confirm(`Deseja abrir as janelas de WhatsApp para os ${studentsInList.length} alunos da lista (agenda semanal)?`)) return;
+
+    for (const sId of studentsInList) {
+      const studentClass = list.find(c => c.studentId === sId);
+      if (studentClass && studentClass.studentPhone) {
+        await handleSendWeeklySchedule(sId, studentClass.studentName || 'Aluno', studentClass.studentPhone);
+      }
     }
   };
 
@@ -1103,6 +1164,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                       >
                         <ChevronRight size={18} />
                       </button>
+                      <button 
+                        onClick={() => handleBulkSendWeeklySchedules(filtered)}
+                        className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/30 ml-1"
+                        title="Enviar agendas da semana para todos"
+                      >
+                        <Share2 size={18} />
+                      </button>
                     </div>
                   </div>
 
@@ -1135,7 +1203,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                                   <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isStarted ? 'bg-white animate-pulse' : isScheduled ? 'bg-sky-500 animate-pulse' : 'bg-emerald-500'} transition-colors`}></div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-bold text-white truncate">{c.studentName}</p>
+                                    {c.studentPhone && (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() => handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime)}
+                                          className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded-lg transition-colors"
+                                          title="Mensagem Hoje"
+                                        >
+                                          <MessageCircle size={14} fill="currentColor" className="opacity-80" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone)}
+                                          className="p-1 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors"
+                                          title="Agenda da Semana"
+                                        >
+                                          <Share2 size={13} className="opacity-80" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2">
                                     <p className={`text-[10px] font-bold uppercase tracking-widest ${isStarted ? 'text-orange-200/60' : isScheduled ? 'text-sky-200/60' : 'text-emerald-200/60'}`}>
                                       {isStarted ? 'Aula em andamento' : isCompleted ? 'Aula concluída' : (disciplines.find(d => d.id === c.disciplineId)?.name || 'Agendada')}
