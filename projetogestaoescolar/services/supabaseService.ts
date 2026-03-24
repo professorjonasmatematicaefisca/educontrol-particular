@@ -2327,25 +2327,60 @@ export const SupabaseService = {
     },
 
 
+
     // --- COURSES ---
-    async getCourses(): Promise<Course[]> {
-        const { data, error } = await supabase
-            .from('courses')
-            .select('*')
-            .order('created_at', { ascending: false });
+    async getCourses(studentId?: string): Promise<Course[]> {
+        let query = supabase.from('courses').select('*, modules:course_modules(*, lessons:course_lessons(*))');
+
+        // Se o studentId for fornecido, filtrar apenas os cursos que o aluno tem acesso
+        if (studentId) {
+            const { data: allowedCourses } = await supabase
+                .from('course_access')
+                .select('course_id')
+                .eq('student_id', studentId);
+            
+            if (allowedCourses && allowedCourses.length > 0) {
+                const ids = allowedCourses.map(a => a.course_id);
+                query = query.in('id', ids);
+            } else {
+                return []; // Caso o aluno não tenha acesso a nenhum curso
+            }
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             console.error("Error fetching courses:", error);
             return [];
         }
 
+        // Mapear dados para as interfaces do frontend
         return data.map((c: any) => ({
             id: c.id,
             name: c.name,
             description: c.description,
-            imageUrl: c.image_url,
+            thumbnailUrl: c.thumbnail_url,
             disciplineId: c.discipline_id,
-            createdAt: c.created_at
+            createdAt: c.created_at,
+            modules: (c.modules || [])
+                .sort((a: any, b: any) => a.order - b.order)
+                .map((m: any) => ({
+                    id: m.id,
+                    courseId: m.course_id,
+                    title: m.title,
+                    order: m.order,
+                    lessons: (m.lessons || [])
+                        .sort((a: any, b: any) => a.order - b.order)
+                        .map((l: any) => ({
+                            id: l.id,
+                            moduleId: l.module_id,
+                            title: l.title,
+                            type: l.type,
+                            contentUrl: l.content_url,
+                            duration: l.duration,
+                            order: l.order
+                        }))
+                }))
         }));
     },
 
@@ -2356,9 +2391,9 @@ export const SupabaseService = {
                 id: course.id,
                 name: course.name,
                 description: course.description,
-                image_url: course.imageUrl,
+                thumbnail_url: course.thumbnailUrl,
                 discipline_id: course.disciplineId,
-                updated_at: new Date().toISOString()
+                created_at: course.createdAt || new Date().toISOString()
             });
 
         if (error) {
@@ -2381,61 +2416,97 @@ export const SupabaseService = {
         return true;
     },
 
-    async getCourseItems(courseId: string): Promise<CourseItem[]> {
-        const { data, error } = await supabase
-            .from('course_items')
-            .select('*')
-            .eq('course_id', courseId)
-            .order('order', { ascending: true });
-
-        if (error) {
-            console.error("Error fetching course items:", error);
-            return [];
-        }
-
-        return data.map((item: any) => ({
-            id: item.id,
-            courseId: item.course_id,
-            title: item.title,
-            type: item.type,
-            contentUrl: item.content_url,
-            textContent: item.text_content,
-            order: item.order
-        }));
-    },
-
-    async saveCourseItem(item: Partial<CourseItem>): Promise<boolean> {
+    async saveCourseModule(module: Partial<CourseModule>): Promise<boolean> {
         const { error } = await supabase
-            .from('course_items')
+            .from('course_modules')
             .upsert({
-                id: item.id,
-                course_id: item.courseId,
-                title: item.title,
-                type: item.type,
-                content_url: item.contentUrl,
-                text_content: item.textContent,
-                order: item.order
+                id: module.id,
+                course_id: module.courseId,
+                title: module.title,
+                order: module.order
             });
-
-        if (error) {
-            console.error("Error saving course item:", error);
-            return false;
-        }
-        return true;
+        return !error;
     },
 
-    async deleteCourseItem(id: string): Promise<boolean> {
+    async deleteCourseModule(id: string): Promise<boolean> {
         const { error } = await supabase
-            .from('course_items')
+            .from('course_modules')
             .delete()
             .eq('id', id);
-
-        if (error) {
-            console.error("Error deleting course item:", error);
-            return false;
-        }
-        return true;
+        return !error;
     },
+
+    async saveCourseLesson(lesson: Partial<CourseLesson>): Promise<boolean> {
+        const { error } = await supabase
+            .from('course_lessons')
+            .upsert({
+                id: lesson.id,
+                module_id: lesson.moduleId,
+                title: lesson.title,
+                type: lesson.type,
+                content_url: lesson.contentUrl,
+                duration: lesson.duration,
+                order: lesson.order
+            });
+        return !error;
+    },
+
+    async deleteCourseLesson(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('course_lessons')
+            .delete()
+            .eq('id', id);
+        return !error;
+    },
+
+    // --- STUDENT PROGRESS & ACCESS ---
+    async getStudentCourseProgress(studentId: string): Promise<Set<string>> {
+        const { data, error } = await supabase
+            .from('course_progress')
+            .select('lesson_id')
+            .eq('student_id', studentId);
+        
+        if (error) return new Set();
+        return new Set(data.map((p: any) => p.lesson_id));
+    },
+
+    async markLessonAsCompleted(studentId: string, lessonId: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('course_progress')
+            .upsert({
+                student_id: studentId,
+                lesson_id: lessonId,
+                completed_at: new Date().toISOString()
+            });
+        return !error;
+    },
+
+    async toggleCourseAccess(courseId: string, studentId: string, hasAccess: boolean): Promise<boolean> {
+        if (hasAccess) {
+            const { error } = await supabase
+                .from('course_access')
+                .upsert({ course_id: courseId, student_id: studentId });
+            return !error;
+        } else {
+            const { error } = await supabase
+                .from('course_access')
+                .delete()
+                .eq('course_id', courseId)
+                .eq('student_id', studentId);
+            return !error;
+        }
+    },
+
+    async getCourseAuthorizedStudents(courseId: string): Promise<string[]> {
+        const { data, error } = await supabase
+            .from('course_access')
+            .select('student_id')
+            .eq('course_id', courseId);
+        
+        if (error) return [];
+        return data.map((a: any) => a.student_id);
+    },
+
 
     // --- PERSONAL FINANCE MODULE (MVP) ---
 

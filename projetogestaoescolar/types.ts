@@ -371,22 +371,44 @@ export interface MessageItem {
 }
 
 
+
 export interface Course {
   id: string;
   name: string;
   description: string;
-  imageUrl?: string;
+  thumbnailUrl?: string; // Corrigido de imageUrl para thumbnailUrl para alinhar com o banco
   disciplineId?: string;
   createdAt: string;
-  items?: CourseItem[];
+  modules?: CourseModule[]; // Novo: Hierarquia de módulos
 }
 
-export interface CourseItem {
+export interface CourseModule {
   id: string;
   courseId: string;
   title: string;
+  order: number;
+  lessons?: CourseLesson[];
+}
+
+export interface CourseLesson {
+  id: string;
+  moduleId: string;
+  title: string;
   type: 'VIDEO' | 'PDF' | 'LINK' | 'TEXT';
   contentUrl?: string;
-  textContent?: string;
+  duration?: string;
   order: number;
+  completed?: boolean; // UI-only field for progress
 }
+
+export interface CourseAccess {
+  courseId: string;
+  studentId: string;
+}
+
+export interface CourseProgress {
+  studentId: string;
+  lessonId: string;
+  completedAt: string;
+}
+
