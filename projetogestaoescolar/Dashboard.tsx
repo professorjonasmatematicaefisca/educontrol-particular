@@ -175,7 +175,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                 const dateObj = parseISO(c.classDate);
                 const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
                 const dayMonth = format(dateObj, 'dd/MM');
-                messageText += `*${weekDay} (${dayMonth})* as *${c.startTime}*\n`;
+                messageText += `*${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
             });
 
             messageText += `\nQualquer dúvida, estou à disposição!`;

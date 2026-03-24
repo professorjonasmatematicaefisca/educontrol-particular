@@ -502,7 +502,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
   };
 
   const handleNotifyParentCompletion = async (studentId: string, studentName: string, parentPhone: string | undefined, classDate: string) => {
-    const parentMsg = `Olá, aqui é o ${userName}. A aula de ${studentName} foi CONCLUÍDA com sucesso hoje! 🚀\n\nAproveito para enviar a agenda das próximas aulas da semana:\n\n`;
+    const parentMsg = `Olá, aqui é o ${userName}. A aula de ${studentName} foi concluída com sucesso hoje!\n\nAproveito para enviar a agenda das próximas aulas da semana:\n\n`;
     
     // Calculate range: from classDate until next Saturday
     const dateObj = parseISO(classDate);
@@ -558,7 +558,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       const dateObj = parseISO(c.classDate);
       const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
       const dayMonth = format(dateObj, 'dd/MM');
-      messageText += `*${weekDay} (${dayMonth})* as *${c.startTime}*\n`;
+      messageText += `*${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
     });
 
     messageText += `\nQualquer dúvida, estou à disposição!`;

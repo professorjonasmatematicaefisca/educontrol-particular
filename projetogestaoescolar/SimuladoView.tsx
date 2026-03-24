@@ -142,7 +142,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     });
 
     if (result.success) {
-      onShowToast('✅ Atribuído com sucesso!');
+      onShowToast('Atribuído com sucesso!');
       setShowAssignModal(false);
       setAssignData({ 
         studentId: '', 
@@ -152,7 +152,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
       });
       fetchData();
     } else {
-      onShowToast(`❌ Erro: ${result.error || 'Erro ao atribuir. Tente novamente.'}`);
+      onShowToast(`Erro: ${result.error || 'Erro ao atribuir. Tente novamente.'}`);
     }
   };
 
@@ -227,7 +227,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         studentId={userEmail}
         assignmentId={activeAssignment.id}
         onComplete={(score) => {
-          onShowToast(`🎉 Parabéns! Você completou com nota ${score}%`);
+          onShowToast(`Parabéns! Você completou com nota ${score}%`);
           setActiveSimulado(null);
           setActiveAssignment(null);
           fetchData();
