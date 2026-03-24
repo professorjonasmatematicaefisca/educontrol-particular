@@ -599,8 +599,8 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               const isToday = isSameDay(day, new Date());
               const isPastDate = day < startOfDay(new Date());
               
-              // Lógica estrita: mostra indicadores no dia do VENCIMENTO (paymentDueDate)
-              const dayPending = pendingClasses.filter(c => c.paymentDueDate === dayStr);
+              // Lógica estrita: mostra indicadores no dia do VENCIMENTO (paymentDueDate) ou da AULA (classDate) caso o primeiro seja nulo
+              const dayPending = pendingClasses.filter(c => (c.paymentDueDate || c.classDate) === dayStr);
               
               const hasToReceive = dayPending.length > 0 && !isPastDate;
               const hasOverdue = dayPending.length > 0 && isPastDate;

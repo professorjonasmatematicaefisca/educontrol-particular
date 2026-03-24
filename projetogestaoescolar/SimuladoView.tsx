@@ -169,6 +169,15 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
     return true;
   });
 
+  const nearDueAssignments = assignments.filter(a => {
+    if (a.status === 'COMPLETED') return false;
+    if (!a.dueDate) return false;
+    const dueDate = new Date(a.dueDate);
+    const now = new Date();
+    const diff = (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 3;
+  });
+
   if (showCreator) {
     return (
       <SimuladoCreator 
@@ -317,6 +326,40 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
           <span className="ml-auto text-[10px] font-black text-slate-500 uppercase tracking-widest">
             {filteredAssignments.length} atividade(s)
           </span>
+        </div>
+      )}
+
+      {activeTab === 'assignments' && nearDueAssignments.length > 0 && (
+        <div className="mb-8 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+              <Timer size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white italic uppercase">Próximos Prazos</h3>
+              <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest">Atividades que vencem nos próximos 3 dias</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {nearDueAssignments.map(a => (
+              <div 
+                key={`reminder-${a.id}`}
+                onClick={() => handleOpenAssignment(a)}
+                className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-2xl flex items-center gap-4 cursor-pointer hover:bg-amber-500/10 transition-all group"
+              >
+                <div className="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Clock size={24} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-black text-white uppercase truncate">{a.simulado?.contentTopic || a.simulado?.title}</h4>
+                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">
+                    Vence em {a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'Sem data'}
+                  </p>
+                </div>
+                <ArrowRight size={16} className="text-amber-500 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

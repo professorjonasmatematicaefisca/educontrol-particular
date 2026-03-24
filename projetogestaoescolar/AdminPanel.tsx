@@ -1634,7 +1634,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
 
             {showStudentModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 max-w-md w-full">
+                    <div className="bg-[#1e293b] rounded-xl border border-gray-700 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold text-white">{editingStudentId ? 'Editar Aluno' : 'Cadastrar Aluno'}</h2>
                             <button onClick={() => { setShowStudentModal(false); setEditingStudentId(null); setStudentForm({ name: '', parentId: '', parentEmail: '', parentName: '', billing_day: 1, billing_period: 'MONTHLY', hourlyRate: 0, phone: '', studentPhone: '', className: '', photoUrl: '', status: 'ACTIVE', inactiveReason: '', inactiveDate: '' }); }} className="text-gray-400 hover:text-white">
@@ -1693,28 +1693,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         placeholder="Formato: 5511999999999"
                                     />
                                 </div>
-                                <div className="col-span-2 mt-4">
-                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Responsável Registrado (Opcional)</label>
-                                    <select
-                                        value={studentForm.parentId}
-                                        onChange={(e) => {
-                                            const p = parents.find(x => x.id === e.target.value);
-                                            setStudentForm({ 
-                                                ...studentForm, 
-                                                parentId: e.target.value,
-                                                parentName: p ? p.name : studentForm.parentName,
-                                                parentEmail: p ? p.email : studentForm.parentEmail
-                                            });
-                                        }}
-                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
-                                    >
-                                        <option value="">-- Vincular Responsável Exitente --</option>
-                                        {parents.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-gray-500 mt-1 italic">Se não selecionar, um novo acesso será criado com os dados abaixo.</p>
-                                </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Nome do Responsável</label>
                                     <input
@@ -1743,38 +1721,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                         onChange={(e) => setStudentForm({ ...studentForm, parentEmail: e.target.value })}
                                         className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
                                         placeholder="email@exemplo.com"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 border-t border-gray-800 pt-4">
-                                <div className="col-span-2">
-                                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <DollarSign size={12} /> Configurações Financeiras
-                                    </h4>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Período de Faturamento</label>
-                                    <select
-                                        value={studentForm.billing_period}
-                                        onChange={(e) => setStudentForm({ ...studentForm, billing_period: e.target.value as any })}
-                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
-                                    >
-                                        <option value="MONTHLY">Mensal</option>
-                                        <option value="BIWEEKLY">Quinzenal</option>
-                                        <option value="WEEKLY">Semanal</option>
-                                        <option value="PER_CLASS">Por Aula</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Dia do Vencimento</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="31"
-                                        value={studentForm.billing_day}
-                                        onChange={(e) => setStudentForm({ ...studentForm, billing_day: parseInt(e.target.value) })}
-                                        className="w-full bg-[#0f172a] border border-gray-700 rounded-lg px-4 py-3 text-white outline-none focus:border-emerald-500"
                                     />
                                 </div>
                                 <div className="col-span-2">

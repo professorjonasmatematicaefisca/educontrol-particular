@@ -233,7 +233,7 @@ export const Layout: React.FC<LayoutProps> = ({
             })}
 
             {/* Admin Link */}
-            {role === UserRole.COORDINATOR && (
+            {role === UserRole.COORDINATOR && activeModule === 'TUTORING' && (
               <button
                 onClick={() => {
                   onViewChange('ADMIN');
