@@ -221,37 +221,29 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     today.setHours(0, 0, 0, 0);
     const isOverdue = dueDate < today;
     const studentName = group.classes[0]?.studentName || 'o aluno';
-    
-    // Emojis via code point - encoding-safe on any OS
-    const e = (...codes: number[]) => String.fromCodePoint(...codes);
-    const smile  = e(0x1F60A); // 😊
-    const pin    = e(0x1F514); // 🔔
-    const bullet = e(0x25AA);  // ▪
-    const money  = e(0x1F4B0); // 💰
-    const bank   = e(0x1F4CC); // 📌
-    const pray   = e(0x1F64F); // 🙏
 
-    let message = `${smile} Ola! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
+    let message = `Olá! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
     
     if (isOverdue) {
-      message += `${bank} Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}.\n\n`;
+      message += `Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
     } else {
-      message += `${pin} Lembrando que o vencimento esta proximo (${dueDate.toLocaleDateString('pt-BR')}).\n\n`;
+      message += `Lembrando que o vencimento das aulas está próximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
     }
     
     group.classes.forEach((c: ScheduledClass) => {
       const date = new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR');
       const subject = c.disciplineName || c.disciplineId || 'Aula Particular';
-      message += `${bullet} ${date} | ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      message += `- ${date} | ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     });
 
-    message += `\n${money} *Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
-    message += `\n${bank} *PAGAMENTO VIA PIX:*\n`;
+    message += `\n*Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
+    message += `\n----------------------------\n`;
+    message += `*PAGAMENTO VIA PIX:*\n`;
     message += `Banco: InfinitePay\n`;
     message += `Chave (CNPJ):\n`;
     message += `28018691000170\n`;
     message += `----------------------------\n`;
-    message += `\n${pray} Qualquer duvida, estou a disposicao!`;
+    message += `\nQualquer dúvida, estou à disposição!`;
 
     
     const cleanPhone = parentPhone.replace(/\D/g, '');

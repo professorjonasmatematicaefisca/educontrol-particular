@@ -147,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
 
     const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
         const cleanPhone = phone.replace(/\D/g, '');
-        const message = encodeURIComponent(`Ola! Aqui e o ${userName}. Passando para lembrar da nossa aula de hoje as ${startTime}.`);
+        const message = encodeURIComponent(`Olá! Aqui é o ${userName}. Passando para lembrar da nossa aula de hoje às ${startTime}.`);
         window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
     };
 
@@ -169,7 +169,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                 return;
             }
 
-            let messageText = `Ola! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
+            let messageText = `Olá! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
             
             weekClasses.forEach(c => {
                 const dateObj = parseISO(c.classDate);
@@ -178,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                 messageText += `*${weekDay} (${dayMonth})* as *${c.startTime}*\n`;
             });
 
-            messageText += `\nQualquer duvida, estou a disposicao!`;
+            messageText += `\nQualquer dúvida, estou à disposição!`;
             
             const cleanPhone = phone.replace(/\D/g, '');
             window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}`, '_blank');

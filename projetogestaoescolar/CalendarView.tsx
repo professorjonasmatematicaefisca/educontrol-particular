@@ -552,7 +552,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       return;
     }
 
-    let messageText = `Ola! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
+    let messageText = `Olá! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
     
     weekClasses.forEach(c => {
       const dateObj = parseISO(c.classDate);
@@ -561,7 +561,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       messageText += `*${weekDay} (${dayMonth})* as *${c.startTime}*\n`;
     });
 
-    messageText += `\nQualquer duvida, estou a disposicao!`;
+    messageText += `\nQualquer dúvida, estou à disposição!`;
     
     const cleanPhone = phone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}`, '_blank');
