@@ -223,12 +223,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
 
     const studentName = group.classes[0]?.studentName || 'o aluno';
 
-    let message = `Olá! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
+    let message = `Ol\u00E1! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
     
     if (isOverdue) {
-      message += `📌 Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
+      message += `\uD83D\uDCCC Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
     } else {
-      message += `📌 Lembrando que o vencimento das aulas está próximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
+      message += `\uD83D\uDCCC Lembrando que o vencimento das aulas est\u00E1 pr\u00F3ximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
     }
     
     group.classes.forEach((c: ScheduledClass) => {
@@ -239,11 +239,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
 
     message += `\n*Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
     message += `\n----------------------------\n`;
-    message += `✅ *PAGAMENTO VIA PIX:*\n`;
-    message += `Chave (CNPJ): *28.018.691/0001-70*\n`;
+    message += `\u2705 *PAGAMENTO VIA PIX:*\n`;
     message += `Banco: *InfinitePay*\n`;
+    message += `Chave (CNPJ) para copiar:\n`;
+    message += `28018691000170\n`;
     message += `----------------------------\n`;
-    message += `\nQualquer dúvida, estou à disposição!`;
+    message += `\nQualquer d\u00FAvida, estou \u00E0 disposi\u00E7\u00E3o!`;
     
     const cleanPhone = parentPhone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');

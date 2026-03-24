@@ -147,7 +147,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
 
     const handleWhatsAppMessage = (phone: string, studentName: string, startTime: string) => {
         const cleanPhone = phone.replace(/\D/g, '');
-        const message = encodeURIComponent(`Olá! Aqui é o ${userName}. 📝 Passando para lembrar da nossa aula de hoje às ${startTime}.`);
+        const message = encodeURIComponent(`Ol\u00E1! Aqui \u00E9 o ${userName}. \uD83D\uDCDD Passando para lembrar da nossa aula de hoje \u00E0s ${startTime}.`);
         window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
     };
 
@@ -169,16 +169,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                 return;
             }
 
-            let messageText = `Olá! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
+            let messageText = `Ol\u00E1! Segue a agenda de aulas de *${studentName}* para o restante da semana:\n\n`;
             
             weekClasses.forEach(c => {
                 const dateObj = parseISO(c.classDate);
                 const weekDay = format(dateObj, 'EEEE', { locale: ptBR });
                 const dayMonth = format(dateObj, 'dd/MM');
-                messageText += `📌 *${weekDay} (${dayMonth})* às *${c.startTime}*\n`;
+                messageText += `\uD83D\uDCCC *${weekDay} (${dayMonth})* \u00E0s *${c.startTime}*\n`;
             });
 
-            messageText += `\nQualquer dúvida, estou à disposição!`;
+            messageText += `\nQualquer d\u00FAvida, estou \u00E0 disposi\u00E7\u00E3o!`;
             
             const cleanPhone = phone.replace(/\D/g, '');
             window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(messageText)}`, '_blank');
