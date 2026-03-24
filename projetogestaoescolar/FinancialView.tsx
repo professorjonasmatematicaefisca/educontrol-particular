@@ -216,14 +216,32 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
       return;
     }
 
-    let message = `Olá ${parentName}, tudo bem? Aqui é o ${userName}. 📝\n\nPassando para lembrar que o vencimento das aulas está próximo (${new Date(group.latestDueDate + 'T00:00:00').toLocaleDateString('pt-BR')}).\n\n*Detalhamento das aulas:*\n`;
+    const dueDate = new Date(group.latestDueDate + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const isOverdue = dueDate < today;
+
+    let message = `👋 Olá ${parentName}! Aqui é o ${userName}. 😊\n\n`;
+    
+    if (isOverdue) {
+      message += `📝 Passando para avisar que constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
+    } else {
+      message += `📝 Passando para lembrar que o vencimento das aulas está próximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
+    }
     
     group.classes.forEach((c: ScheduledClass) => {
       const date = new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR');
-      message += `• ${date}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      const subject = c.disciplineName || c.disciplineId || 'Aula Particular';
+      message += `🔹 ${date} - ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     });
 
-    message += `\n*Valor Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\nQualquer dúvida, estou à disposição!`;
+    message += `\n*💰 Valor Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
+    message += `\n----------------------------\n`;
+    message += `💳 *DADOS PARA PAGAMENTO (PIX):*\n`;
+    message += `• Chave (CNPJ): *28.018.691/0001-70*\n`;
+    message += `• Banco: *InfinitePay*\n`;
+    message += `----------------------------\n`;
+    message += `\nQualquer dúvida, estou à disposição! 🚀`;
     
     const cleanPhone = parentPhone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
@@ -732,18 +750,23 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                     </button>
                   </div>
 
-                  {/* Botão de Cobrança Prévia */}
                   {(() => {
                     const due = new Date(g.latestDueDate + 'T00:00:00');
                     const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    if (diff <= 2 && diff >= 0) {
+                    const isOverdue = due < today;
+                    
+                    if (isOverdue || (diff <= 2 && diff >= 0)) {
                       return (
                         <button 
                           onClick={() => handleSendBillingReminder(g)}
-                          className="mt-3 w-full py-2 bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-sky-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                          className={`mt-3 w-full py-2 border text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${
+                            isOverdue 
+                              ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white' 
+                              : 'bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500 hover:text-white'
+                          }`}
                         >
                           <TrendingUp size={12} />
-                          Enviar Cobrança
+                          {isOverdue ? 'Cobrar Atrasado' : 'Enviar Cobrança'}
                         </button>
                       );
                     }
