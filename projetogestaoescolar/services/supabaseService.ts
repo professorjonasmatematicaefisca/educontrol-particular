@@ -1702,7 +1702,8 @@ export const SupabaseService = {
         let query = supabase.from('scheduled_classes').select(`
             *,
             student:students(name, photo_url, class_name, parent_name, phone, student_phone),
-            teacher:users(name, photo_url)
+            teacher:users(name, photo_url),
+            discipline:disciplines(name)
         `);
 
         if (startDate) query = query.gte('class_date', startDate);
@@ -1731,6 +1732,7 @@ export const SupabaseService = {
             teacherName: item.teacher?.name,
             teacherPhoto: item.teacher?.photo_url,
             disciplineId: item.discipline_id,
+            disciplineName: item.discipline?.name,
             subjectNotes: item.subject_notes,
             rescheduledBy: item.rescheduled_by,
             rescheduledAt: item.rescheduled_at,

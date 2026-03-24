@@ -221,27 +221,29 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     today.setHours(0,0,0,0);
     const isOverdue = dueDate < today;
 
-    let message = `👋 Olá ${parentName}! Aqui é o ${userName}. 😊\n\n`;
+    const studentName = group.classes[0]?.studentName || 'o aluno';
+
+    let message = `Olá! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
     
     if (isOverdue) {
-      message += `📝 Passando para avisar que constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
+      message += `📌 Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
     } else {
-      message += `📝 Passando para lembrar que o vencimento das aulas está próximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
+      message += `📌 Lembrando que o vencimento das aulas está próximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
     }
     
     group.classes.forEach((c: ScheduledClass) => {
       const date = new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR');
       const subject = c.disciplineName || c.disciplineId || 'Aula Particular';
-      message += `🔹 ${date} - ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      message += `- ${date} | ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     });
 
-    message += `\n*💰 Valor Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
+    message += `\n*Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
     message += `\n----------------------------\n`;
-    message += `💳 *DADOS PARA PAGAMENTO (PIX):*\n`;
-    message += `• Chave (CNPJ): *28.018.691/0001-70*\n`;
-    message += `• Banco: *InfinitePay*\n`;
+    message += `✅ *PAGAMENTO VIA PIX:*\n`;
+    message += `Chave (CNPJ): *28.018.691/0001-70*\n`;
+    message += `Banco: *InfinitePay*\n`;
     message += `----------------------------\n`;
-    message += `\nQualquer dúvida, estou à disposição! 🚀`;
+    message += `\nQualquer dúvida, estou à disposição!`;
     
     const cleanPhone = parentPhone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
