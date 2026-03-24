@@ -521,6 +521,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
         }
     };
 
+    const handleDeleteStudentData = async (id: string, name: string) => {
+        if (!confirm(`Tem certeza que deseja excluir TODAS as aulas e registros financeiros de ${name}? Esta ação não pode ser desfeita.`)) return;
+        
+        const success = await SupabaseService.deleteStudentData(id);
+        if (success) {
+            onShowToast(`Dados de ${name} excluídos com sucesso`);
+            loadData();
+        } else {
+            onShowToast('Erro ao excluir dados do aluno');
+        }
+    };
+
     const addAssignment = () => {
         if (classes.length === 0 || disciplines.length === 0) {
             onShowToast('Cadastre turmas e disciplinas primeiro');
@@ -960,14 +972,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
                                 <div className="absolute top-4 right-4 flex gap-2">
                                     <button
                                         onClick={() => confirmDeactivateStudent(student)}
-                                        className="p-2 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-2 text-gray-500 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all"
                                         title="Desativar Aluno"
                                     >
                                         <XCircle size={18} />
                                     </button>
                                     <button
+                                        onClick={() => handleDeleteStudentData(student.id, student.name)}
+                                        className="p-2 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all font-bold"
+                                        title="Excluir Aulas e Financeiro"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                    <button
                                         onClick={() => startEditStudent(student)}
                                         className="p-2 text-gray-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Editar Aluno"
                                     >
                                         <Edit2 size={18} />
                                     </button>

@@ -1849,6 +1849,11 @@ export const SupabaseService = {
         return !error;
     },
 
+    async deleteStudentData(studentId: string): Promise<boolean> {
+        const { error } = await supabase.from('scheduled_classes').delete().eq('student_id', studentId);
+        return !error;
+    },
+
     async updateScheduledClassDateTime(id: string, date: string, startTime: string, endTime: string): Promise<boolean> {
         const { error } = await supabase.from('scheduled_classes').update({
             class_date: date,
