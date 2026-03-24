@@ -223,28 +223,27 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
 
     const studentName = group.classes[0]?.studentName || 'o aluno';
 
-    let message = `Ola! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
+    let message = `😊 Ola! Segue o detalhamento das aulas de *${studentName}*:\n\n`;
     
     if (isOverdue) {
-      message += `Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}. Segue o detalhamento:\n\n`;
+      message += `📌 Constam aulas em aberto com vencimento em ${dueDate.toLocaleDateString('pt-BR')}.\n\n`;
     } else {
-      message += `Lembrando que o vencimento das aulas esta proximo (${dueDate.toLocaleDateString('pt-BR')}). Segue o detalhamento:\n\n`;
+      message += `🔔 Lembrando que o vencimento esta proximo (${dueDate.toLocaleDateString('pt-BR')}).\n\n`;
     }
     
     group.classes.forEach((c: ScheduledClass) => {
       const date = new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR');
       const subject = c.disciplineName || c.disciplineId || 'Aula Particular';
-      message += `- ${date} | ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      message += `▪ ${date} | ${subject}: R$ ${(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     });
 
-    message += `\n*Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
-    message += `\n----------------------------\n`;
-    message += `*PAGAMENTO VIA PIX:*\n`;
+    message += `\n💰 *Total: R$ ${group.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
+    message += `\n🏦 *PAGAMENTO VIA PIX:*\n`;
     message += `Banco: InfinitePay\n`;
-    message += `Chave (CNPJ):\n`;
+    message += `Chave:\n`;
     message += `28018691000170\n`;
-    message += `----------------------------\n`;
-    message += `\nQualquer duvida, estou a disposicao!`;
+    message += `\n🙏 Qualquer duvida, estou a disposicao!`;
+
     
     const cleanPhone = parentPhone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
