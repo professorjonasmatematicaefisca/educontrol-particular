@@ -19,7 +19,9 @@ import {
   Filter,
   XCircle,
   Copy,
-  ChevronLeft
+  ChevronLeft,
+  ChevronDown,
+  Calculator
 } from 'lucide-react';
 import { UserRole, Simulado, SimuladoAssignment, Student, Discipline } from './types';
 import { SupabaseService } from './services/supabaseService';
@@ -44,6 +46,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   onShowToast 
 }) => {
   const [activeTab, setActiveTab] = useState<'my_simulados' | 'assignments' | 'results' | 'open_activities'>('my_simulados');
+  const [expandedOpenStudents, setExpandedOpenStudents] = useState<string[]>([]);
   const [repoTab, setRepoTab] = useState<'SIMULADO' | 'LISTA'>('SIMULADO');
   const [simulados, setSimulados] = useState<Simulado[]>([]);
   const [editingSimulado, setEditingSimulado] = useState<Simulado | null>(null);
@@ -791,86 +794,148 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {assignments
-                  .filter(a => a.status !== 'COMPLETED')
-                  .sort((a, b) => {
-                    const dateA = new Date(a.createdAt || 0).getTime();
-                    const dateB = new Date(b.createdAt || 0).getTime();
-                    return dateB - dateA; // Most recent first
+              <div className="flex flex-col gap-4">
+                {Object.entries(
+                  assignments
+                    .filter(a => a.status !== 'COMPLETED')
+                    .reduce((acc, a) => {
+                      if (!acc[a.studentId]) acc[a.studentId] = [];
+                      acc[a.studentId].push(a);
+                      return acc;
+                    }, {} as Record<string, SimuladoAssignment[]>)
+                )
+                  .sort(([, a], [, b]) => {
+                    const studentA = students.find(s => s.id === a[0].studentId);
+                    const studentB = students.find(s => s.id === b[0].studentId);
+                    return (studentA?.name || '').localeCompare(studentB?.name || '');
                   })
-                  .map(a => {
-                    const student = students.find(s => s.id === a.studentId);
-                    const isOverdue = a.dueDate && new Date(a.dueDate) < new Date();
-                    
-                    const handleWhatsApp = (target: 'STUDENT' | 'PARENT') => {
-                      const phone = target === 'STUDENT' ? student?.studentPhone : student?.phone;
-                      if (!phone) {
-                        onShowToast(`Telefone do ${target === 'STUDENT' ? 'aluno' : 'pai'} não cadastrado.`);
-                        return;
-                      }
-
-                      const cleanPhone = phone.replace(/\D/g, '');
-                      const title = a.simulado?.contentTopic || a.simulado?.title || 'Atividade';
-                      const openedDate = a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A';
-                      const dueDate = a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo';
-                      
-                      const message = `Olá! Notificamos que a atividade *${title}* ainda está em aberto.\n\n📅 *Aberta em:* ${openedDate}\n⏰ *Prazo:* ${dueDate}\n\nPor favor, acesse o portal e complete assim que possível.`;
-                      
-                      window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                  .map(([studentId, studentAssignments]) => {
+                    const student = students.find(s => s.id === studentId);
+                    const isExpanded = expandedOpenStudents.includes(studentId);
+                    const toggleExpand = () => {
+                      setExpandedOpenStudents(prev => 
+                        prev.includes(studentId) 
+                          ? prev.filter(id => id !== studentId) 
+                          : [...prev, studentId]
+                      );
                     };
 
+                    const overdueCount = studentAssignments.filter(a => a.dueDate && new Date(a.dueDate) < new Date()).length;
+
                     return (
-                      <div key={a.id} className={`bg-slate-900/40 border p-5 rounded-3xl backdrop-blur-xl group transition-all flex flex-col h-full ${isOverdue ? 'border-rose-500/20 hover:border-rose-500/40' : 'border-slate-800 hover:border-emerald-500/30'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
-                              <User size={20} />
+                      <div key={studentId} className={`bg-slate-900/40 border ${overdueCount > 0 ? 'border-rose-500/20' : 'border-slate-800'} rounded-[2.5rem] overflow-hidden transition-all duration-500`}>
+                        {/* Student Header */}
+                        <div 
+                          onClick={toggleExpand}
+                          className="p-6 cursor-pointer hover:bg-white/5 flex items-center justify-between transition-all"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${overdueCount > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-800 text-slate-400'}`}>
+                              <User size={28} />
                             </div>
-                            <div className="flex flex-col">
-                              <h4 className="text-sm font-black text-white truncate max-w-[150px]">{student?.name || 'Aluno desconhecido'}</h4>
-                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{student?.className}</span>
+                            <div>
+                               <h4 className="text-lg font-black text-white uppercase italic">{student?.name || 'Aluno desconhecido'}</h4>
+                               <div className="flex items-center gap-3 mt-1">
+                                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{student?.className || 'Sem Turma'}</span>
+                                  <div className="w-1 h-1 bg-slate-700 rounded-full" />
+                                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${overdueCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                    {studentAssignments.length} {studentAssignments.length === 1 ? 'Atividade' : 'Atividades'} Pendente{studentAssignments.length === 1 ? '' : 's'}
+                                  </span>
+                               </div>
                             </div>
                           </div>
-                          {isOverdue && (
-                            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 text-[8px] font-black rounded-md border border-rose-500/20 uppercase">Atrasado</span>
-                          )}
+                          <div className="flex items-center gap-4">
+                             {overdueCount > 0 && (
+                               <span className="hidden sm:inline-block px-3 py-1 bg-rose-500 text-white text-[9px] font-black rounded-full uppercase shadow-lg shadow-rose-500/20">
+                                 {overdueCount} em atraso
+                               </span>
+                             )}
+                             <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
+                               <ChevronDown size={20} />
+                             </div>
+                          </div>
                         </div>
 
-                        <div className="space-y-3 mb-6">
-                           <div className="flex flex-col">
-                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Atividade</span>
-                             <span className="text-sm font-black text-emerald-400 uppercase italic truncate">{a.simulado?.contentTopic || a.simulado?.title}</span>
-                           </div>
-                           
-                           <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/5">
-                              <div className="flex flex-col">
-                                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Aberto em</span>
-                                 <span className="text-[10px] font-bold text-white uppercase">{a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</span>
-                              </div>
-                              <div className="flex flex-col">
-                                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Prazo</span>
-                                 <span className={`text-[10px] font-bold uppercase ${isOverdue ? 'text-rose-400' : 'text-white'}`}>
-                                   {a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}
-                                 </span>
-                              </div>
-                           </div>
-                        </div>
+                        {/* Activities List */}
+                        {isExpanded && (
+                          <div className="border-t border-white/5 p-6 animate-in slide-in-from-top-4 duration-500">
+                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                               {studentAssignments
+                                 .sort((a, b) => {
+                                   const dateA = new Date(a.createdAt || 0).getTime();
+                                   const dateB = new Date(b.createdAt || 0).getTime();
+                                   return dateB - dateA;
+                                 })
+                                 .map(a => {
+                                   const isOverdue = a.dueDate && new Date(a.dueDate) < new Date();
+                                   const handleWhatsApp = (target: 'STUDENT' | 'PARENT') => {
+                                      const phone = target === 'STUDENT' ? student?.studentPhone : student?.phone;
+                                      if (!phone) {
+                                        onShowToast(`Telefone do ${target === 'STUDENT' ? 'aluno' : 'pai'} não cadastrado.`);
+                                        return;
+                                      }
 
-                        <div className="grid grid-cols-2 gap-2 mt-auto">
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleWhatsApp('STUDENT'); }}
-                             className="flex items-center justify-center gap-2 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
-                           >
-                             <Send size={12} /> Aluno
-                           </button>
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleWhatsApp('PARENT'); }}
-                             className="flex items-center justify-center gap-2 py-3 bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
-                           >
-                             <Send size={12} /> Pai/Mãe
-                           </button>
-                        </div>
+                                      const cleanPhone = phone.replace(/\D/g, '');
+                                      const title = a.simulado?.contentTopic || a.simulado?.title || 'Atividade';
+                                      const openedDate = a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A';
+                                      const dueDate = a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo';
+                                      
+                                      const message = `Olá! Notificamos que a atividade *${title}* ainda está em aberto.\n\n📅 *Aberta em:* ${openedDate}\n⏰ *Prazo:* ${dueDate}\n\nPor favor, acesse o portal e complete assim que possível.`;
+                                      
+                                      window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                                   };
+
+                                   return (
+                                     <div key={a.id} className={`bg-slate-950/40 border p-5 rounded-3xl backdrop-blur-xl transition-all flex flex-col h-full ${isOverdue ? 'border-rose-500/20 shadow-lg shadow-rose-500/5' : 'border-slate-800 hover:border-emerald-500/30'}`}>
+                                       <div className="flex justify-between items-start mb-4">
+                                         <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center text-slate-500">
+                                            <Calculator size={16} />
+                                         </div>
+                                         {isOverdue && (
+                                           <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 text-[8px] font-black rounded-md border border-rose-500/20 uppercase tracking-widest">Atrasado</span>
+                                         )}
+                                       </div>
+
+                                       <div className="space-y-3 mb-6">
+                                          <div className="flex flex-col">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Conteúdo</span>
+                                            <span className="text-sm font-black text-emerald-400 uppercase italic truncate">{a.simulado?.contentTopic || a.simulado?.title}</span>
+                                          </div>
+                                          
+                                          <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/5">
+                                             <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Aberto em</span>
+                                                <span className="text-[10px] font-bold text-white uppercase">{a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                                             </div>
+                                             <div className="flex flex-col">
+                                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Prazo</span>
+                                                <span className={`text-[10px] font-bold uppercase ${isOverdue ? 'text-rose-400' : 'text-white'}`}>
+                                                  {a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                                                </span>
+                                             </div>
+                                          </div>
+                                       </div>
+
+                                       <div className="grid grid-cols-2 gap-2 mt-auto">
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleWhatsApp('STUDENT'); }}
+                                            className="flex items-center justify-center gap-2 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
+                                          >
+                                            <Send size={12} /> Aluno
+                                          </button>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleWhatsApp('PARENT'); }}
+                                            className="flex items-center justify-center gap-2 py-3 bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
+                                          >
+                                            <Send size={12} /> Pai/Mãe
+                                          </button>
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                             </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
