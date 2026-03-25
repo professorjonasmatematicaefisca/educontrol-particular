@@ -794,7 +794,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(
                   assignments
                     .filter(a => a.status !== 'COMPLETED')
@@ -823,42 +823,42 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     const overdueCount = studentAssignments.filter(a => a.dueDate && new Date(a.dueDate) < new Date()).length;
 
                     return (
-                      <div key={studentId} className={`bg-slate-900/40 border ${overdueCount > 0 ? 'border-rose-500/20' : 'border-slate-800'} rounded-[2.5rem] overflow-hidden transition-all duration-500`}>
+                      <div key={studentId} className={`bg-slate-900/40 border ${overdueCount > 0 ? 'border-rose-500/20' : 'border-slate-800'} rounded-3xl overflow-hidden transition-all duration-500 h-fit ${isExpanded ? 'col-span-full ring-2 ring-emerald-500/20 bg-slate-900/60' : ''}`}>
                         {/* Student Header */}
                         <div 
                           onClick={toggleExpand}
-                          className="p-6 cursor-pointer hover:bg-white/5 flex items-center justify-between transition-all"
+                          className="p-4 cursor-pointer hover:bg-white/5 flex items-center justify-between transition-all"
                         >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${overdueCount > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-800 text-slate-400'}`}>
-                              <User size={28} />
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${overdueCount > 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-slate-800 text-slate-400'}`}>
+                              <User size={20} />
                             </div>
-                            <div>
-                               <h4 className="text-lg font-black text-white uppercase italic">{student?.name || 'Aluno desconhecido'}</h4>
-                               <div className="flex items-center gap-3 mt-1">
-                                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{student?.className || 'Sem Turma'}</span>
+                            <div className="min-w-0">
+                               <h4 className="text-sm font-black text-white uppercase italic truncate max-w-[150px] sm:max-w-none">{student?.name || 'Aluno'}</h4>
+                               <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest truncate">{student?.className}</span>
                                   <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${overdueCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                    {studentAssignments.length} {studentAssignments.length === 1 ? 'Atividade' : 'Atividades'} Pendente{studentAssignments.length === 1 ? '' : 's'}
+                                  <span className={`text-[8px] font-black uppercase tracking-widest ${overdueCount > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                    {studentAssignments.length} {studentAssignments.length === 1 ? 'Ativ' : 'Ativs'}
                                   </span>
                                </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                             {overdueCount > 0 && (
-                               <span className="hidden sm:inline-block px-3 py-1 bg-rose-500 text-white text-[9px] font-black rounded-full uppercase shadow-lg shadow-rose-500/20">
-                                 {overdueCount} em atraso
+                          <div className="flex items-center gap-2">
+                             {overdueCount > 0 && !isExpanded && (
+                               <span className="px-2 py-0.5 bg-rose-500 text-white text-[7px] font-black rounded-full uppercase tracking-tighter">
+                                 {overdueCount}!
                                </span>
                              )}
-                             <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
-                               <ChevronDown size={20} />
+                             <div className={`w-8 h-8 rounded-lg bg-slate-800/50 flex items-center justify-center text-slate-500 transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}>
+                               <ChevronDown size={14} />
                              </div>
                           </div>
                         </div>
 
                         {/* Activities List */}
                         {isExpanded && (
-                          <div className="border-t border-white/5 p-6 animate-in slide-in-from-top-4 duration-500">
+                          <div className="border-t border-white/5 p-4 bg-slate-950/20 animate-in slide-in-from-top-2 duration-300">
                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                {studentAssignments
                                  .sort((a, b) => {
