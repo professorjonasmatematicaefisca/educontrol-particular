@@ -43,7 +43,7 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
   disciplines,
   onShowToast 
 }) => {
-  const [activeTab, setActiveTab] = useState<'my_simulados' | 'assignments' | 'results'>('my_simulados');
+  const [activeTab, setActiveTab] = useState<'my_simulados' | 'assignments' | 'results' | 'open_activities'>('my_simulados');
   const [repoTab, setRepoTab] = useState<'SIMULADO' | 'LISTA'>('SIMULADO');
   const [simulados, setSimulados] = useState<Simulado[]>([]);
   const [editingSimulado, setEditingSimulado] = useState<Simulado | null>(null);
@@ -261,6 +261,14 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
               className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'results' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
             >
               <BarChart3 size={14} /> Resultados
+            </button>
+          )}
+          {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+            <button 
+              onClick={() => setActiveTab('open_activities')}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 ${activeTab === 'open_activities' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+            >
+              <Clock size={14} /> Em Aberto
             </button>
           )}
         </div>
@@ -770,6 +778,111 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                     </div>
                  </div>
                )}
+              </div>
+            )}
+          {activeTab === 'open_activities' && userRole !== UserRole.STUDENT && (
+            <div className="col-span-full space-y-6 animate-in fade-in duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                <h3 className="text-xl font-black text-white px-2 uppercase italic">Atividades em Aberto</h3>
+                <div className="px-4 py-2 bg-slate-900/40 border border-slate-800 rounded-2xl">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    {assignments.filter(a => a.status !== 'COMPLETED').length} Pendências totais
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {assignments
+                  .filter(a => a.status !== 'COMPLETED')
+                  .sort((a, b) => {
+                    const dateA = new Date(a.createdAt || 0).getTime();
+                    const dateB = new Date(b.createdAt || 0).getTime();
+                    return dateB - dateA; // Most recent first
+                  })
+                  .map(a => {
+                    const student = students.find(s => s.id === a.studentId);
+                    const isOverdue = a.dueDate && new Date(a.dueDate) < new Date();
+                    
+                    const handleWhatsApp = (target: 'STUDENT' | 'PARENT') => {
+                      const phone = target === 'STUDENT' ? student?.studentPhone : student?.phone;
+                      if (!phone) {
+                        onShowToast(`Telefone do ${target === 'STUDENT' ? 'aluno' : 'pai'} não cadastrado.`);
+                        return;
+                      }
+
+                      const cleanPhone = phone.replace(/\D/g, '');
+                      const title = a.simulado?.contentTopic || a.simulado?.title || 'Atividade';
+                      const openedDate = a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A';
+                      const dueDate = a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo';
+                      
+                      const message = `Olá! Notificamos que a atividade *${title}* ainda está em aberto.\n\n📅 *Aberta em:* ${openedDate}\n⏰ *Prazo:* ${dueDate}\n\nPor favor, acesse o portal e complete assim que possível.`;
+                      
+                      window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                    };
+
+                    return (
+                      <div key={a.id} className={`bg-slate-900/40 border p-5 rounded-3xl backdrop-blur-xl group transition-all flex flex-col h-full ${isOverdue ? 'border-rose-500/20 hover:border-rose-500/40' : 'border-slate-800 hover:border-emerald-500/30'}`}>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400">
+                              <User size={20} />
+                            </div>
+                            <div className="flex flex-col">
+                              <h4 className="text-sm font-black text-white truncate max-w-[150px]">{student?.name || 'Aluno desconhecido'}</h4>
+                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{student?.className}</span>
+                            </div>
+                          </div>
+                          {isOverdue && (
+                            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 text-[8px] font-black rounded-md border border-rose-500/20 uppercase">Atrasado</span>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                           <div className="flex flex-col">
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Atividade</span>
+                             <span className="text-sm font-black text-emerald-400 uppercase italic truncate">{a.simulado?.contentTopic || a.simulado?.title}</span>
+                           </div>
+                           
+                           <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/5">
+                              <div className="flex flex-col">
+                                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Aberto em</span>
+                                 <span className="text-[10px] font-bold text-white uppercase">{a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : 'N/A'}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Prazo</span>
+                                 <span className={`text-[10px] font-bold uppercase ${isOverdue ? 'text-rose-400' : 'text-white'}`}>
+                                   {a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}
+                                 </span>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-auto">
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); handleWhatsApp('STUDENT'); }}
+                             className="flex items-center justify-center gap-2 py-3 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
+                           >
+                             <Send size={12} /> Aluno
+                           </button>
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); handleWhatsApp('PARENT'); }}
+                             className="flex items-center justify-center gap-2 py-3 bg-sky-500/10 hover:bg-sky-500 text-sky-400 hover:text-white rounded-2xl text-[9px] font-black uppercase transition-all active:scale-95"
+                           >
+                             <Send size={12} /> Pai/Mãe
+                           </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {assignments.filter(a => a.status !== 'COMPLETED').length === 0 && (
+                <div className="py-20 text-center bg-slate-900/20 border border-slate-800 border-dashed rounded-[3rem]">
+                   <CheckCircle2 size={64} className="mx-auto mb-4 text-emerald-500 opacity-30" />
+                   <p className="text-xl font-black text-white/30 uppercase tracking-[0.2em]">Tudo em dia!</p>
+                   <p className="text-[10px] text-slate-500 font-bold uppercase mt-2 tracking-widest">Não há simulados ou listas pendentes.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
