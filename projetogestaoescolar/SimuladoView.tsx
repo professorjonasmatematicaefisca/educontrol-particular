@@ -229,6 +229,8 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
         simulado={activeSimulado}
         studentId={userEmail}
         assignmentId={activeAssignment.id}
+        initialAnswers={activeAssignment.answers || []}
+        initialTimeSpentSeconds={activeAssignment.timeSpentSeconds || 0}
         onComplete={(score) => {
           onShowToast(`Parabéns! Você completou com nota ${score}%`);
           setActiveSimulado(null);
@@ -754,6 +756,24 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                                        ? new Date(a.completedAt).toLocaleDateString('pt-BR') 
                                        : (a.dueDate ? new Date(a.dueDate).toLocaleDateString('pt-BR') : 'Sem Prazo')}
                                   </span>
+                                  {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                                      <button 
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          if (confirm('Deseja realmente excluir esta atribuição?')) {
+                                            const success = await SupabaseService.deleteSimuladoAssignment(a.id);
+                                            if (success) {
+                                              onShowToast('Atribuição excluída!');
+                                              fetchData();
+                                            }
+                                          }
+                                        }}
+                                        className="p-1 hover:bg-rose-500/10 rounded-md text-slate-600 hover:text-rose-500 transition-all ml-1"
+                                        title="Excluir Atribuição"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                   )}
                                </div>
 
                                <div className="flex flex-col">
@@ -893,6 +913,24 @@ export const SimuladoView: React.FC<SimuladoViewProps> = ({
                                          </div>
                                          {isOverdue && (
                                            <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 text-[8px] font-black rounded-md border border-rose-500/20 uppercase tracking-widest">Atrasado</span>
+                                         )}
+                                         {(userRole === UserRole.TEACHER || userRole === UserRole.COORDINATOR) && (
+                                            <button 
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (confirm('Deseja realmente excluir esta atribuição?')) {
+                                                  const success = await SupabaseService.deleteSimuladoAssignment(a.id);
+                                                  if (success) {
+                                                    onShowToast('Atribuição excluída!');
+                                                    fetchData();
+                                                  }
+                                                }
+                                              }}
+                                              className="p-1.5 hover:bg-rose-500/10 rounded-lg text-slate-600 hover:text-rose-500 transition-all ml-auto"
+                                              title="Excluir Atribuição"
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
                                          )}
                                        </div>
 

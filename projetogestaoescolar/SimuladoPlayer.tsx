@@ -24,6 +24,7 @@ interface SimuladoPlayerProps {
   onCancel: () => void;
   initialAnswers?: { questionId: string; selectedOption: string; timeSpentSeconds?: number; }[];
   initialMode?: 'PLAYING' | 'RESULT' | 'REVIEW';
+  initialTimeSpentSeconds?: number;
 }
 
 export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({ 
@@ -33,15 +34,28 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
   onComplete,
   onCancel,
   initialAnswers = [],
-  initialMode = 'PLAYING'
+  initialMode = 'PLAYING',
+  initialTimeSpentSeconds = 0
 }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<any[]>(initialAnswers);
-  const [timeLeft, setTimeLeft] = useState((simulado.durationMinutes || 60) * 60);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const durationSeconds = (simulado.durationMinutes || 60) * 60;
+    return Math.max(0, durationSeconds - initialTimeSpentSeconds);
+  });
   const [isFinishing, setIsFinishing] = useState(false);
   const [mode, setMode] = useState<'PLAYING' | 'RESULT' | 'REVIEW'>(initialMode);
   const [score, setScore] = useState(0);
-  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>(() => {
+    // Reconstruct questionTimes from initialAnswers
+    const times: Record<string, number> = {};
+    initialAnswers.forEach(ans => {
+      if (ans.questionId && ans.timeSpentSeconds) {
+        times[ans.questionId] = ans.timeSpentSeconds;
+      }
+    });
+    return times;
+  });
 
   // Timer para rastrear tempo total
   const [startTime] = useState(() => Date.now());
@@ -103,6 +117,47 @@ export const SimuladoPlayer: React.FC<SimuladoPlayerProps> = ({
 
     return () => clearInterval(timer);
   }, [currentIdx, mode, simulado.questions]);
+
+  // Salvar progresso periodicamente (cada 30 seg) ou ao mudar respostas
+  useEffect(() => {
+    if (mode !== 'PLAYING' || !assignmentId) return;
+
+    const saveProgress = async () => {
+      const timeSpent = ((simulado.durationMinutes || 60) * 60) - timeLeft;
+      
+      const currentAnswers = simulado.questions.map(q => {
+        const existingAns = answers.find(a => a.questionId === q.id);
+        return {
+          questionId: q.id,
+          selectedOption: existingAns?.selectedOption || '',
+          timeSpentSeconds: questionTimes[q.id] || 0
+        };
+      });
+
+      try {
+        await SupabaseService.updateSimuladoAttempt(assignmentId, {
+          answers: currentAnswers,
+          timeSpentSeconds: timeSpent,
+          status: 'IN_PROGRESS'
+        });
+      } catch (err) {
+        console.warn('Silent failure saving progress:', err);
+      }
+    };
+
+    // Salva ao mudar respostas (com pequeno delay para evitar spam)
+    const timeout = setTimeout(saveProgress, 2000);
+    
+    // Timer para salvar tempo a cada 30s se o aluno ficar parado
+    const interval = setInterval(saveProgress, 30000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+      // Salva no unmount se estiver jogando
+      saveProgress();
+    };
+  }, [answers, assignmentId, mode]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);

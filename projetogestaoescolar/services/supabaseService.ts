@@ -2174,6 +2174,25 @@ export const SupabaseService = {
         return !error;
     },
 
+    async deleteSimuladoAssignment(assignmentId: string): Promise<boolean> {
+        // Primeiro remove tentativas vinculadas (ou deixa RLS/Cascata tratar se configurado)
+        await supabase
+            .from('simulado_attempts')
+            .delete()
+            .eq('assignment_id', assignmentId);
+
+        const { error } = await supabase
+            .from('simulado_assignments')
+            .delete()
+            .eq('id', assignmentId);
+
+        if (error) {
+            console.error('deleteSimuladoAssignment error:', error);
+            return false;
+        }
+        return true;
+    },
+
     // --- BANK ACCOUNTS ---
     async getBankAccounts(userId?: string): Promise<BankAccount[]> {
         const accounts = await this.getFinanceAccounts(userId);
