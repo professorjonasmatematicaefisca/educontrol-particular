@@ -433,12 +433,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                                                 {isStarted ? 'EM ANDAMENTO' : isCompleted ? 'CONCLUÍDA' : 'AGENDADA'}
                                             </p>
 
-                                            {c.studentPhone && (
+                                            {(c.studentPhone || c.parentPhone) && (
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime);
+                                                            handleWhatsAppMessage((c.studentPhone || c.parentPhone)!, c.studentName || '', c.startTime);
                                                         }}
                                                         className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded transition-colors"
                                                         title="WhatsApp"
@@ -448,7 +448,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone, c.classDate);
+                                                            handleSendWeeklySchedule(c.studentId, c.studentName || '', (c.studentPhone || c.parentPhone)!, c.classDate);
                                                         }}
                                                         className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors"
                                                         title="Agenda da Semana"

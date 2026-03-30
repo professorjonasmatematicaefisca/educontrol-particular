@@ -1269,10 +1269,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
                                  <div className="flex items-center gap-2">
                                    {(c.studentPhone || c.parentPhone) && (
                                      <>
-                                       {c.studentPhone && (
+                                       {(c.studentPhone || c.parentPhone) && (
                                          <>
-                                           <button onClick={() => handleWhatsAppMessage(c.studentPhone!, c.studentName || '', c.startTime)} className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded-lg"><MessageCircle size={12} /></button>
-                                           <button onClick={() => handleSendWeeklySchedule(c.studentId, c.studentName || '', c.studentPhone!)} className="p-1 hover:bg-blue-500/20 text-blue-400 rounded-lg"><Share2 size={11} /></button>
+                                           <button onClick={() => handleWhatsAppMessage((c.studentPhone || c.parentPhone)!, c.studentName || '', c.startTime)} className="p-1 hover:bg-emerald-500/20 text-emerald-500 rounded-lg"><MessageCircle size={12} /></button>
+                                           <button onClick={() => handleSendWeeklySchedule(c.studentId, c.studentName || '', (c.studentPhone || c.parentPhone)!)} className="p-1 hover:bg-blue-500/20 text-blue-400 rounded-lg"><Share2 size={11} /></button>
                                          </>
                                        )}
                                        {c.parentPhone && (
