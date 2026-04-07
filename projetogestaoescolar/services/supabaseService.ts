@@ -2319,6 +2319,34 @@ export const SupabaseService = {
         return true;
     },
 
+    async updatePaymentData(classId: string, updates: { paidAt?: string; paymentDueDate?: string; classDate?: string }): Promise<boolean> {
+        let updatePayload: any = {};
+        if (updates.paidAt !== undefined) updatePayload.paid_at = updates.paidAt;
+        if (updates.paymentDueDate !== undefined) updatePayload.payment_due_date = updates.paymentDueDate;
+        if (updates.classDate !== undefined) updatePayload.class_date = updates.classDate;
+
+        const { error } = await supabase
+            .from('scheduled_classes')
+            .update(updatePayload)
+            .eq('id', classId);
+
+        if (error) {
+            console.error('Error updating payment data:', error);
+            return false;
+        }
+        
+        if (updates.paidAt !== undefined) {
+             const { error: transErr } = await supabase
+                .from('finance_transactions')
+                .update({ date: updates.paidAt })
+                .eq('class_id', classId);
+                
+             if (transErr) console.error('Error updating transaction date:', transErr);
+        }
+        
+        return true;
+    },
+
     async uploadPDF(file: File): Promise<string | null> {
         // Sanitize filename: remove spaces, special chars, and accents
         const cleanName = file.name

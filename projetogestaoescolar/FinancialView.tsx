@@ -26,6 +26,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, addMonth
 import { ptBR } from 'date-fns/locale';
 import { UserRole, ScheduledClass, BankAccount } from './types';
 import { SupabaseService } from './services/supabaseService';
+import { FinancialReportModal } from './FinancialReportModal';
 
 interface FinancialViewProps {
   onShowToast: (msg: string) => void;
@@ -56,6 +57,13 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [tempDueDate, setTempDueDate] = useState('');
+
+  const [viewMode, setViewMode] = useState<'PENDING' | 'PAID' | 'REPORTS'>('PENDING');
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [individualTempDueDate, setIndividualTempDueDate] = useState('');
+  const [individualTempPaidAt, setIndividualTempPaidAt] = useState('');
+  const [individualTempClassDate, setIndividualTempClassDate] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -207,6 +215,27 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
       fetchData();
     } else {
       onShowToast('Erro ao atualizar vencimento');
+    }
+  };
+
+  const handleUpdateIndividualClass = async (classId: string) => {
+    if (!individualTempDueDate && !individualTempPaidAt && !individualTempClassDate) return;
+    const updates: any = {};
+    if (individualTempDueDate) updates.paymentDueDate = individualTempDueDate;
+    if (individualTempPaidAt) updates.paidAt = individualTempPaidAt;
+    if (individualTempClassDate) updates.classDate = individualTempClassDate;
+
+    const success = await SupabaseService.updatePaymentData(classId, updates);
+    if (success) {
+      onShowToast('Dados atualizados com sucesso!');
+      setEditingClassId(null);
+      fetchData();
+      
+      if (showStudentModal) {
+         setSelectedStudentClasses(prev => prev.map(c => c.id === classId ? { ...c, ...updates } : c));
+      }
+    } else {
+      onShowToast('Erro ao atualizar os dados');
     }
   };
 
@@ -400,8 +429,19 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-1">
                       <p className="text-sm font-black text-white">R$ {(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      {editingClassId === c.id ? (
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                           <input type="date" value={individualTempDueDate} onChange={e => setIndividualTempDueDate(e.target.value)} className="bg-slate-900 border border-amber-500/50 rounded p-1 text-[10px] text-white outline-none" title="Vencimento"/>
+                           <button onClick={(e) => { e.stopPropagation(); handleUpdateIndividualClass(c.id!); }} className="p-1 px-2 bg-emerald-500 hover:bg-emerald-600 transition-colors rounded text-white text-[10px] font-bold">OK</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[9px] text-gray-500 font-bold uppercase" onClick={(e) => { e.stopPropagation(); setEditingClassId(c.id!); setIndividualTempDueDate(c.paymentDueDate || c.classDate); setIndividualTempPaidAt(''); }}>
+                           <p>Venc: {new Date((c.paymentDueDate || c.classDate) + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                           <button className="text-amber-500 hover:text-white underline">editar</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -508,6 +548,13 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               {bankAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
             </select>
           </div>
+          <div className="h-8 w-[1px] bg-slate-800 hidden md:block" />
+          <button 
+            onClick={() => setShowReportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
+          >
+            Gerar Relatório (PDF)
+          </button>
         </div>
       </div>
 
@@ -658,32 +705,51 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
       <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-xl shadow-2xl pb-12">
         <div className="p-8 border-b border-slate-800 bg-slate-900/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h3 className="text-lg font-black text-white mb-1 uppercase tracking-tight">Confirmar Recebimentos</h3>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Gerencie os recebimentos pendentes por vencimento</p>
-          </div>
-          <div className="flex bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/50">
-            {[
-              { id: 'OVERDUE', label: 'Atrasados' },
-              { id: 'THIS_WEEK', label: 'Esta Semana' },
-              { id: 'NEXT_WEEK', label: 'Próxima Semana' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => { setRecebimentoTab(tab.id as any); setCurrentPage(1); }}
-                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  recebimentoTab === tab.id 
-                    ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' 
-                    : 'text-gray-500 hover:text-white'
-                }`}
+            <div className="flex gap-4 items-center mb-2">
+              <button 
+                onClick={() => setViewMode('PENDING')}
+                className={`text-lg font-black uppercase tracking-tight transition-colors pb-1 ${viewMode === 'PENDING' ? 'text-white border-b-2 border-emerald-500' : 'text-gray-500 hover:text-gray-300'}`}
               >
-                {tab.label}
+                Confirmar Recebimentos
               </button>
-            ))}
+              <button 
+                onClick={() => setViewMode('PAID')}
+                className={`text-lg font-black uppercase tracking-tight transition-colors pb-1 ${viewMode === 'PAID' ? 'text-white border-b-2 border-blue-500' : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                Histórico (Pagos)
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+              {viewMode === 'PENDING' ? 'Gerencie os recebimentos pendentes por vencimento' : 'Visualize e gerencie os recebimentos já confirmados'}
+            </p>
           </div>
+          {viewMode === 'PENDING' && (
+            <div className="flex bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/50">
+              {[
+                { id: 'OVERDUE', label: 'Atrasados' },
+                { id: 'THIS_WEEK', label: 'Esta Semana' },
+                { id: 'NEXT_WEEK', label: 'Próxima Semana' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { setRecebimentoTab(tab.id as any); setCurrentPage(1); }}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    recebimentoTab === tab.id 
+                      ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20' 
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="p-8">
-          {currentCards.length > 0 ? (
+          {viewMode === 'PENDING' ? (
+            <>
+              {currentCards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {currentCards.map((g, idx) => (
                 <div key={idx} className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-2xl flex flex-col h-full group hover:border-amber-500/50 transition-all cursor-default">
@@ -711,13 +777,14 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                         </div>
                       ) : (
                         <p 
-                          className="text-xs text-white font-black cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-1"
+                          className="text-xs text-white font-black cursor-pointer hover:text-amber-500 transition-colors flex items-center gap-1 justify-end"
                           onClick={() => {
                             setEditingGroupId(`${g.studentName}-${g.totalValue}`);
                             setTempDueDate(g.latestDueDate);
                           }}
                         >
                           {new Date(g.latestDueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          <span className="text-[9px] text-amber-500 underline ml-1">editar</span>
                         </p>
                       )}
                     </div>
@@ -815,12 +882,114 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
               </button>
             </div>
           )}
+            </>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-800">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-900/80 border-b border-slate-800 text-[10px] uppercase font-black tracking-widest text-gray-500">
+                    <th className="p-4">Aluno / Aula</th>
+                    <th className="p-4 hidden md:table-cell">Data da Aula</th>
+                    <th className="p-4 hidden md:table-cell">Vencimento</th>
+                    <th className="p-4">Data Pagamento</th>
+                    <th className="p-4 text-right">Valor</th>
+                    <th className="p-4 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {paidClasses.length > 0 ? (
+                    paidClasses.map(c => (
+                      <tr key={c.id} className="bg-slate-800/10 hover:bg-slate-800/30 transition-colors">
+                        <td className="p-4 group">
+                          <p className="font-bold text-white text-sm cursor-pointer group-hover:text-emerald-500 transition-colors">{c.studentName}</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-widest">{c.disciplineName || 'Aula Particular'}</p>
+                        </td>
+                        <td className="p-4 hidden md:table-cell">
+                          {editingClassId === c.id ? (
+                            <input 
+                              type="date" 
+                              value={individualTempClassDate} 
+                              onChange={e => setIndividualTempClassDate(e.target.value)} 
+                              className="bg-slate-900 border border-amber-500/50 rounded p-1 text-[10px] text-white outline-none w-full max-w-[120px]"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-gray-400">{new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                          )}
+                        </td>
+                        <td className="p-4 hidden md:table-cell">
+                          {editingClassId === c.id ? (
+                            <input 
+                              type="date" 
+                              value={individualTempDueDate} 
+                              onChange={e => setIndividualTempDueDate(e.target.value)} 
+                              className="bg-slate-900 border border-amber-500/50 rounded p-1 text-[10px] text-white outline-none w-full max-w-[120px]"
+                            />
+                          ) : (
+                            <span className="text-xs font-bold text-gray-400">
+                              {c.paymentDueDate ? new Date(c.paymentDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          {editingClassId === c.id ? (
+                            <input 
+                              type="date" 
+                              value={individualTempPaidAt} 
+                              onChange={e => setIndividualTempPaidAt(e.target.value)} 
+                              className="bg-slate-900 border border-emerald-500/50 rounded p-1 text-[10px] text-white outline-none w-full max-w-[120px]"
+                            />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-emerald-500">
+                                {c.paidAt ? new Date(c.paidAt + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-4 text-right">
+                          <span className="font-black text-emerald-500">R$ {(c.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td className="p-4 text-center">
+                          {editingClassId === c.id ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <button onClick={() => handleUpdateIndividualClass(c.id!)} className="p-1 px-2 bg-emerald-500 rounded text-white text-[10px] font-bold hover:bg-emerald-600">OK</button>
+                              <button onClick={() => setEditingClassId(null)} className="p-1 px-2 border border-slate-700 bg-slate-800 rounded text-gray-400 text-[10px] font-bold hover:text-white">X</button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => {
+                                setEditingClassId(c.id!);
+                                setIndividualTempDueDate(c.paymentDueDate || c.classDate);
+                                setIndividualTempPaidAt(c.paidAt ? c.paidAt.split('T')[0] : '');
+                                setIndividualTempClassDate(c.classDate);
+                              }}
+                              className="text-[10px] text-amber-500 underline uppercase tracking-widest font-black hover:text-white"
+                            >
+                              Editar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center opacity-30">
+                        <CheckCircle size={48} className="mx-auto mb-4" />
+                        <p className="text-sm font-black uppercase tracking-widest text-white">Nenhum pagamento registrado</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
       {showPaymentModal && <PaymentModal />}
       {showStudentModal && <StudentClassesModal />}
       {showDailyDetailModal && <DailyDetailModal />}
+      {showReportModal && <FinancialReportModal onClose={() => setShowReportModal(false)} classes={classes} bankAccounts={bankAccounts} />}
     </div>
   );
 };
