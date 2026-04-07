@@ -132,7 +132,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onShowToast, userEmail, 
     const fetchFinancialData = async () => {
         try {
             const startOfMonth = `${filterMonth}-01`;
-            const endOfMonth = `${filterMonth}-31`;
+            const year = parseInt(filterMonth.split('-')[0]);
+            const month = parseInt(filterMonth.split('-')[1]);
+            const lastDay = new Date(year, month, 0).getDate();
+            const endOfMonth = `${filterMonth}-${lastDay}`;
             const data = await SupabaseService.getScheduledClasses(startOfMonth, endOfMonth);
             setFinancialClasses(data);
         } catch (error) {

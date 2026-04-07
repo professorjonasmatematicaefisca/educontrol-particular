@@ -66,7 +66,10 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     try {
       const monthStr = filterMonth; // YYYY-MM
       const start = `${monthStr}-01`;
-      const end = `${monthStr}-31`;
+      const year = parseInt(monthStr.split('-')[0]);
+      const month = parseInt(monthStr.split('-')[1]);
+      const lastDay = new Date(year, month, 0).getDate();
+      const end = `${monthStr}-${lastDay}`;
 
       const [monthlyData, pendingData, accountsData] = await Promise.all([
         SupabaseService.getScheduledClasses(start, end),
