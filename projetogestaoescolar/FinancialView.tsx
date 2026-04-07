@@ -52,7 +52,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   const [selectedClassesToPay, setSelectedClassesToPay] = useState<ScheduledClass[]>([]);
   const [selectedDayData, setSelectedDayData] = useState<any[]>([]);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [recebimentoTab, setRecebimentoTab] = useState<'OVERDUE' | 'THIS_WEEK' | 'NEXT_WEEK'>('THIS_WEEK');
+  const [recebimentoTab, setRecebimentoTab] = useState<'OVERDUE' | 'THIS_WEEK' | 'NEXT_WEEK' | 'FUTURES'>('THIS_WEEK');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -149,6 +149,7 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
     if (recebimentoTab === 'OVERDUE') return itemDate < today;
     if (recebimentoTab === 'THIS_WEEK') return itemDate >= today && itemDate < nextWeek;
     if (recebimentoTab === 'NEXT_WEEK') return itemDate >= nextWeek && itemDate < afterNextWeek;
+    if (recebimentoTab === 'FUTURES') return itemDate >= afterNextWeek;
     return true;
   }).sort((a, b) => a.latestDueDate.localeCompare(b.latestDueDate));
 
@@ -724,11 +725,12 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             </p>
           </div>
           {viewMode === 'PENDING' && (
-            <div className="flex bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/50">
+            <div className="flex bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/50 overflow-x-auto custom-scrollbar">
               {[
                 { id: 'OVERDUE', label: 'Atrasados' },
                 { id: 'THIS_WEEK', label: 'Esta Semana' },
-                { id: 'NEXT_WEEK', label: 'Próxima Semana' }
+                { id: 'NEXT_WEEK', label: 'Próxima Semana' },
+                { id: 'FUTURES', label: 'Futuros' }
               ].map(tab => (
                 <button
                   key={tab.id}
