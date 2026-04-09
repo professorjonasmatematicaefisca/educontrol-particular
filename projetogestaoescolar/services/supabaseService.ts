@@ -2672,7 +2672,13 @@ export const SupabaseService = {
             status: item.status,
             userId: item.user_id,
             classId: item.class_id,
+            beneficiary: item.beneficiary,
             receipts: item.receipts,
+            isRecurring: item.is_recurring,
+            recurringPeriod: item.recurring_period,
+            installmentId: item.installment_id,
+            installmentNumber: item.installment_number,
+            totalInstallments: item.total_installments,
             createdAt: item.created_at
         }));
     },
@@ -2697,7 +2703,12 @@ export const SupabaseService = {
                 status: transaction.status,
                 user_id: effectiveUserId,
                 receipts: transaction.receipts,
-                class_id: transaction.classId
+                class_id: transaction.classId,
+                is_recurring: transaction.isRecurring,
+                recurring_period: transaction.recurringPeriod,
+                installment_id: transaction.installmentId,
+                installment_number: transaction.installmentNumber,
+                total_installments: transaction.totalInstallments
             });
 
         if (error) {

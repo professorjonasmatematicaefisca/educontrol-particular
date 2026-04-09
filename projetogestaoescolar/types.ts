@@ -42,6 +42,11 @@ export interface FinanceTransaction {
   userId: string;
   classId?: string;
   receipts?: string[];
+  isRecurring?: boolean;
+  recurringPeriod?: string;
+  installmentId?: string;
+  installmentNumber?: number;
+  totalInstallments?: number;
   createdAt?: string;
 }
 

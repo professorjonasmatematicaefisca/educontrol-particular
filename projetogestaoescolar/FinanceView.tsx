@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, FinanceAccount, FinanceTransaction, FinanceGoal } from './types';
 import { SupabaseService } from './services/supabaseService';
-import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle, X, Search, Filter, ChevronDown, ChevronUp, RefreshCw, Layers } from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
+  Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid 
+} from 'recharts';
+import { format, subMonths, isWithinInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 interface FinanceViewProps {
   userEmail: string;
@@ -19,6 +24,11 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [goals, setGoals] = useState<FinanceGoal[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('ALL');
+  const [filterAccount, setFilterAccount] = useState('ALL');
+  const [filterPeriod, setFilterPeriod] = useState<'THIS_MONTH' | 'LAST_3_MONTHS' | 'ALL'>('THIS_MONTH');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Modals state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -33,7 +43,15 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   
   const [newTransaction, setNewTransaction] = useState<Partial<FinanceTransaction>>({
-    amount: undefined, date: new Date().toISOString().split('T')[0], subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
+    amount: undefined, 
+    date: new Date().toISOString().split('T')[0], 
+    subcategory: '', 
+    beneficiary: '', 
+    type: 'EXPENSE', 
+    status: 'COMPLETED',
+    isRecurring: false,
+    recurringPeriod: 'MONTHLY',
+    totalInstallments: 1
   });
   const [customCategory, setCustomCategory] = useState('');
   const [customSubcategory, setCustomSubcategory] = useState('');
@@ -120,11 +138,68 @@ const getGoalIconComponent = (iconId?: string) => {
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  const groupedTransactions = useMemo(() => {
-    const groups: Record<string, typeof transactions> = {};
-    const ungrouped: typeof transactions = [];
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (t.beneficiary?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      const matchesCategory = filterCategory === 'ALL' || t.category === filterCategory;
+      const matchesAccount = filterAccount === 'ALL' || t.accountId === filterAccount;
+      
+      let matchesPeriod = true;
+      if (filterPeriod === 'THIS_MONTH') {
+        const start = startOfMonth(new Date());
+        const end = endOfMonth(new Date());
+        matchesPeriod = isWithinInterval(parseISO(t.date), { start, end });
+      } else if (filterPeriod === 'LAST_3_MONTHS') {
+        const start = startOfMonth(subMonths(new Date(), 2));
+        const end = endOfMonth(new Date());
+        matchesPeriod = isWithinInterval(parseISO(t.date), { start, end });
+      }
 
-    transactions.forEach(t => {
+      return matchesSearch && matchesCategory && matchesAccount && matchesPeriod;
+    });
+  }, [transactions, searchTerm, filterCategory, filterAccount, filterPeriod]);
+
+  const chartDataDistribution = useMemo(() => {
+    const expenses = filteredTransactions.filter(t => t.type === 'EXPENSE');
+    const categories: Record<string, number> = {};
+    expenses.forEach(e => {
+      categories[e.category] = (categories[e.category] || 0) + e.amount;
+    });
+    return Object.entries(categories).map(([name, value]) => ({ name, value }));
+  }, [filteredTransactions]);
+
+  const chartDataCashFlow = useMemo(() => {
+    const sorted = [...filteredTransactions].sort((a,b) => a.date.localeCompare(b.date));
+    const daily: Record<string, { income: number, expense: number, balance: number }> = {};
+    let runningBalance = 0;
+    
+    sorted.forEach(t => {
+      const day = t.date.split('T')[0];
+      if (!daily[day]) daily[day] = { income: 0, expense: 0, balance: 0 };
+      if (t.type === 'INCOME') daily[day].income += t.amount;
+      else if (t.type === 'EXPENSE') daily[day].expense += t.amount;
+      else if (t.type === 'TRANSFER') {
+        // Transfers don't change net worth unless it's to/from an untracked account
+      }
+    });
+
+    return Object.entries(daily).map(([date, data]) => {
+      runningBalance += (data.income - data.expense);
+      return {
+        date: format(parseISO(date), 'dd/MM'),
+        income: data.income,
+        expense: data.expense,
+        balance: runningBalance
+      };
+    });
+  }, [filteredTransactions]);
+
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, typeof filteredTransactions> = {};
+    const ungrouped: typeof filteredTransactions = [];
+
+    filteredTransactions.forEach(t => {
       const isParticular = t.category.toLowerCase().includes('aula particular');
       if (isParticular && t.beneficiary && t.subcategory) {
         const dateKey = t.date.includes('T') ? t.date.split('T')[0] : t.date.split(' ')[0];
@@ -269,42 +344,105 @@ const getGoalIconComponent = (iconId?: string) => {
     const finalCategory = newTransaction.category === 'CUSTOM' ? customCategory : newTransaction.category;
     const finalSubcategory = newTransaction.subcategory === 'CUSTOM' ? customSubcategory : newTransaction.subcategory;
 
-    const transactionToSave: Partial<FinanceTransaction> = {
+    const baseTransaction: Partial<FinanceTransaction> = {
       ...newTransaction,
       category: finalCategory || 'Outros',
       subcategory: finalSubcategory,
-      description: finalCategory || 'Lançamento', // Fallback para descrição no banco
+      description: newTransaction.description || finalCategory || 'Lançamento',
       userId
     };
 
-    const success = await SupabaseService.saveFinanceTransaction(transactionToSave, userId);
-    
-    if (success) {
-      const account = accounts.find(a => a.id === transactionToSave.accountId);
-      if (account) {
-        let newBalance = Number(account.balance);
-        const amountNum = Number(transactionToSave.amount);
+    // Case 1: Transfer between accounts
+    if (newTransaction.type === 'TRANSFER' && newTransaction.accountId && (newTransaction as any).destinationAccountId) {
+      const destinationId = (newTransaction as any).destinationAccountId;
+      const amount = Number(newTransaction.amount);
 
-        if (account.type === 'CREDIT') {
-          if (transactionToSave.type === 'EXPENSE') newBalance += amountNum;
-          else if (transactionToSave.type === 'INCOME' || transactionToSave.type === 'TRANSFER') newBalance -= amountNum;
-        } else {
-          if (transactionToSave.type === 'INCOME') newBalance += amountNum;
-          else if (transactionToSave.type === 'EXPENSE') newBalance -= amountNum;
-        }
-            
-        await SupabaseService.saveFinanceAccount({ ...account, balance: newBalance }, userId);
+      // 1. Withdrawal from origin
+      await SupabaseService.saveFinanceTransaction({
+        ...baseTransaction,
+        description: `Transferência p/ ${accounts.find(a => a.id === destinationId)?.name || 'Outra Conta'}`,
+        type: 'EXPENSE',
+        status: 'COMPLETED'
+      }, userId);
+
+      // 2. Deposit to destination
+      await SupabaseService.saveFinanceTransaction({
+        ...baseTransaction,
+        accountId: destinationId,
+        description: `Transferência de ${accounts.find(a => a.id === newTransaction.accountId)?.name || 'Outra Conta'}`,
+        type: 'INCOME',
+        status: 'COMPLETED'
+      }, userId);
+
+      // Update balances
+      const origin = accounts.find(a => a.id === newTransaction.accountId);
+      const dest = accounts.find(a => a.id === destinationId);
+      if (origin) await SupabaseService.saveFinanceAccount({ ...origin, balance: Number(origin.balance) - amount }, userId);
+      if (dest) await SupabaseService.saveFinanceAccount({ ...dest, balance: Number(dest.balance) + amount }, userId);
+
+      onShowToast("Transferência realizada!");
+    } 
+    // Case 2: Installments
+    else if (Number(newTransaction.totalInstallments) > 1) {
+      const total = Number(newTransaction.totalInstallments);
+      const installmentId = crypto.randomUUID();
+      const amountPerInstallment = Number(newTransaction.amount) / total;
+      const baseDate = parseISO(newTransaction.date!);
+
+      for (let i = 0; i < total; i++) {
+        const installmentDate = format(new Date(baseDate.getFullYear(), baseDate.getMonth() + i, baseDate.getDate()), 'yyyy-MM-dd');
+        await SupabaseService.saveFinanceTransaction({
+          ...baseTransaction,
+          amount: amountPerInstallment,
+          date: installmentDate,
+          description: `${baseTransaction.description} (${i + 1}/${total})`,
+          installmentId,
+          installmentNumber: i + 1,
+          totalInstallments: total,
+          status: i === 0 ? 'COMPLETED' : 'PENDING'
+        }, userId);
       }
 
-      onShowToast("Lançamento registrado!");
-      setIsTransactionModalOpen(false);
-      setNewTransaction({
-        accountId: accounts[0]?.id || '', amount: undefined, date: new Date().toISOString().split('T')[0],
-        category: '', subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED'
-      });
-      setCustomCategory('');
-      setCustomSubcategory('');
-      loadFinanceData();
+      // Update balance for the first one only (or whatever logic user prefers)
+      const account = accounts.find(a => a.id === newTransaction.accountId);
+      if (account && account.type !== 'CREDIT') {
+        await SupabaseService.saveFinanceAccount({ ...account, balance: Number(account.balance) - amountPerInstallment }, userId);
+      } else if (account && account.type === 'CREDIT') {
+         await SupabaseService.saveFinanceAccount({ ...account, balance: Number(account.balance) + amountPerInstallment }, userId);
+      }
+
+      onShowToast(`Parcelamento em ${total}x registrado!`);
+    }
+    // Case 3: Simple Transaction
+    else {
+      const success = await SupabaseService.saveFinanceTransaction(baseTransaction, userId);
+      if (success) {
+        const account = accounts.find(a => a.id === baseTransaction.accountId);
+        if (account) {
+          let newBalance = Number(account.balance);
+          const amountNum = Number(baseTransaction.amount);
+          if (account.type === 'CREDIT') {
+            if (baseTransaction.type === 'EXPENSE') newBalance += amountNum;
+            else if (baseTransaction.type === 'INCOME') newBalance -= amountNum;
+          } else {
+            if (baseTransaction.type === 'INCOME') newBalance += amountNum;
+            else if (baseTransaction.type === 'EXPENSE') newBalance -= amountNum;
+          }
+          await SupabaseService.saveFinanceAccount({ ...account, balance: newBalance }, userId);
+        }
+        onShowToast("Lançamento registrado!");
+      }
+    }
+    
+    setIsTransactionModalOpen(false);
+    setNewTransaction({
+      accountId: accounts[0]?.id || '', amount: undefined, date: new Date().toISOString().split('T')[0],
+      category: '', subcategory: '', beneficiary: '', type: 'EXPENSE', status: 'COMPLETED',
+      totalInstallments: 1, isRecurring: false
+    });
+    setCustomCategory('');
+    setCustomSubcategory('');
+    loadFinanceData();
     } else {
       onShowToast("Erro ao registrar lançamento.");
     }
@@ -428,6 +566,66 @@ const getGoalIconComponent = (iconId?: string) => {
               </div>
             </div>
 
+            {/* Insights Section (NEW) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              <div className="bg-[#111029] rounded-xl border border-gray-800 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Distribuição de Gastos</h3>
+                </div>
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartDataDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {chartDataDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={[ '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899' ][index % 6]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#1a1936', border: '1px solid #374151', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                        formatter={(val: number) => formatCurrency(val)}
+                      />
+                      <Legend verticalAlign="bottom" height={36}/>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-[#111029] rounded-xl border border-gray-800 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Evolução de Saldo</h3>
+                </div>
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartDataCashFlow}>
+                      <defs>
+                        <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                      <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `R$ ${val}`} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#1a1936', border: '1px solid #374151', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Area type="monotone" dataKey="balance" stroke="#10b981" fillOpacity={1} fill="url(#colorBalance)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
             {/* Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-[#1a1936] rounded-xl border border-gray-800 p-6 flex flex-col justify-center">
@@ -480,6 +678,84 @@ const getGoalIconComponent = (iconId?: string) => {
               </div>
             ) : activeTab === 'TRANSACTIONS' ? (
               <div className="space-y-4">
+                {/* Search and Filters Bar */}
+                <div className="flex flex-col md:flex-row gap-3 mb-6">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <input 
+                      type="text"
+                      placeholder="Buscar por descrição ou beneficiário..."
+                      className="w-full bg-[#111029] border border-gray-800 rounded-xl py-2.5 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  
+                  {(searchTerm || filterPeriod !== 'THIS_MONTH' || filterAccount !== 'ALL' || filterCategory !== 'ALL') && (
+                    <button 
+                      onClick={() => {
+                        setSearchTerm('');
+                        setFilterPeriod('THIS_MONTH');
+                        setFilterAccount('ALL');
+                        setFilterCategory('ALL');
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 transition-colors text-sm font-semibold whitespace-nowrap"
+                    >
+                      <X size={16} /> Limpar
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-[#111029] border-gray-800 text-gray-400 hover:text-white'}`}
+                  >
+                    <Filter size={18} />
+                    <span className="text-sm font-semibold">Filtros</span>
+                  </button>
+                </div>
+
+                {showFilters && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#111029] rounded-xl border border-gray-800 mb-6 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Período</label>
+                      <select 
+                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
+                        value={filterPeriod}
+                        onChange={(e: any) => setFilterPeriod(e.target.value)}
+                      >
+                        <option value="THIS_MONTH">Este Mês</option>
+                        <option value="LAST_3_MONTHS">Últimos 3 Meses</option>
+                        <option value="ALL">Todo o Histórico</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Conta</label>
+                      <select 
+                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
+                        value={filterAccount}
+                        onChange={(e) => setFilterAccount(e.target.value)}
+                      >
+                        <option value="ALL">Todas as Contas</option>
+                        {accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Categoria</label>
+                      <select 
+                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                      >
+                        <option value="ALL">Todas as Categorias</option>
+                        {[...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES].map(cat => (
+                          <option key={cat.name} value={cat.name}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl">
                     <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Recebido (Mês)</div>
@@ -606,10 +882,16 @@ const getGoalIconComponent = (iconId?: string) => {
                                     {isIncome ? <ArrowUpRight size={16} /> : t.type === 'TRANSFER' ? <ArrowRightLeft size={16} /> : <ArrowDownRight size={16} />}
                                   </div>
                                   <div>
-                                    <div className="text-white font-medium text-sm flex items-center gap-2">
+                                    <div className="text-white font-medium text-sm flex items-center gap-2 flex-wrap">
                                       {t.description}
                                       {t.status === 'PENDING' && (
-                                        <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase rounded border border-amber-500/20">A Receber</span>
+                                        <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase rounded border border-amber-500/20 whitespace-nowrap">A Receber</span>
+                                      )}
+                                      {t.isRecurring && (
+                                        <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase rounded border border-blue-500/20 whitespace-nowrap flex items-center gap-1"><RefreshCw size={8} /> Fixo</span>
+                                      )}
+                                      {t.totalInstallments && t.totalInstallments > 1 && (
+                                        <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-400 text-[9px] font-black uppercase rounded border border-purple-500/20 whitespace-nowrap">Parc. {t.installmentNumber}/{t.totalInstallments}</span>
                                       )}
                                     </div>
                                     {t.beneficiary && <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{isIncome ? 'De:' : 'Para:'} {t.beneficiary}</div>}
@@ -922,19 +1204,29 @@ const getGoalIconComponent = (iconId?: string) => {
                 <div className="text-amber-500 bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 text-sm">Crie uma Conta primeiro.</div>
               ) : (
                 <>
-                  <div className="flex gap-4">
-                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors ${newTransaction.type === 'INCOME' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold' : 'border-gray-800 text-gray-400 hover:border-gray-700'}`}>
+                  <div className="flex gap-2">
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${newTransaction.type === 'INCOME' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 font-bold' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}>
                       <input type="radio" className="hidden" name="type" checked={newTransaction.type === 'INCOME'} onChange={() => setNewTransaction({...newTransaction, type: 'INCOME'})} />
-                      <ArrowUpRight size={18} /> Receita
+                      <ArrowUpRight size={16} /> Receita
                     </label>
-                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-colors ${newTransaction.type === 'EXPENSE' ? 'border-red-500 bg-red-500/10 text-red-400 font-bold' : 'border-gray-800 text-gray-400 hover:border-gray-700'}`}>
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${newTransaction.type === 'EXPENSE' ? 'border-red-500 bg-red-500/10 text-red-400 font-bold' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}>
                       <input type="radio" className="hidden" name="type" checked={newTransaction.type === 'EXPENSE'} onChange={() => setNewTransaction({...newTransaction, type: 'EXPENSE'})} />
-                      <ArrowDownRight size={18} /> Despesa
+                      <ArrowDownRight size={16} /> Despesa
+                    </label>
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 cursor-pointer transition-all ${newTransaction.type === 'TRANSFER' ? 'border-blue-500 bg-blue-500/10 text-blue-400 font-bold' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}>
+                      <input type="radio" className="hidden" name="type" checked={newTransaction.type === 'TRANSFER'} onChange={() => setNewTransaction({...newTransaction, type: 'TRANSFER', category: 'Transferência', subcategory: 'Transferência entre Contas'})} />
+                      <ArrowRightLeft size={16} /> Transf.
                     </label>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Descrição</label>
+                    <input type="text" value={newTransaction.description || ''} onChange={e => setNewTransaction({...newTransaction, description: e.target.value})} className="w-full bg-gray-900/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500" placeholder="Ex: Aluguel, Supermercado..." />
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor</label>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Valor Total</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">R$</span>
                           <input required type="number" step="0.01" min="0" value={newTransaction.amount || ''} onChange={e => setNewTransaction({...newTransaction, amount: Number(e.target.value)})} className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white font-bold text-lg focus:outline-none focus:border-emerald-500" placeholder="0,00" />
@@ -984,14 +1276,52 @@ const getGoalIconComponent = (iconId?: string) => {
                       </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Conta / Origem</label>
-                    <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
-                      <option value="">Selecionar...</option>
-                      {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                        {newTransaction.type === 'TRANSFER' ? 'Conta de Origem' : 'Conta / Carteira'}
+                      </label>
+                      <select required value={newTransaction.accountId} onChange={e => setNewTransaction({...newTransaction, accountId: e.target.value})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
+                        <option value="">Selecionar...</option>
+                        {accounts.filter(a => a.status !== 'INACTIVE').map(acc => (
+                          <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {newTransaction.type === 'TRANSFER' && (
+                      <div>
+                        <label className="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">Conta de Destino</label>
+                        <select required value={(newTransaction as any).destinationAccountId} onChange={e => setNewTransaction({...newTransaction, destinationAccountId: e.target.value} as any)} className="w-full px-4 py-3 bg-gray-900/50 border border-blue-500/20 rounded-xl text-white focus:outline-none focus:border-blue-500 appearance-none">
+                          <option value="">Selecionar...</option>
+                          {accounts.filter(a => a.status !== 'INACTIVE' && a.id !== newTransaction.accountId).map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {newTransaction.type === 'EXPENSE' && (
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Parcelas</label>
+                        <select value={newTransaction.totalInstallments || 1} onChange={e => setNewTransaction({...newTransaction, totalInstallments: Number(e.target.value)})} className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white focus:outline-none focus:border-emerald-500 appearance-none">
+                          {[1,2,3,4,5,6,7,8,9,10,12,15,18,24,36,48].map(n => (
+                            <option key={n} value={n}>{n === 1 ? 'À vista' : `${n} parcelas`}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 p-3 bg-[#111029] rounded-xl border border-gray-800">
+                    <input 
+                      type="checkbox" 
+                      id="isRecurring" 
+                      className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-emerald-500 focus:ring-emerald-500"
+                      checked={newTransaction.isRecurring}
+                      onChange={e => setNewTransaction({...newTransaction, isRecurring: e.target.checked})}
+                    />
+                    <label htmlFor="isRecurring" className="text-sm font-semibold text-gray-300 cursor-pointer">Lançamento Fixo / Recorrente (Mensal)</label>
                   </div>
 
                   <div className="pt-4 flex gap-3 border-t border-gray-800">
