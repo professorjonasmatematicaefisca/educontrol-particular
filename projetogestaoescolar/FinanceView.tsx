@@ -443,9 +443,6 @@ const getGoalIconComponent = (iconId?: string) => {
     setCustomCategory('');
     setCustomSubcategory('');
     loadFinanceData();
-    } else {
-      onShowToast("Erro ao registrar lançamento.");
-    }
   };
 
   const openTransferGoalModal = (goalId: string, type: 'DEPOSIT' | 'WITHDRAW') => {
