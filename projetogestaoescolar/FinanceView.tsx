@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, FinanceAccount, FinanceTransaction, FinanceGoal } from './types';
 import { SupabaseService } from './services/supabaseService';
-import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle, X, Search, Filter, ChevronDown, ChevronUp, RefreshCw, Layers } from 'lucide-react';
+import { DollarSign, Plus, ArrowUpRight, ArrowDownRight, Wallet, Landmark, CreditCard, ArrowRightLeft, Tag, Calendar as CalendarIcon, Target, PiggyBank, Briefcase, Plane, Heart, Home, GraduationCap, Link2, Edit2, Trash2, CheckCircle2, XCircle, X, Search, Filter, ChevronDown, ChevronUp, RefreshCw, Layers, Clock, TrendingUp } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
   Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid 
@@ -27,7 +27,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({ userEmail, userRole, u
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [filterAccount, setFilterAccount] = useState('ALL');
-  const [filterPeriod, setFilterPeriod] = useState<'THIS_MONTH' | 'LAST_3_MONTHS' | 'ALL'>('THIS_MONTH');
+  const [filterMonth, setFilterMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [showFilters, setShowFilters] = useState(false);
 
   // Modals state
@@ -145,20 +145,13 @@ const getGoalIconComponent = (iconId?: string) => {
       const matchesCategory = filterCategory === 'ALL' || t.category === filterCategory;
       const matchesAccount = filterAccount === 'ALL' || t.accountId === filterAccount;
       
-      let matchesPeriod = true;
-      if (filterPeriod === 'THIS_MONTH') {
-        const start = startOfMonth(new Date());
-        const end = endOfMonth(new Date());
-        matchesPeriod = isWithinInterval(parseISO(t.date), { start, end });
-      } else if (filterPeriod === 'LAST_3_MONTHS') {
-        const start = startOfMonth(subMonths(new Date(), 2));
-        const end = endOfMonth(new Date());
-        matchesPeriod = isWithinInterval(parseISO(t.date), { start, end });
-      }
+      const startDate = startOfMonth(parseISO(filterMonth + '-01'));
+      const endDate = endOfMonth(parseISO(filterMonth + '-01'));
+      const matchesPeriod = isWithinInterval(parseISO(t.date), { start: startDate, end: endDate });
 
       return matchesSearch && matchesCategory && matchesAccount && matchesPeriod;
     });
-  }, [transactions, searchTerm, filterCategory, filterAccount, filterPeriod]);
+  }, [transactions, searchTerm, filterCategory, filterAccount, filterMonth]);
 
   const chartDataDistribution = useMemo(() => {
     const expenses = filteredTransactions.filter(t => t.type === 'EXPENSE');
@@ -689,11 +682,10 @@ const getGoalIconComponent = (iconId?: string) => {
                     />
                   </div>
                   
-                  {(searchTerm || filterPeriod !== 'THIS_MONTH' || filterAccount !== 'ALL' || filterCategory !== 'ALL') && (
+                  {(searchTerm || filterAccount !== 'ALL' || filterCategory !== 'ALL') && (
                     <button 
                       onClick={() => {
                         setSearchTerm('');
-                        setFilterPeriod('THIS_MONTH');
                         setFilterAccount('ALL');
                         setFilterCategory('ALL');
                       }}
@@ -703,33 +695,31 @@ const getGoalIconComponent = (iconId?: string) => {
                     </button>
                   )}
                   
-                  <button 
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-colors ${showFilters ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' : 'bg-[#111029] border-gray-800 text-gray-400 hover:text-white'}`}
-                  >
-                    <Filter size={18} />
-                    <span className="text-sm font-semibold">Filtros</span>
-                  </button>
+                  <div className="flex items-center gap-3 mb-6 bg-gray-800/20 p-2 rounded-xl border border-gray-800/40 w-fit">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 rounded-lg border border-gray-700">
+                      <CalendarIcon size={16} className="text-emerald-400" />
+                      <input 
+                        type="month" 
+                        value={filterMonth}
+                        onChange={(e) => setFilterMonth(e.target.value)}
+                        className="bg-transparent text-white text-xs font-bold outline-none border-none uppercase appearance-none cursor-pointer"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={`p-2 rounded-lg transition-all ${showFilters ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-900/50 text-gray-400 border border-gray-700 hover:text-white'}`}
+                    >
+                      <Filter size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 {showFilters && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#111029] rounded-xl border border-gray-800 mb-6 animate-in fade-in slide-in-from-top-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-800/20 rounded-xl border border-gray-800/40 animate-in fade-in slide-in-from-top-2">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Período</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Conta Bancária</label>
                       <select 
-                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
-                        value={filterPeriod}
-                        onChange={(e: any) => setFilterPeriod(e.target.value)}
-                      >
-                        <option value="THIS_MONTH">Este Mês</option>
-                        <option value="LAST_3_MONTHS">Últimos 3 Meses</option>
-                        <option value="ALL">Todo o Histórico</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Conta</label>
-                      <select 
-                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:border-emerald-500 outline-none"
                         value={filterAccount}
                         onChange={(e) => setFilterAccount(e.target.value)}
                       >
@@ -739,10 +729,11 @@ const getGoalIconComponent = (iconId?: string) => {
                         ))}
                       </select>
                     </div>
+
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase">Categoria</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1">Categoria</label>
                       <select 
-                        className="w-full bg-[#1a1936] border border-gray-700 rounded-lg p-2 text-white text-sm"
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm focus:border-emerald-500 outline-none"
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
                       >
@@ -754,22 +745,109 @@ const getGoalIconComponent = (iconId?: string) => {
                     </div>
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl">
-                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Recebido (Mês)</div>
-                    <div className="text-xl font-black text-white">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                      <CheckCircle2 size={40} className="text-emerald-500" />
+                    </div>
+                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.1em] mb-1">Recebidos no Mês</div>
+                    <div className="text-2xl font-black text-white">
                       {formatCurrency(filteredTransactions.filter(t => t.type === 'INCOME' && t.status === 'COMPLETED').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
                     </div>
+                    <div className="mt-2 text-[9px] text-gray-500 font-bold uppercase">Confirmado em conta</div>
                   </div>
-                  <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl">
-                    <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Previsão de Recebimento (Pendente)</div>
-                    <div className="text-xl font-black text-white">
+
+                  <div className="bg-red-500/5 border border-red-500/10 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                      <Clock size={40} className="text-red-500" />
+                    </div>
+                    <div className="text-[10px] font-black text-red-500 uppercase tracking-[0.1em] mb-1">Em Aberto (Pendentes)</div>
+                    <div className="text-2xl font-black text-white">
                       {(() => {
-                        const pendingFromTransactions = filteredTransactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0);
-                        const pendingFromClasses = classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING' && !transactions.some(t => t.classId === c.id)).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
-                        return formatCurrency(pendingFromTransactions + pendingFromClasses);
+                        const monthEnd = endOfMonth(parseISO(filterMonth + '-01'));
+                        const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
+                        
+                        // Cumulative pending up to the end of the selected month
+                        const pendingClasses = classes.filter(c => 
+                          c.status === 'COMPLETED' && 
+                          c.paymentStatus === 'PENDING' && 
+                          c.classDate <= monthEndStr
+                        ).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+                        
+                        const pendingTransactions = transactions.filter(t => 
+                          t.type === 'INCOME' && 
+                          t.status === 'PENDING' && 
+                          t.date <= monthEndStr
+                        ).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                        
+                        return formatCurrency(pendingClasses + pendingTransactions);
                       })()}
                     </div>
+                    <div className="mt-2 text-[9px] text-gray-500 font-bold uppercase">Inclui meses anteriores</div>
+                  </div>
+
+                  <div className="bg-blue-500/5 border border-blue-500/10 p-5 rounded-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
+                      <CalendarIcon size={40} className="text-blue-500" />
+                    </div>
+                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-[0.1em] mb-1">Valor Agendado</div>
+                    <div className="text-2xl font-black text-white">
+                      {(() => {
+                        const monthStart = startOfMonth(parseISO(filterMonth + '-01'));
+                        const monthEnd = endOfMonth(parseISO(filterMonth + '-01'));
+                        const startStr = format(monthStart, 'yyyy-MM-dd');
+                        const endStr = format(monthEnd, 'yyyy-MM-dd');
+                        
+                        const scheduled = classes.filter(c => 
+                          c.status === 'SCHEDULED' && 
+                          c.classDate >= startStr && 
+                          c.classDate <= endStr
+                        ).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+                        
+                        return formatCurrency(scheduled);
+                      })()}
+                    </div>
+                    <div className="mt-2 text-[9px] text-gray-500 font-bold uppercase">Aulas para o futuro</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-indigo-600/10 to-purple-600/5 border border-indigo-500/20 p-5 rounded-2xl relative overflow-hidden group shadow-lg shadow-indigo-900/5">
+                    <div className="absolute top-0 right-0 p-3 opacity-30 group-hover:opacity-50 transition-opacity">
+                      <TrendingUp size={40} className="text-indigo-400" />
+                    </div>
+                    <div className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.1em] mb-1">Previsão Total do Mês</div>
+                    <div className="text-2xl font-black text-white">
+                      {(() => {
+                        const monthStart = startOfMonth(parseISO(filterMonth + '-01'));
+                        const monthEnd = endOfMonth(parseISO(filterMonth + '-01'));
+                        const startStr = format(monthStart, 'yyyy-MM-dd');
+                        const endStr = format(monthEnd, 'yyyy-MM-dd');
+
+                        const received = filteredTransactions
+                          .filter(t => t.type === 'INCOME' && t.status === 'COMPLETED')
+                          .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+                        const pending = classes.filter(c => 
+                          c.status === 'COMPLETED' && 
+                          c.paymentStatus === 'PENDING' && 
+                          c.classDate <= endStr
+                        ).reduce((acc, curr) => acc + (curr.totalValue || 0), 0) + 
+                        transactions.filter(t => 
+                          t.type === 'INCOME' && 
+                          t.status === 'PENDING' && 
+                          t.date <= endStr
+                        ).reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+                        const scheduled = classes.filter(c => 
+                          c.status === 'SCHEDULED' && 
+                          c.classDate >= startStr && 
+                          c.classDate <= endStr
+                        ).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
+
+                        return formatCurrency(received + pending + scheduled);
+                      })()}
+                    </div>
+                    <div className="mt-2 text-[9px] text-indigo-300 font-bold uppercase">Cenário Ideal</div>
                   </div>
                 </div>
                 {transactions.length === 0 ? (
