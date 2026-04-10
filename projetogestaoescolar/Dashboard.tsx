@@ -63,7 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToStudent, userN
             const endM = endOfMonth(baseDate);
             const daysInterval = eachDayOfInterval({ start: startM, end: endM });
 
-            const startHistory = format(addWeeks(now, -4), 'yyyy-MM-dd');
+            const startHistory = format(addWeeks(now, -8), 'yyyy-MM-dd'); // Fetch 60 days to cover past month fully
             const [students, allSchedule] = await Promise.all([
                 SupabaseService.getStudents(),
                 SupabaseService.getScheduledClasses(startHistory)

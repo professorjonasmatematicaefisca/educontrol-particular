@@ -201,9 +201,10 @@ const getGoalIconComponent = (iconId?: string) => {
 
     filteredTransactions.forEach(t => {
       const isParticular = t.category.toLowerCase().includes('aula particular');
-      if (isParticular && t.beneficiary && t.subcategory) {
+      if (isParticular && t.beneficiary) {
         const dateKey = t.date.includes('T') ? t.date.split('T')[0] : t.date.split(' ')[0];
-        const key = `${t.beneficiary}|${t.category}|${t.subcategory}|${dateKey}`;
+        // Simplified key to group all daily receipts from the same beneficiary regardless of subcategory
+        const key = `group-${t.beneficiary}-${dateKey}`;
         if (!groups[key]) groups[key] = [];
         groups[key].push(t);
       } else {
@@ -757,14 +758,14 @@ const getGoalIconComponent = (iconId?: string) => {
                   <div className="bg-emerald-500/5 border border-emerald-500/10 p-4 rounded-xl">
                     <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Recebido (Mês)</div>
                     <div className="text-xl font-black text-white">
-                      {formatCurrency(transactions.filter(t => t.type === 'INCOME' && t.status === 'COMPLETED').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
+                      {formatCurrency(filteredTransactions.filter(t => t.type === 'INCOME' && t.status === 'COMPLETED').reduce((acc, curr) => acc + (curr.amount || 0), 0))}
                     </div>
                   </div>
                   <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl">
                     <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Previsão de Recebimento (Pendente)</div>
                     <div className="text-xl font-black text-white">
                       {(() => {
-                        const pendingFromTransactions = transactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0);
+                        const pendingFromTransactions = filteredTransactions.filter(t => t.type === 'INCOME' && t.status === 'PENDING').reduce((acc, curr) => acc + (curr.amount || 0), 0);
                         const pendingFromClasses = classes.filter(c => c.status === 'COMPLETED' && c.paymentStatus === 'PENDING' && !transactions.some(t => t.classId === c.id)).reduce((acc, curr) => acc + (curr.totalValue || 0), 0);
                         return formatCurrency(pendingFromTransactions + pendingFromClasses);
                       })()}

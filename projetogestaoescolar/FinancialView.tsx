@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -161,10 +161,13 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
   // Preparação de dados para os gráficos
   const monthDate = parseISO(filterMonth + '-01');
   // Preparação de dados para o calendário (usando currentMonth para navegação)
-  const daysInMonth = eachDayOfInterval({ 
-    start: startOfMonth(currentMonth), 
-    end: endOfMonth(currentMonth) 
-  });
+  const daysInMonth = useMemo(() => {
+    const monthBase = parseISO(filterMonth + '-01');
+    return eachDayOfInterval({ 
+      start: startOfMonth(monthBase), 
+      end: endOfMonth(monthBase) 
+    });
+  }, [filterMonth]);
 
   const chartData = daysInMonth.map(day => {
     const dayStr = format(day, 'yyyy-MM-dd');
