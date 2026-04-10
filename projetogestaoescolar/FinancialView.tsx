@@ -536,7 +536,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             <input 
               type="month" 
               value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
+              onChange={(e) => {
+                const newVal = e.target.value;
+                setFilterMonth(newVal);
+                setCurrentMonth(parseISO(newVal + '-01'));
+              }}
               className="bg-transparent border-none text-white text-sm font-bold focus:ring-0 outline-none"
             />
           </div>
@@ -636,7 +640,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
                 <button 
-                  onClick={() => setCurrentMonth(prev => addMonths(prev, -1))}
+                  onClick={() => {
+                    const newDate = addMonths(currentMonth, -1);
+                    setCurrentMonth(newDate);
+                    setFilterMonth(format(newDate, 'yyyy-MM'));
+                  }}
                   className="p-1.5 hover:bg-slate-700 rounded-lg text-gray-400 hover:text-white transition-all outline-none"
                 >
                   <ChevronLeft size={16} />
@@ -645,7 +653,11 @@ export const FinancialView: React.FC<FinancialViewProps> = ({ onShowToast, userE
                   {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
                 </span>
                 <button 
-                  onClick={() => setCurrentMonth(prev => addMonths(prev, 1))}
+                  onClick={() => {
+                    const newDate = addMonths(currentMonth, 1);
+                    setCurrentMonth(newDate);
+                    setFilterMonth(format(newDate, 'yyyy-MM'));
+                  }}
                   className="p-1.5 hover:bg-slate-700 rounded-lg text-gray-400 hover:text-white transition-all outline-none"
                 >
                   <ChevronRight size={16} />
