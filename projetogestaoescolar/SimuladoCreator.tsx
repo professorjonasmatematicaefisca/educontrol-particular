@@ -67,58 +67,8 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
   const [isPreview, setIsPreview] = useState(false);
   const [smartInput, setSmartInput] = useState('');
   const [showSmartParser, setShowSmartParser] = useState(false);
-
-  const parseSmartInput = () => {
-    if (!smartInput.trim()) return;
-
-    // Regex para capturar texto da questão, alternativas e alternativa correta
-    const lines = smartInput.split('\n').map(l => l.trim()).filter(l => l);
-    let questionTextLines: string[] = [];
-    let options: { id: string; text: string; isCorrect: boolean }[] = [];
-    let correctId = '';
-
-    const optionRegex = /^([A-E])\)[\s:]*(.*)/i;
-    const correctRegex = /(?:Alternativa correta|Gabarito|Resposta|CORRETA)[\s:]*([A-E])/i;
-    const resolutionRegex = /(?:Resolução|Explicação|Comentário)[\s:]*([\s\S]*)/i;
-
-    lines.forEach(line => {
-      const optMatch = line.match(optionRegex);
-      const correctMatch = line.match(correctRegex);
-
-      if (optMatch) {
-        options.push({
-          id: optMatch[1].toUpperCase(),
-          text: optMatch[2].trim(),
-          isCorrect: false
-        });
-      } else if (correctMatch) {
-        correctId = correctMatch[1].toUpperCase();
-      } else {
-        // Se ainda não temos alternativas, é parte do texto da questão
-        if (options.length === 0) {
-          questionTextLines.push(line);
-        }
-      }
-    });
-
-    if (correctId && options.length > 0) {
-      options = options.map(opt => ({
-        ...opt,
-        isCorrect: opt.id === correctId
-      }));
-    }
-
-    // Se não encontrou corretas pelo regex específico, tenta ver se a última linha tem apenas uma letra
-    if (!correctId && lines.length > 0) {
-       const lastLine = lines[lines.length - 1];
-       if (/^[A-E]$/i.test(lastLine)) {
-          correctId = lastLine.toUpperCase();
-          options = options.map(opt => ({
-            ...opt,
-            isCorrect: opt.id === correctId
-          }));
-       }
-    }
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [parsedBulkQuestions, setParsedBulkQuestions] = useState<any[]>([]);
 
     // Função auxiliar para padronizar e envolver em LaTeX se necessário
     const formatLatex = (text: string) => {
@@ -142,16 +92,61 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
       return text;
     };
 
-    const questionText = formatLatex(questionTextLines.join('\n'));
+  const parseSingleQuestionText = (input: string) => {
+    const lines = input.split('\n').map(l => l.trim()).filter(l => l);
+    let questionTextLines: string[] = [];
+    let options: { id: string; text: string; isCorrect: boolean }[] = [];
+    let correctId = '';
 
-    // Tenta encontrar resolução no texto completo se houver a palavra chave
+    const optionRegex = /^([A-E])\)[\s:]*(.*)/i;
+    const correctRegex = /(?:Alternativa correta|Gabarito|Resposta|CORRETA)[\s:]*([A-E])/i;
+    const resolutionRegex = /(?:Resolução|Explicação|Comentário)[\s:]*([\s\S]*)/i;
+
+    lines.forEach(line => {
+      const optMatch = line.match(optionRegex);
+      const correctMatch = line.match(correctRegex);
+
+      if (optMatch) {
+        options.push({
+          id: optMatch[1].toUpperCase(),
+          text: optMatch[2].trim(),
+          isCorrect: false
+        });
+      } else if (correctMatch) {
+        correctId = correctMatch[1].toUpperCase();
+      } else {
+        if (options.length === 0) {
+          questionTextLines.push(line);
+        }
+      }
+    });
+
+    if (correctId && options.length > 0) {
+      options = options.map(opt => ({
+        ...opt,
+        isCorrect: opt.id === correctId
+      }));
+    }
+
+    if (!correctId && lines.length > 0) {
+       const lastLine = lines[lines.length - 1];
+       if (/^[A-E]$/i.test(lastLine)) {
+          correctId = lastLine.toUpperCase();
+          options = options.map(opt => ({
+            ...opt,
+            isCorrect: opt.id === correctId
+          }));
+       }
+    }
+
+    const questionText = formatLatex(questionTextLines.join('\n'));
     let resolution = '';
-    const resMatch = smartInput.match(resolutionRegex);
+    const resMatch = input.match(resolutionRegex);
     if (resMatch) {
       resolution = formatLatex(resMatch[1].trim());
     }
 
-    setCurrentQuestion({
+    return {
       id: Math.random().toString(36).substring(7),
       text: questionText,
       options: options.length > 0 ? options.map(opt => ({
@@ -166,11 +161,39 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
       ],
       explanation: '',
       resolution: resolution
-    });
-    
+    };
+  };
+
+  const parseSmartInput = () => {
+    if (!smartInput.trim()) return;
+
+    if (isBulkMode) {
+      // Split by common question markers: "1.", "1)", "Questão 1", etc.
+      // We look for a line that starts with a number followed by . or )
+      // or "Questão" followed by a number
+      const questionBlocks = smartInput.split(/\n(?=(?:\d+[\.\)]|Questão\s*\d+))/i).filter(b => b.trim());
+      
+      const newQuestions = questionBlocks.map(block => parseSingleQuestionText(block));
+      setParsedBulkQuestions(newQuestions);
+      onShowToast(`${newQuestions.length} questões identificadas!`);
+    } else {
+      const parsed = parseSingleQuestionText(smartInput);
+      setCurrentQuestion(parsed);
+      setSmartInput('');
+      setShowSmartParser(false);
+      onShowToast('Questão processada com sucesso!');
+    }
+  };
+
+  const addBulkQuestions = () => {
+    setSimulado(prev => ({
+      ...prev,
+      questions: [...(prev.questions || []), ...parsedBulkQuestions]
+    }));
+    setParsedBulkQuestions([]);
     setSmartInput('');
     setShowSmartParser(false);
-    onShowToast('Questão processada com sucesso!');
+    onShowToast(`${parsedBulkQuestions.length} questões adicionadas!`);
   };
 
   const handleAddQuestion = () => {
@@ -374,29 +397,100 @@ export const SimuladoCreator: React.FC<SimuladoCreatorProps> = ({
 
                 {showSmartParser ? (
                   <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                    <div className="p-4 bg-sky-500/5 border border-sky-500/20 rounded-2xl space-y-2">
-                       <p className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Smart Parser ⚡</p>
-                       <p className="text-[9px] text-sky-400/60 leading-relaxed italic">Cole o texto completo (Enunciado + Alternativas A-E + Gabarito). O sistema tentará identificar tudo automaticamente.</p>
+                    <div className="p-4 bg-sky-500/5 border border-sky-500/20 rounded-2xl space-y-4">
+                       <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Smart Parser ⚡</p>
+                            <p className="text-[9px] text-sky-400/60 leading-relaxed italic">
+                              {isBulkMode 
+                                ? "Cole várias questões abaixo. O sistema identificará cada uma individualmente." 
+                                : "Cole o texto completo (Enunciado + Alternativas A-E + Gabarito)."}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 p-1 bg-slate-950 rounded-lg border border-slate-800">
+                            <button 
+                              onClick={() => { setIsBulkMode(false); setParsedBulkQuestions([]); }}
+                              className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase transition-all ${!isBulkMode ? 'bg-sky-500 text-white' : 'text-slate-500'}`}
+                            >
+                              Individual
+                            </button>
+                            <button 
+                              onClick={() => setIsBulkMode(true)}
+                              className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase transition-all ${isBulkMode ? 'bg-sky-500 text-white' : 'text-slate-500'}`}
+                            >
+                              Em Massa
+                            </button>
+                          </div>
+                       </div>
                     </div>
-                    <textarea 
-                      placeholder="Cole aqui. Exemplo:&#10;Sabendo que a matriz A é...&#10;A) -8&#10;B) 9&#10;...&#10;Alternativa correta: C"
-                      className="w-full h-64 bg-slate-950 border border-sky-500/30 rounded-3xl p-6 text-sm font-medium text-white focus:ring-2 focus:ring-sky-500/20 transition-all resize-none shadow-[0_0_20px_rgba(14,165,233,0.1)]"
-                      value={smartInput}
-                      onChange={(e) => setSmartInput(e.target.value)}
-                    />
+
+                    {!isBulkMode || parsedBulkQuestions.length === 0 ? (
+                      <textarea 
+                        placeholder={isBulkMode 
+                          ? "Cole todas as questões aqui...&#10;1. O que é...&#10;A) ... B) ...&#10;2. Calcule...&#10;A) ... B) ..."
+                          : "Cole aqui. Exemplo:&#10;Sabendo que a matriz A é...&#10;A) -8&#10;B) 9&#10;...&#10;Alternativa correta: C"}
+                        className="w-full h-64 bg-slate-950 border border-sky-500/30 rounded-3xl p-6 text-sm font-medium text-white focus:ring-2 focus:ring-sky-500/20 transition-all resize-none shadow-[0_0_20px_rgba(14,165,233,0.1)]"
+                        value={smartInput}
+                        onChange={(e) => setSmartInput(e.target.value)}
+                      />
+                    ) : (
+                      <div className="w-full max-h-96 overflow-y-auto space-y-2 p-4 bg-slate-950 border border-sky-500/30 rounded-3xl shadow-inner-lg">
+                        <p className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-4">Questões Identificadas ({parsedBulkQuestions.length})</p>
+                        {parsedBulkQuestions.map((q, i) => (
+                          <div key={i} className="p-3 bg-slate-900/50 border border-slate-800 rounded-xl flex justify-between items-center group">
+                            <div className="flex-1 min-w-0">
+                               <p className="text-[10px] font-bold text-white truncate">#{i+1} - {q.text}</p>
+                               <div className="flex gap-1 mt-1">
+                                  {q.options.map((opt:any) => (
+                                    <span key={opt.id} className={`text-[7px] font-black px-1.5 py-0.5 rounded ${opt.isCorrect ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-800 text-slate-500'}`}>
+                                      {opt.id}
+                                    </span>
+                                  ))}
+                               </div>
+                            </div>
+                            <button 
+                              onClick={() => setParsedBulkQuestions(prev => prev.filter((_, idx) => idx !== i))}
+                              className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex gap-3">
-                      <button 
-                        onClick={parseSmartInput}
-                        className="flex-1 py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
-                      >
-                        Processar e Preencher
-                      </button>
-                      <button 
-                        onClick={() => setShowSmartParser(false)}
-                        className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
-                      >
-                        Cancelar
-                      </button>
+                      {isBulkMode && parsedBulkQuestions.length > 0 ? (
+                        <>
+                          <button 
+                            onClick={addBulkQuestions}
+                            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                          >
+                            Adicionar Todas ao Simulado
+                          </button>
+                          <button 
+                            onClick={() => setParsedBulkQuestions([])}
+                            className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                          >
+                            Limpar e Voltar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={parseSmartInput}
+                            className="flex-1 py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                          >
+                            {isBulkMode ? "Analisar Texto" : "Processar e Preencher"}
+                          </button>
+                          <button 
+                            onClick={() => { setShowSmartParser(false); setSmartInput(''); setParsedBulkQuestions([]); }}
+                            className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                          >
+                            Cancelar
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ) : (
