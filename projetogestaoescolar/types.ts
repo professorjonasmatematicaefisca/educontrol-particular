@@ -417,3 +417,8 @@ export interface CourseProgress {
   completedAt: string;
 }
 
+export interface ClassAttachment {
+  name: string;
+  url: string;
+}
+

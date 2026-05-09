@@ -156,7 +156,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
     disciplineId: '',
     subjectNotes: '',
     paymentDueDate: new Date().toISOString().split('T')[0],
-    pdfFile: null as File | null,
+    pdfFiles: [] as File[],
     uploading: false
   });
 
@@ -305,7 +305,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       disciplineId: item.disciplineId || '',
       subjectNotes: item.subjectNotes || '',
       paymentDueDate: defaultDueDate,
-      pdfFile: null,
+      pdfFiles: [],
       uploading: false
     });
     setShowCompletionModal(true);
@@ -319,25 +319,41 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
 
     setCompletionData(prev => ({ ...prev, uploading: true }));
     try {
-      let pdfUrl = selectedClass.pdfUrl || '';
-      if (completionData.pdfFile) {
-        console.log('Uploading PDF:', completionData.pdfFile.name);
-        const uploaded = await SupabaseService.uploadPDF(completionData.pdfFile);
-        if (uploaded) {
-          pdfUrl = uploaded;
-          console.log('PDF uploaded successfully:', pdfUrl);
-        } else {
-          onShowToast('Erro ao enviar PDF. Tente novamente.');
-          setCompletionData(prev => ({ ...prev, uploading: false }));
-          return;
+      let existingPdfData: { name: string, url: string }[] = [];
+      if (selectedClass.pdfUrl) {
+         try {
+             if (selectedClass.pdfUrl.trim().startsWith('[')) {
+                 existingPdfData = JSON.parse(selectedClass.pdfUrl);
+             } else {
+                 existingPdfData = [{ name: 'Anexo Antigo', url: selectedClass.pdfUrl }];
+             }
+         } catch(e) {
+             existingPdfData = [{ name: 'Anexo Antigo', url: selectedClass.pdfUrl }];
+         }
+      }
+
+      if (completionData.pdfFiles && completionData.pdfFiles.length > 0) {
+        for (const file of completionData.pdfFiles) {
+           console.log('Uploading Material:', file.name);
+           const uploaded = await SupabaseService.uploadPDF(file);
+           if (uploaded) {
+               existingPdfData.push({ name: file.name, url: uploaded });
+               console.log('Material uploaded successfully:', uploaded);
+           } else {
+               onShowToast(`Erro ao enviar ${file.name}. Tente novamente.`);
+               setCompletionData(prev => ({ ...prev, uploading: false }));
+               return;
+           }
         }
       }
+
+      const finalPdfUrl = existingPdfData.length > 0 ? JSON.stringify(existingPdfData) : undefined;
 
       const success = await SupabaseService.updateScheduledClassStatus(selectedClass.id, 'COMPLETED', {
         totalValue: selectedClass.hourlyRate,
         disciplineId: completionData.disciplineId,
         subjectNotes: completionData.subjectNotes,
-        pdfUrl: pdfUrl || undefined,
+        pdfUrl: finalPdfUrl,
         paymentStatus: 'PENDING',
         paymentDueDate: completionData.paymentDueDate
       });
@@ -1095,9 +1111,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
       <div className="flex items-center justify-between pt-4 border-t border-slate-800/50">
         <div className="flex items-center gap-3">
           {c.pdfUrl ? (
-            <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
-              <FileText size={12} /> PDF Aula
-            </a>
+            <div className="flex flex-col gap-1">
+              {(() => {
+                try {
+                  if (c.pdfUrl.trim().startsWith('[')) {
+                    const parsed = JSON.parse(c.pdfUrl) as { name: string, url: string }[];
+                    return parsed.map((item, idx) => (
+                      <a key={idx} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
+                        <FileText size={12} /> {item.name}
+                      </a>
+                    ));
+                  }
+                } catch(e) {}
+                return (
+                  <a href={c.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-sky-400 hover:text-sky-300 uppercase underline">
+                    <FileText size={12} /> PDF Aula
+                  </a>
+                );
+              })()}
+            </div>
           ) : (
             <span className="text-[9px] text-slate-600 font-bold uppercase ring-1 ring-slate-800 px-2 py-1 rounded">Sem Material</span>
           )}
@@ -1662,17 +1694,26 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onShowToast, userEma
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Material (PDF)</label>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Anexar Materiais (Múltiplos)</label>
                 <input 
                   type="file" 
-                  accept=".pdf"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,image/*" 
+                  multiple
                   className="w-full bg-[#0f172a] border border-gray-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
-                  onChange={(e) => setCompletionData({ ...completionData, pdfFile: e.target.files?.[0] || null })}
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setCompletionData({ ...completionData, pdfFiles: [...completionData.pdfFiles, ...files] });
+                  }}
                 />
-                {completionData.pdfFile && (
-                  <p className="mt-1 text-[10px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                    <CheckCircle size={10} /> {completionData.pdfFile.name}
-                  </p>
+                {completionData.pdfFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                     {completionData.pdfFiles.map((file, idx) => (
+                         <div key={idx} className="flex justify-between items-center text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
+                            <span className="flex items-center gap-1"><CheckCircle size={10} /> {file.name}</span>
+                            <button onClick={() => setCompletionData({...completionData, pdfFiles: completionData.pdfFiles.filter((_, i) => i !== idx)})} className="text-rose-500 hover:text-rose-400 p-1"><XCircle size={12} /></button>
+                         </div>
+                     ))}
+                  </div>
                 )}
               </div>
 

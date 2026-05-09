@@ -280,18 +280,48 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ userEmail, use
                                             Finalizada em {new Date(c.classDate + 'T00:00:00').toLocaleDateString('pt-BR')}
                                         </span>
                                     </div>
-                                    <div className="flex gap-2">
-                                        {(c.whiteboardUrl || c.pdfUrl) && (
+                                    <div className="flex flex-wrap gap-2 justify-end mt-2 md:mt-0">
+                                        {c.whiteboardUrl && (
                                             <a 
-                                                href={c.whiteboardUrl || c.pdfUrl} 
+                                                href={c.whiteboardUrl} 
                                                 target="_blank" 
                                                 rel="noopener noreferrer"
-                                                className="p-1.5 bg-rose-500/10 rounded-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg"
-                                                title="Baixar Material PDF"
+                                                className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all shadow-lg flex items-center gap-1"
+                                                title="Lousa"
                                             >
-                                                <FileText size={14} />
+                                                <FileText size={14} /> <span className="text-[9px] font-bold uppercase hidden xl:inline">Lousa</span>
                                             </a>
                                         )}
+                                        {c.pdfUrl && (() => {
+                                            try {
+                                                if (c.pdfUrl.trim().startsWith('[')) {
+                                                    const parsed = JSON.parse(c.pdfUrl) as { name: string, url: string }[];
+                                                    return parsed.map((item, idx) => (
+                                                        <a 
+                                                            key={idx}
+                                                            href={item.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="p-1.5 bg-rose-500/10 rounded-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg flex items-center gap-1"
+                                                            title={`Baixar ${item.name}`}
+                                                        >
+                                                            <FileText size={14} /> <span className="text-[9px] font-bold uppercase hidden xl:inline truncate max-w-[60px]">{item.name}</span>
+                                                        </a>
+                                                    ));
+                                                }
+                                            } catch(e) {}
+                                            return (
+                                                <a 
+                                                    href={c.pdfUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 bg-rose-500/10 rounded-lg text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg flex items-center gap-1"
+                                                    title="Baixar Material"
+                                                >
+                                                    <FileText size={14} /> <span className="text-[9px] font-bold uppercase hidden xl:inline">Material</span>
+                                                </a>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             ))}
